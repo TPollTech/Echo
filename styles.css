@@ -2004,3 +2004,179 @@ body:not(.is-playing) .game-ui {
   .skin-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .skin-card { min-height: 170px; }
 }
+
+
+/* ===== Readability pass: larger, responsive UI typography ===== */
+:root {
+  --type-micro: clamp(10px, 0.72vw, 12px);
+  --type-small: clamp(12px, 0.84vw, 14px);
+  --type-body: clamp(14px, 0.98vw, 16px);
+  --type-title: clamp(17px, 1.2vw, 21px);
+}
+
+body {
+  font-size: var(--type-body);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.brand-lockup strong { font-size: clamp(19px, 1.25vw, 22px); }
+.brand-lockup span:not(.brand-mark),
+.sector-pill,
+.metric-row span,
+.score-panel span,
+.panel-kicker,
+.run-summary span,
+.mutation-chip,
+.ability-core span,
+.ability-core strong,
+.combo > span,
+.mobile-phase span {
+  font-size: var(--type-micro);
+}
+
+.sector-pill { padding: 11px 16px; }
+.vitals { width: 250px; }
+.metric-row strong { font-size: var(--type-small); }
+.meter { height: 5px; }
+.mutation-chip { padding: 8px 10px; line-height: 1.25; }
+
+.leaderboard {
+  width: 235px;
+  padding: 17px 18px 15px;
+}
+.leaderboard li {
+  grid-template-columns: 22px 1fr auto;
+  gap: 9px;
+  font-size: var(--type-small);
+}
+
+.score-panel strong { font-size: clamp(20px, 1.35vw, 24px); }
+.ability-ring { width: 72px; height: 72px; }
+.ability-copy strong { font-size: var(--type-small); }
+.ability-copy span { font-size: var(--type-small); line-height: 1.45; }
+.combo > span { margin-top: 2px; }
+.toast {
+  max-width: min(620px, calc(100vw - 32px));
+  padding: 12px 18px;
+  font-size: var(--type-small);
+  line-height: 1.45;
+  text-align: center;
+}
+
+.eyebrow { font-size: var(--type-small); }
+.intro { font-size: var(--type-body); line-height: 1.7; }
+.mode-selector button { min-height: 74px; }
+.mode-selector button small,
+.mechanic-strip .step-index,
+.start-form label,
+.start-footer,
+.start-form > small,
+.skin-card small,
+.mutation-card small,
+.modifier-card small,
+.upgrade-card small,
+.synergy-hint,
+.resonance-earned span {
+  font-size: var(--type-micro);
+}
+.mode-selector button strong,
+.mechanic-strip strong,
+.name-row button,
+.gameover-content button,
+.pause-actions button,
+.secondary-button,
+.text-button,
+.workshop-button {
+  font-size: var(--type-small);
+}
+.mechanic-strip p,
+.profile-summary,
+.start-status,
+.room-list,
+.room-entry input,
+.mutation-content > p,
+.modifier-subtitle,
+.skin-subtitle,
+.gameover-content > p,
+.pause-content > p,
+.settings-panel label,
+.challenge-desc,
+.challenge-progress {
+  font-size: var(--type-small);
+  line-height: 1.5;
+}
+.name-row input { font-size: 16px; }
+
+.mutation-card h3,
+.modifier-card h3,
+.skin-card h3,
+.upgrade-card h3 { font-size: var(--type-title); }
+.mutation-card p,
+.modifier-card p,
+.skin-card p,
+.upgrade-card p {
+  font-size: var(--type-body);
+  line-height: 1.55;
+}
+.mutation-card,
+.modifier-card,
+.skin-card,
+.upgrade-card { min-height: 230px; }
+
+.boss-bar {
+  width: min(390px, calc(100vw - 56px));
+  margin-top: 18px;
+}
+.boss-bar-header {
+  gap: 8px 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.boss-role {
+  max-width: 100%;
+  font-size: var(--type-micro);
+  line-height: 1.35;
+}
+.boss-name { font-size: var(--type-small); }
+.boss-hp-bar { height: 7px; }
+
+.challenge-panel { width: 260px; }
+.challenge-name,
+.challenge-reward { font-size: var(--type-micro); }
+.challenge-desc { margin: 5px 0 7px; }
+.challenge-progress { font-size: var(--type-micro); }
+
+.settings-panel output,
+.resonance-earned strong { font-size: var(--type-title); }
+
+@media (max-width: 760px) {
+  .topbar { left: 16px; right: 16px; top: max(12px, env(safe-area-inset-top)); }
+  .brand-lockup span:not(.brand-mark) { display: none; }
+  .sector-pill { top: 48px; max-width: calc(100vw - 32px); white-space: normal; text-align: center; }
+  .vitals { top: 94px; left: 16px; width: min(220px, 58vw); }
+  .leaderboard, .challenge-panel { display: none; }
+  .score-panel { left: 16px; gap: 18px; }
+  .score-panel strong { font-size: 18px; }
+  .ability-dock { left: 16px; right: 116px; transform: none; }
+  .ability-ring { width: 64px; height: 64px; flex: 0 0 auto; }
+  .ability-copy { max-width: 230px; }
+  .ability-copy strong, .ability-copy span { font-size: 11px; }
+  .mobile-phase span { font-size: 10px; }
+  .mobile-phase strong { font-size: 14px; }
+  .mechanic-strip {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .mechanic-strip > i { display: none; }
+  .mechanic-strip article { min-height: 52px; }
+  .start-screen { padding: 44px 18px 90px; }
+  .start-content h1 { font-size: clamp(72px, 26vw, 116px); }
+  .intro { font-size: 14px; }
+  .mode-selector { grid-template-columns: 1fr; }
+  .name-row { grid-template-columns: 1fr; }
+  .name-row button, .gameover-content button { width: 100%; min-width: 0; }
+  .mutation-cards, .modifier-cards, .skin-cards, .upgrade-cards { grid-template-columns: 1fr; }
+  .mutation-card, .modifier-card, .skin-card, .upgrade-card { min-height: 0; }
+  .boss-bar { width: min(330px, calc(100vw - 32px)); }
+}

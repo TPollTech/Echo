@@ -103,7 +103,7 @@
     { id: "warden", label: "SENTINELA", speed: 98, aggression: 0.58, health: 145, attackDamage: 13, hueShift: 42 },
     { id: "drainer", label: "PARASITA", speed: 128, aggression: 0.72, health: 92, attackDamage: 8, energyDrain: 16, hueShift: 105 },
     { id: "weaver", label: "TECELÃO", speed: 118, aggression: 0.68, health: 105, attackDamage: 11, fastPhase: true, hueShift: -24 },
-    { id: "sniper", label: "FRANCOTIRADOR", speed: 108, aggression: 0.85, health: 75, attackDamage: 16, longRange: true, hueShift: 60 },
+    { id: "sniper", label: "FRANCO-ATIRADOR", speed: 94, aggression: 0.82, health: 72, attackDamage: 23, longRange: true, sniper: true, idealRange: 470, hueShift: 60 },
     { id: "swarmer", label: "ENXAME", speed: 145, aggression: 0.65, health: 55, attackDamage: 6, swarmer: true, hueShift: 80 },
     { id: "bruiser", label: "DESTRUINTE", speed: 90, aggression: 0.95, health: 170, attackDamage: 18, heavyHit: true, hueShift: -15 },
     { id: "berserker", label: "FURIOSO", speed: 160, aggression: 0.95, health: 60, attackDamage: 7, hueShift: -30 },
@@ -966,8 +966,20 @@
       aggression: clamp(archetype.aggression + random(-0.08, 0.08), 0.1, 1),
       speed: baseSpeed,
       attackDamage: archetype.attackDamage,
+      baseAttackDamage: archetype.attackDamage,
       energyDrain: archetype.energyDrain || 0,
       fastPhase: Boolean(archetype.fastPhase),
+      longRange: Boolean(archetype.longRange),
+      swarmer: Boolean(archetype.swarmer),
+      heavyHit: Boolean(archetype.heavyHit),
+      sniper: Boolean(archetype.sniper),
+      idealRange: archetype.idealRange || 0,
+      sniperAimTimer: 0,
+      sniperAimDuration: 0,
+      sniperAimX: 0,
+      sniperAimY: 0,
+      sniperTarget: null,
+      sniperWarned: false,
       hitTimer: 0,
       dead: false,
       respawnTimer: 0,
@@ -2327,7 +2339,10 @@
       bot.aggression = phase.aggression;
       bot.radius = phase.radius;
       bot.attackDamage = phase.attackDamage;
-      bot.energy = phase.energy;
+      bot.energy = Math.min(75, phase.energy);
+      bot.cooldown = Math.max(bot.cooldown, 1.45);
+      bot.sniperAimTimer = 0;
+      bot.sniperTarget = null;
       spawnWave(bot.x, bot.y, bot.hue, 160, 1);
       burst(bot.x, bot.y, bot.hue, 40);
       sound(55, 0.5, "sawtooth", 0.08);
@@ -2694,6 +2709,15 @@
         bot.attackDamage = botArchetypes.find((a) => a.id === "berserker").attackDamage;
       }
 
+      if (bot.archetype === "swarmer") {
+        let nearbyPack = 0;
+        for (const ally of bots) {
+          if (ally === bot || ally.dead || ally.faction !== bot.faction || ally.archetype !== "swarmer") continue;
+          if (distanceSq(bot.x, bot.y, ally.x, ally.y) < 190 * 190) nearbyPack += 1;
+        }
+        bot.speed = bot.baseSpeed * (1 + Math.min(0.3, nearbyPack * 0.1));
+      }
+
       if (bot.archetype === "phantom") {
         bot.stealthTimer += dt;
         const threshold = bot.stealthed ? 2 : 4;
@@ -2756,13 +2780,37 @@
         }
       }
 
+      if (bot.archetype === "sniper") {
+        const dx = bot.x - player.x;
+        const dy = bot.y - player.y;
+        const distanceToPlayer = Math.hypot(dx, dy) || 1;
+        const ideal = bot.idealRange || 470;
+        if (distanceToPlayer < ideal - 115) {
+          bot.targetX = clamp(bot.x + (dx / distanceToPlayer) * 300, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+          bot.targetY = clamp(bot.y + (dy / distanceToPlayer) * 300, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+        } else if (distanceToPlayer > ideal + 135) {
+          bot.targetX = player.x;
+          bot.targetY = player.y;
+        } else if (bot.sniperAimTimer <= 0) {
+          const strafeDirection = Math.sin(runTime * 0.7 + bot.x) >= 0 ? 1 : -1;
+          bot.targetX = clamp(player.x + (dx / distanceToPlayer) * ideal + (-dy / distanceToPlayer) * 150 * strafeDirection, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+          bot.targetY = clamp(player.y + (dy / distanceToPlayer) * ideal + (dx / distanceToPlayer) * 150 * strafeDirection, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+        } else {
+          bot.targetX = bot.x;
+          bot.targetY = bot.y;
+        }
+      }
+
       const desired = { x: bot.x, y: bot.y, vx: bot.vx, vy: bot.vy };
-      steerVelocity(desired, bot.targetX, bot.targetY, bot.speed, dt, 3.3);
+      const movementSpeed = bot.archetype === "sniper" && bot.sniperAimTimer > 0 ? bot.speed * 0.22 : bot.speed;
+      steerVelocity(desired, bot.targetX, bot.targetY, movementSpeed, dt, 3.3);
       bot.vx = desired.vx;
       bot.vy = desired.vy;
       bot.x = clamp(bot.x + bot.vx * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
       bot.y = clamp(bot.y + bot.vy * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
       collectBotMotes(bot);
+
+      if (bot.archetype === "sniper") updateSniper(bot, dt);
 
       if (bot.archetype === "sprinter" && bot.cooldown <= 0) {
         const distToPlayer = Math.hypot(bot.x - player.x, bot.y - player.y);
@@ -2963,7 +3011,7 @@
         }
       }
 
-      if (bot.archetype !== "sprinter" && !bot.stealthed) {
+      if (bot.archetype !== "sprinter" && bot.archetype !== "sniper" && !bot.stealthed && !(bot.boss && bot.bossPhaseTransitioning)) {
         if (bot.factionTarget && !bot.factionTarget.dead && bot.cooldown <= 0 && bot.energy > 45 && bot.aggression > 0.5) {
           const distToTarget = Math.hypot(bot.x - bot.factionTarget.x, bot.y - bot.factionTarget.y);
           if (distToTarget < attackRange) {
@@ -2973,6 +3021,84 @@
           beginBotPhase(bot);
         }
       }
+    }
+  }
+
+
+  function updateSniper(bot, dt) {
+    const fallbackTarget = player;
+
+    if (bot.sniperAimTimer > 0) {
+      const target = bot.sniperTarget && !bot.sniperTarget.dead ? bot.sniperTarget : fallbackTarget;
+      bot.sniperTarget = target;
+      bot.sniperAimTimer -= dt;
+
+      const leadScale = target === player ? 0.2 : 0.3;
+      const tracking = clamp(dt * 2.2, 0, 1);
+      bot.sniperAimX = lerp(bot.sniperAimX, target.x + (target.vx || 0) * leadScale, tracking);
+      bot.sniperAimY = lerp(bot.sniperAimY, target.y + (target.vy || 0) * leadScale, tracking);
+
+      if (bot.sniperAimTimer <= 0) {
+        const dx = bot.sniperAimX - bot.x;
+        const dy = bot.sniperAimY - bot.y;
+        const distance = Math.hypot(dx, dy) || 1;
+        const shotLength = 820;
+        const endX = clamp(bot.x + (dx / distance) * shotLength, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+        const endY = clamp(bot.y + (dy / distance) * shotLength, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+        const points = [{ x: bot.x, y: bot.y }, { x: endX, y: endY }];
+
+        ribbons.push({
+          points,
+          hue: bot.hue,
+          life: 0.24,
+          maxLife: 0.24,
+          width: 3.2,
+          sniperShot: true
+        });
+        spawnWave(bot.x, bot.y, bot.hue, 62, 0.32);
+        burst(bot.x, bot.y, bot.hue, 10);
+        sound(178, 0.12, "square", 0.035);
+        setTimeout(() => sound(62, 0.2, "triangle", 0.028), 35);
+
+        if (target === player) {
+          const missDistance = pointToSegmentDistance(player.x, player.y, bot.x, bot.y, endX, endY);
+          if (missDistance < player.radius + 10) {
+            damagePlayer(bot.attackDamage * random(0.96, 1.08), bot.x, bot.y);
+          }
+        } else if (!target.dead) {
+          const missDistance = pointToSegmentDistance(target.x, target.y, bot.x, bot.y, endX, endY);
+          if (missDistance < target.radius + 9) {
+            damageBot(target, bot.attackDamage * random(0.92, 1.06), bot, bot.x, bot.y);
+          }
+        }
+
+        bot.cooldown = random(3.6, 5.1);
+        bot.energy = Math.max(0, bot.energy - 34);
+        bot.sniperTarget = null;
+        bot.sniperAimTimer = 0;
+      }
+      return;
+    }
+
+    if (bot.cooldown > 0 || bot.energy < 34 || bot.stealthed) return;
+
+    const factionTarget = bot.factionTarget && !bot.factionTarget.dead ? bot.factionTarget : null;
+    const target = factionTarget || fallbackTarget;
+    const targetDistance = Math.hypot(bot.x - target.x, bot.y - target.y);
+    if (targetDistance < 245 || targetDistance > 700) return;
+
+    bot.sniperTarget = target;
+    bot.sniperAimDuration = targetDistance > 540 ? 1.12 : 0.92;
+    bot.sniperAimTimer = bot.sniperAimDuration;
+    bot.sniperAimX = target.x + (target.vx || 0) * 0.42;
+    bot.sniperAimY = target.y + (target.vy || 0) * 0.42;
+    bot.vx *= 0.35;
+    bot.vy *= 0.35;
+    spawnWave(bot.x, bot.y, bot.hue, 40, 0.35);
+
+    if (target === player && !bot.sniperWarned) {
+      bot.sniperWarned = true;
+      showToast("FRANCO-ATIRADOR MIRANDO — SAIA DA LINHA", 1700);
     }
   }
 
@@ -3195,7 +3321,9 @@
 
     if (activeBoss && !activeBoss.dead) {
       ui.bossBar.classList.remove("is-hidden");
-      ui.bossRole.textContent = activeBoss.roleLabel;
+      const activePhase = activeBoss.bossTemplate?.phases?.[activeBoss.bossPhaseIndex];
+      const mechanic = activePhase?.description?.replace(/^Fase \d+\s*—\s*/, "").toUpperCase();
+      ui.bossRole.textContent = mechanic ? `${activeBoss.roleLabel} // ${mechanic}` : activeBoss.roleLabel;
       ui.bossName.textContent = activeBoss.name;
       const bossHpRatio = clamp(activeBoss.health, 0, activeBoss.maxHealth) / activeBoss.maxHealth;
       ui.bossHpFill.style.width = `${bossHpRatio * 100}%`;
@@ -3512,6 +3640,31 @@
     const isLowHealth = !isPlayer && !spectral && healthRatio < 0.3 && healthRatio > 0;
     const renderHue = isPlayer && entity.skinId === "caotico" ? (time * 0.05) % 360 : entity.hue;
     const glow = isPlayer ? entity.skinGlow || 1 : 1;
+
+    if (!isPlayer && !spectral && entity.archetype === "sniper" && entity.sniperAimTimer > 0) {
+      const aimPoint = toScreen(entity.sniperAimX, entity.sniperAimY);
+      const charge = 1 - clamp(entity.sniperAimTimer / Math.max(0.01, entity.sniperAimDuration), 0, 1);
+      ctx.save();
+      ctx.strokeStyle = hsl(entity.hue, 96, 68, 0.35 + charge * 0.55);
+      ctx.lineWidth = 1.2 + charge * 1.8;
+      ctx.setLineDash([8 - charge * 4, 7]);
+      ctx.beginPath();
+      ctx.moveTo(point.x, point.y);
+      ctx.lineTo(aimPoint.x, aimPoint.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.arc(aimPoint.x, aimPoint.y, 9 + charge * 8, 0, TAU);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(aimPoint.x - 15, aimPoint.y);
+      ctx.lineTo(aimPoint.x + 15, aimPoint.y);
+      ctx.moveTo(aimPoint.x, aimPoint.y - 15);
+      ctx.lineTo(aimPoint.x, aimPoint.y + 15);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     ctx.save();
     if (entity.alpha != null) ctx.globalAlpha = entity.alpha;
     ctx.translate(point.x, point.y);
@@ -3634,11 +3787,11 @@
       ctx.textAlign = "center";
       if (!MOBILE_QUALITY || isPlayer || entity.boss) {
         if (entity.roleLabel) {
-          ctx.font = `500 ${entity.boss ? 9 : 7}px Inter, sans-serif`;
+          ctx.font = `600 ${entity.boss ? 12 : 10}px Inter, sans-serif`;
           ctx.fillStyle = entity.boss ? "rgba(255,85,122,0.95)" : hsl(renderHue, 88, 72, 0.7);
           ctx.fillText(entity.roleLabel, point.x, point.y - radius - 27);
         }
-        ctx.font = `${isPlayer || entity.boss ? 600 : 500} ${entity.boss ? 12 : isPlayer ? 10 : 9}px Inter, sans-serif`;
+        ctx.font = `${isPlayer || entity.boss ? 700 : 600} ${entity.boss ? 16 : isPlayer ? 13 : 12}px Inter, sans-serif`;
         ctx.fillStyle = isPlayer ? "rgba(222,250,255,0.9)" : "rgba(205,197,220,0.72)";
         ctx.fillText(entity.name, point.x, point.y - radius - 15);
       }
