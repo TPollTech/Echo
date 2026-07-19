@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05040c">
+  <meta name="description" content="ECHO — protótipo de arena sobre projeção espectral, precisão e risco.">
+  <title>ECHO // Arena Espectral</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%2305040c'/%3E%3Ccircle cx='32' cy='32' r='21' fill='none' stroke='%238b5cf6' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='11' fill='none' stroke='%2345e6ff' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='4' fill='%23ff4fd8'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main id="game-shell">
+    <canvas id="arena" aria-label="Arena de ECHO"></canvas>
+
+    <section class="topbar game-ui" aria-label="Status da partida">
+      <div class="brand-lockup">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <strong>ECHO</strong>
+          <span>SIMULAÇÃO 01</span>
+        </div>
+      </div>
+
+      <div class="sector-pill">
+        <span class="live-dot" aria-hidden="true"></span>
+        <span id="sector-label">SETOR VAZIO</span>
+      </div>
+
+      <div class="topbar-actions">
+        <button id="pause-toggle" class="icon-button" type="button" aria-label="Pausar partida" title="Pausar">Ⅱ</button>
+        <button id="sound-toggle" class="icon-button" type="button" aria-label="Desativar som" title="Som">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Zm12.5 3a4.5 4.5 0 0 0-2-3.74v7.48A4.5 4.5 0 0 1 16.5 12Zm0-8v2.1a7 7 0 0 1 0 11.8V20a9 9 0 0 0 0-16Z"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <section class="vitals game-ui" aria-label="Integridade e carga">
+      <div class="metric-row">
+        <span>INTEGRIDADE</span>
+        <strong id="integrity-value">100</strong>
+      </div>
+      <div class="meter integrity-meter"><i id="integrity-fill"></i></div>
+
+      <div class="metric-row charge-row">
+        <span>CARGA ESPECTRAL</span>
+        <strong id="charge-value">100%</strong>
+      </div>
+      <div class="meter charge-meter"><i id="charge-fill"></i></div>
+
+      <div id="mutation-slots" class="mutation-slots" aria-label="Mutações ativas"></div>
+
+      <div id="boss-bar" class="boss-bar is-hidden" aria-label="Barra de vida do boss">
+        <div class="boss-bar-header">
+          <span id="boss-role" class="boss-role">GUARDIÃO</span>
+          <span id="boss-name" class="boss-name">COROA VAZIA</span>
+        </div>
+        <div class="boss-hp-bar"><i id="boss-hp-fill"></i></div>
+      </div>
+    </section>
+
+    <aside class="leaderboard game-ui" aria-label="Ressonâncias mais fortes">
+      <div class="panel-kicker">RESSONÂNCIAS</div>
+      <ol id="leaderboard-list"></ol>
+    </aside>
+
+    <section id="challenge-panel" class="challenge-panel game-ui" aria-label="Desafios diários"></section>
+
+    <section class="score-panel game-ui" aria-label="Pontuação">
+      <div>
+        <span>FRAGMENTOS</span>
+        <strong id="score-value">000</strong>
+      </div>
+      <div>
+        <span>RUPTURAS</span>
+        <strong id="kill-value">0</strong>
+      </div>
+      <div>
+        <span>TEMPO</span>
+        <strong id="time-value">00:00</strong>
+      </div>
+    </section>
+
+    <section class="ability-dock game-ui" aria-label="Habilidade de projeção espectral">
+      <div id="ability-ring" class="ability-ring">
+        <div class="ability-core">
+          <span class="key-hint">ESPAÇO</span>
+          <strong>PROJETAR</strong>
+        </div>
+      </div>
+      <div class="ability-copy">
+        <strong id="ability-title">ECO ESPECTRAL PRONTO</strong>
+        <span id="ability-hint">Segure para abandonar o núcleo. Solte para romper o rastro.</span>
+      </div>
+    </section>
+
+    <button id="mobile-phase" class="mobile-phase game-ui" type="button" aria-label="Segure para projetar o eco espectral">
+      <span>SEGURE</span>
+      <strong>ECO</strong>
+    </button>
+
+    <div id="combo" class="combo game-ui" aria-live="polite">
+      <strong>×<span id="combo-value">2</span></strong>
+      <span>FLUXO</span>
+    </div>
+
+    <canvas id="minimap" class="minimap game-ui" width="140" height="140"></canvas>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <section id="modifier-screen" class="overlay modifier-screen is-hidden">
+      <div class="modifier-content">
+        <div class="eyebrow"><span></span> MODIFICADORES DE RUN</div>
+        <h2>ESCOLHA SEU CAMINHO</h2>
+        <p class="modifier-subtitle">Um modificador será aplicado durante toda a run. Bônus de ressonância por escolha.</p>
+        <div id="modifier-cards" class="modifier-cards"></div>
+      </div>
+    </section>
+
+    <section id="start-screen" class="overlay start-screen">
+      <div class="start-grid" aria-hidden="true"></div>
+      <div class="start-content">
+        <div class="eyebrow"><span></span> ARENA ESPECTRAL // BUILD 0.3</div>
+        <h1>ECHO</h1>
+        <p class="manifesto">Seu corpo fica. Sua intenção atravessa.</p>
+        <p class="intro">Colete ressonâncias, projete uma presença espectral e transforme o caminho de volta em uma lâmina. Aqui, tamanho não decide combate — leitura, coragem e trajetória decidem.</p>
+
+        <div class="mode-selector" role="group" aria-label="Modo de jogo">
+          <button id="solo-mode" class="is-selected" type="button" aria-pressed="true">
+            <small>PROTOCOLO</small><strong>SOLO</strong><span>Run, mutações e chefe</span>
+          </button>
+          <button id="multiplayer-mode" type="button" aria-pressed="false">
+            <small>REDE LOCAL</small><strong>MULTIPLAYER</strong><span>Salas autoritativas locais</span>
+          </button>
+        </div>
+
+        <div class="mechanic-strip">
+          <article>
+            <span class="step-index">01</span>
+            <div><strong>MOVA</strong><p>Guie o núcleo com o cursor ou toque.</p></div>
+          </article>
+          <i aria-hidden="true"></i>
+          <article>
+            <span class="step-index">02</span>
+            <div><strong>PROJETE</strong><p>Segure clique, espaço ou ECO.</p></div>
+          </article>
+          <i aria-hidden="true"></i>
+          <article>
+            <span class="step-index">03</span>
+            <div><strong>ROMPA</strong><p>Solte e corte inimigos com seu rastro.</p></div>
+          </article>
+        </div>
+
+        <form id="start-form" class="start-form">
+          <label for="player-name">IDENTIDADE DO SINAL</label>
+          <div class="name-row">
+            <input id="player-name" name="name" maxlength="14" autocomplete="off" value="Viajante" aria-describedby="name-help">
+            <button id="start-submit" type="submit"><span>INICIAR RUN SOLO</span><b aria-hidden="true">↗</b></button>
+          </div>
+          <button id="workshop-button" class="workshop-button" type="button">OFICINA DE FREQUÊNCIAS <span class="resonance-hint">♦</span></button>
+          <div id="multiplayer-fields" class="multiplayer-fields is-hidden">
+            <div class="room-entry">
+              <label for="room-code">CÓDIGO DA SALA</label>
+              <input id="room-code" name="room" maxlength="6" autocomplete="off" placeholder="EX.: A7K9Q2">
+            </div>
+            <button id="create-room-button" class="secondary-button" type="button">CRIAR NOVA SALA</button>
+            <button id="refresh-rooms-button" class="text-button" type="button">ATUALIZAR SALAS</button>
+            <div id="room-list" class="room-list" aria-live="polite"></div>
+          </div>
+          <small id="name-help">Progresso e partidas são salvos no banco local — sem cadastro externo.</small>
+          <div id="profile-summary" class="profile-summary" aria-live="polite"></div>
+          <div id="start-status" class="start-status" role="status" aria-live="polite"></div>
+        </form>
+      </div>
+      <footer class="start-footer"><span>BUILD 0.3</span><span>BANCO LOCAL</span><span>MOUSE + TECLADO / TOQUE</span></footer>
+    </section>
+
+    <section id="mutation-screen" class="overlay mutation-screen is-hidden" aria-labelledby="mutation-title">
+      <div class="mutation-content">
+        <div class="eyebrow"><span></span> O SINAL ESTÁ MUDANDO</div>
+        <h2 id="mutation-title">ESCOLHA UMA MUTAÇÃO</h2>
+        <p>Uma escolha permanente para esta existência.</p>
+        <div id="mutation-cards" class="mutation-cards"></div>
+      </div>
+    </section>
+
+    <section id="gameover-screen" class="overlay gameover-screen is-hidden" aria-labelledby="gameover-title">
+      <div class="gameover-content">
+        <div id="gameover-kicker" class="eyebrow danger"><span></span> SINAL INTERROMPIDO</div>
+        <h2 id="gameover-title">VOCÊ DEIXOU UM ECO.</h2>
+        <p id="gameover-copy">Todo fim altera o campo. Toda volta encontra um mundo diferente.</p>
+        <div class="run-summary">
+          <div><span>FRAGMENTOS</span><strong id="final-score">0</strong></div>
+          <div><span>RUPTURAS</span><strong id="final-kills">0</strong></div>
+          <div><span id="final-time-label">SOBREVIVÊNCIA</span><strong id="final-time">00:00</strong></div>
+        </div>
+        <button id="restart-button" type="button"><span>RESSOAR NOVAMENTE</span> <b aria-hidden="true">↗</b></button>
+        <div class="resonance-earned">
+          <span>RESSONÂNCIA GANHA</span>
+          <strong id="resonance-earned">+0</strong>
+        </div>
+      </div>
+    </section>
+
+    <section id="pause-screen" class="overlay pause-screen is-hidden" aria-labelledby="pause-title">
+      <div class="pause-content">
+        <div class="eyebrow"><span></span> TRANSMISSÃO SUSPENSA</div>
+        <h2 id="pause-title">PAUSA</h2>
+        <p id="pause-copy">A simulação solo está congelada.</p>
+        <div class="settings-panel">
+          <label for="master-volume"><span>VOLUME</span><output id="volume-value">70%</output></label>
+          <input id="master-volume" type="range" min="0" max="100" value="70">
+          <label class="setting-toggle" for="screen-shake-setting"><span>TREMOR DE TELA</span><input id="screen-shake-setting" type="checkbox" checked></label>
+          <label class="setting-toggle" for="flash-setting"><span>FLASHES DE IMPACTO</span><input id="flash-setting" type="checkbox" checked></label>
+        </div>
+        <div class="pause-actions">
+          <button id="resume-button" type="button">CONTINUAR</button>
+          <button id="return-menu-button" class="secondary-button" type="button">VOLTAR AO MENU</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="workshop-screen" class="overlay workshop-screen is-hidden" aria-labelledby="workshop-title">
+      <div class="workshop-content">
+        <div class="eyebrow"><span></span> OFICINA DE FREQUÊNCIAS</div>
+        <h2 id="workshop-title">OFICINA</h2>
+        <p>Invista ressonância para fortalecer seu sinal permanentemente.</p>
+        <div class="resonance-display">
+          <span>RESSONÂNCIA DISPONÍVEL</span>
+          <strong id="workshop-resonance">0</strong>
+        </div>
+        <div id="upgrade-cards" class="upgrade-cards"></div>
+        <button id="workshop-close" type="button" class="secondary-button">VOLTAR AO MENU</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="./shared/simulation.js"></script>
+  <script src="./game.js"></script>
+</body>
+</html>
