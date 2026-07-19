@@ -10,11 +10,16 @@
 - [x] CI permanente
 - [x] Integração do núcleo ao carregamento
 - [ ] Divisão completa do `game.js`
-- [ ] Eventos de gameplay conectados ao barramento
-- [ ] Escala configurável da interface
-- [ ] Diretor de ameaças
-- [ ] Contratos completos dos inimigos
+- [x] Eventos principais de gameplay conectados ao barramento
+- [x] Escala configurável da interface
+- [x] Diretor de ameaças
+- [x] Contratos dos onze inimigos comuns
+- [x] Limite adaptativo de ataques simultâneos
+- [x] Modo de recuperação em integridade crítica
+- [x] Estados adicionais de guarda, fuga, descanso, exposição e atordoamento
+- [ ] Telegraphs visuais completos para todos os inimigos
 - [ ] Revisão individual dos bosses
+- [ ] Recompensas exclusivas de boss
 - [ ] Códice e progressão horizontal
 - [ ] Arenas e eventos
 - [ ] Cooperativo
@@ -24,23 +29,54 @@
 
 ## Versões
 
-### 0.4 — Fundação
+### 0.4 — Fundação — concluída
+
 Arquitetura inicial, seeds, eventos, QA, CI e documentação. A modularização completa do arquivo principal continua incrementalmente para preservar o gameplay existente.
 
-### 0.5 — Identidade de combate
-Rastro, impactos, contratos dos inimigos e diretor de ameaças.
+### 0.5 — Identidade de combate — concluída
 
-### 0.6 — Bosses
-Nove lutas revisadas, indicações visuais, recompensas e testes.
+Entregas:
+
+- contratos declarativos para Caçador, Sentinela, Parasita, Tecelão, Franco-atirador, Enxame, Destruinte, Furioso, Corredor, Tanque e Espelho;
+- diretor adaptativo com cinco níveis de ameaça;
+- controle de atacantes simultâneos;
+- modo de recuperação para evitar mortes caóticas quando a integridade está crítica;
+- inimigos avançados bloqueados no começo da run;
+- chance progressiva de elites;
+- comportamentos adicionais por arquétipo;
+- eventos observáveis de combate;
+- escala de interface entre 90% e 150%;
+- testes dos contratos e do diretor.
+
+A comunicação visual detalhada de cada ataque continuará junto da revisão de renderização e bosses.
+
+### 0.6 — Bosses — próxima etapa
+
+- revisar individualmente as nove lutas;
+- padronizar preparação, aviso, impacto e recuperação;
+- criar contra-ataques claros para cada mecânica;
+- completar transições de fase;
+- adicionar recompensas próprias;
+- criar testes específicos por boss.
 
 ### 0.7 — Progressão
+
 Mutações, sinergias, códice, oficina horizontal e dificuldades.
 
 ### 0.8 — Mundo e áudio
+
 Arenas, eventos, música por estados e acessibilidade completa.
 
 ### 0.9 — Rede e desempenho
+
 Cooperativo, reconexão, spatial hash, pooling e qualidade adaptativa.
 
 ### 1.0 — Lançamento
+
 Tutorial, balanceamento, empacotamento e documentação final.
+
+## Próximas três prioridades
+
+1. Criar um contrato comum de telegraph para ataques e fases de boss.
+2. Revisar Coroa Vazia, Espectro Decisivo e Tremor Deep como primeiro pacote de bosses.
+3. Extrair a lógica de bosses do `game.js` sem alterar o comportamento das runs existentes.
