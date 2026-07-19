@@ -25,6 +25,8 @@
     mutation: document.querySelector("#mutation-screen"),
     mutationCards: document.querySelector("#mutation-cards"),
     mutationSlots: document.querySelector("#mutation-slots"),
+    skin: document.querySelector("#skin-screen"),
+    skinCards: document.querySelector("#skin-cards"),
     gameover: document.querySelector("#gameover-screen"),
     restart: document.querySelector("#restart-button"),
     score: document.querySelector("#score-value"),
@@ -111,15 +113,17 @@
   ];
 
   const SKIN_KEY = "echo.selectedSkin";
+  const SKIN_PROGRESS_KEY = "echo.skinProgress";
+  let skinProgress = loadSkinProgress();
   const skins = [
     { id: "spectro", name: "ESPECTRO", hue: 188, description: "Frequência base", unlocked: () => true, glowIntensity: 1, trailWidth: 1, symbol: "◇" },
     { id: "fenix", name: "FÊNIX", hue: 15, description: "Chamas eternas", unlocked: () => true, glowIntensity: 1.2, trailWidth: 1.1, symbol: "◆" },
-    { id: "sombra", name: "SOMBRA", hue: 280, description: "Aura das trevas", unlocked: () => true, glowIntensity: 0.8, trailWidth: 0.9, symbol: "●" },
-    { id: "gelo", name: "GELO", hue: 200, description: "Cristais gélidos", unlocked: () => true, glowIntensity: 1, trailWidth: 1, symbol: "◈" },
-    { id: "neon", name: "NEON", hue: 140, description: "Brilho sintético", unlocked: () => true, glowIntensity: 1.4, trailWidth: 1.2, symbol: "◇" },
-    { id: "sangue", name: "SANGUE", hue: 350, description: "Gotas vermelhas", unlocked: () => true, glowIntensity: 1.1, trailWidth: 1, symbol: "◆" },
-    { id: "dourado", name: "DOURADO", hue: 42, description: "Aura preciosa", unlocked: () => true, glowIntensity: 1.3, trailWidth: 1.1, symbol: "★" },
-    { id: "caotico", name: "CAÓTICO", hue: -1, description: "Cores instáveis", unlocked: () => true, glowIntensity: 1.2, trailWidth: 1.3, symbol: "✦" }
+    { id: "sombra", name: "SOMBRA", hue: 280, description: "Aura das trevas", unlocked: () => true, glowIntensity: 0.82, trailWidth: 0.95, symbol: "●" },
+    { id: "gelo", name: "GELO", hue: 200, description: "Cristais gélidos", unlocked: () => true, glowIntensity: 1.05, trailWidth: 1, symbol: "◈" },
+    { id: "neon", name: "NEON", hue: 140, description: "Brilho sintético", unlocked: () => true, glowIntensity: 1.45, trailWidth: 1.2, symbol: "◇" },
+    { id: "sangue", name: "SANGUE", hue: 350, description: "Gotas vermelhas", unlocked: () => true, glowIntensity: 1.1, trailWidth: 1.05, symbol: "◆" },
+    { id: "dourado", name: "DOURADO", hue: 42, description: "Derrote um boss para liberar", unlocked: () => skinProgress.bossesDefeated >= 1, glowIntensity: 1.35, trailWidth: 1.12, symbol: "★" },
+    { id: "caotico", name: "CAÓTICO", hue: -1, description: "Alcance 500 pontos para liberar", unlocked: () => skinProgress.bestScore >= 500, glowIntensity: 1.25, trailWidth: 1.3, symbol: "✦" }
   ];
 
   const mutations = [
@@ -709,6 +713,38 @@
     startSoloGame();
   }
 
+  function showSkinScreen() {
+    state = "skin-select";
+    ui.start.classList.add("is-hidden");
+    ui.skin.classList.remove("is-hidden");
+    ui.skinCards.replaceChildren();
+    const selectedId = getSelectedSkin().id;
+    for (const skin of skins) {
+      const locked = !skin.unlocked();
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `skin-card${selectedId === skin.id ? " is-selected" : ""}`;
+      button.disabled = locked;
+      button.style.setProperty("--skin-hue", String(skin.hue < 0 ? 188 : skin.hue));
+      button.innerHTML = `
+        <span class="skin-preview"><i></i><b>${skin.symbol}</b></span>
+        <h3>${skin.name}</h3>
+        <p>${skin.description}</p>
+        <span class="skin-state">${locked ? "BLOQUEADO" : selectedId === skin.id ? "SELECIONADO" : "DISPONÍVEL"}</span>
+      `;
+      if (!locked) button.addEventListener("click", () => selectSkin(skin));
+      ui.skinCards.append(button);
+    }
+    sound(330, 0.25, "sine", 0.03);
+  }
+
+  function selectSkin(skin) {
+    localStorage.setItem(SKIN_KEY, skin.id);
+    ui.skin.classList.add("is-hidden");
+    showToast(`FREQUÊNCIA VISUAL: ${skin.name}`, 1500);
+    showModifierScreen();
+  }
+
   const pointer = {
     x: width * 0.66,
     y: height * 0.5,
@@ -735,11 +771,94 @@
     return `hsla(${hue} ${saturation}% ${lightness}% / ${alpha})`;
   }
 
+  function loadSkinProgress() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SKIN_PROGRESS_KEY) || "{}");
+      return {
+        bestScore: Math.max(0, Number(saved.bestScore) || 0),
+        bossesDefeated: Math.max(0, Number(saved.bossesDefeated) || 0)
+      };
+    } catch (_error) {
+      return { bestScore: 0, bossesDefeated: 0 };
+    }
+  }
+
+  function saveSkinProgress() {
+    try {
+      localStorage.setItem(SKIN_PROGRESS_KEY, JSON.stringify(skinProgress));
+    } catch (_error) {}
+  }
+
+  function updateSkinProgress(score, defeatedBoss) {
+    skinProgress.bestScore = Math.max(skinProgress.bestScore, Math.floor(score || 0));
+    if (defeatedBoss) skinProgress.bossesDefeated += 1;
+    saveSkinProgress();
+  }
+
+  function getSelectedSkin() {
+    const savedSkinId = localStorage.getItem(SKIN_KEY) || "spectro";
+    const selected = skins.find((skin) => skin.id === savedSkinId && skin.unlocked());
+    if (selected) return selected;
+    localStorage.setItem(SKIN_KEY, "spectro");
+    return skins[0];
+  }
+
+  const MUTATION_STATE_KEYS = [
+    "trailDamage", "ribbonLife", "trailLinger", "cooldownScale", "pickupRadius",
+    "shellDefense", "siphon", "killRestore", "phaseSpeed", "phaseDrain",
+    "arrivalNova", "arrivalGuard", "moteHealing", "healScale", "chainDamage",
+    "chainCombo", "chainTimer", "ghostWall", "ghostWallUsed", "vortexPull",
+    "reversal", "dualPhase", "dualPhaseCharges", "dualPhaseUsed",
+    "ribbonWidthBonus", "ribbonLingerDamageBonus", "killRestoreHealBonus",
+    "siphonBonus", "novaRadiusBonus", "vortexPullBonus", "chainWindow",
+    "chainMaxStacks", "phasePickupBonus", "ghostwallNova"
+  ];
+
+  function snapshotMutationState(target) {
+    const snapshot = {};
+    for (const key of MUTATION_STATE_KEYS) snapshot[key] = target[key];
+    return snapshot;
+  }
+
+  function restoreMutationState(target, snapshot) {
+    if (!snapshot) return;
+    for (const key of MUTATION_STATE_KEYS) target[key] = snapshot[key];
+  }
+
+  function captureMutationBaseline(target) {
+    target.mutationBaseline = snapshotMutationState(target);
+  }
+
+  function silencePlayer(duration, permanent = false) {
+    if (!player.mutationBaseline) captureMutationBaseline(player);
+    if (!player.silenced) {
+      player.silenceSnapshot = snapshotMutationState(player);
+      restoreMutationState(player, player.mutationBaseline);
+    }
+    player.silenced = true;
+    player.silencePermanent = player.silencePermanent || permanent;
+    player.silencedTimer = permanent ? Number.POSITIVE_INFINITY : Math.max(player.silencedTimer || 0, duration);
+    player.damageDebuff = 0.75;
+    ui.mutationSlots.classList.add("is-silenced");
+  }
+
+  function restorePlayerMutations() {
+    if (!player.silenced) return;
+    restoreMutationState(player, player.silenceSnapshot);
+    player.silenceSnapshot = null;
+    player.silenced = false;
+    player.silencePermanent = false;
+    player.silencedTimer = 0;
+    player.damageDebuff = 1;
+    ui.mutationSlots.classList.remove("is-silenced");
+    showToast("MUTAÇÕES RESTAURADAS", 1500);
+    checkMutation();
+  }
+
   function createPlayer() {
     const maxHealth = 100 + playerUpgrades.core * 5;
     const maxEnergy = 100 + playerUpgrades.charge * 10;
-    const savedSkinId = localStorage.getItem(SKIN_KEY) || "spectro";
-    const activeSkin = skins.find((s) => s.id === savedSkinId) || skins[0];
+    const activeSkin = getSelectedSkin();
     return {
       id: "player",
       name: "Viajante",
@@ -750,6 +869,7 @@
       radius: 18,
       hue: activeSkin.hue < 0 ? 188 : activeSkin.hue,
       skinId: activeSkin.id,
+      skin: activeSkin,
       skinGlow: activeSkin.glowIntensity,
       skinTrail: activeSkin.trailWidth,
       health: maxHealth,
@@ -801,6 +921,12 @@
       ghostwallNova: false,
       scoreMultiplier: 1,
       berserkerBonus: 1,
+      silenced: false,
+      silencedTimer: 0,
+      silencePermanent: false,
+      silenceSnapshot: null,
+      mutationBaseline: null,
+      damageDebuff: 1,
       mutations: [],
       nextMutationIndex: 0
     };
@@ -810,20 +936,23 @@
     const archetype = botArchetypes[index % botArchetypes.length];
     const angle = Math.random() * TAU;
     const distance = random(620, 1450);
+    const faction = Math.floor(Math.random() * 3);
+    const factionHueBase = [15, 200, 280];
+    const baseSpeed = archetype.speed * random(0.94, 1.06);
     return {
       id: `bot-${index}-${Math.random().toString(36).slice(2, 7)}`,
       name: names[index % names.length],
       archetype: archetype.id,
       roleLabel: archetype.label,
       boss: false,
-      faction: Math.floor(Math.random() * 3),
+      faction,
       factionTarget: null,
       x: clamp(WORLD_SIZE / 2 + Math.cos(angle) * distance, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN),
       y: clamp(WORLD_SIZE / 2 + Math.sin(angle) * distance, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN),
       vx: 0,
       vy: 0,
       radius: archetype.id === "warden" ? 21 : archetype.id === "bulwark" ? 24 : random(14, 19),
-      hue: colors[index % colors.length] + archetype.hueShift + random(-8, 8),
+      hue: factionHueBase[faction] + archetype.hueShift + random(-8, 8),
       health: archetype.health,
       maxHealth: archetype.health,
       energy: 100,
@@ -835,7 +964,7 @@
       targetX: WORLD_SIZE / 2,
       targetY: WORLD_SIZE / 2,
       aggression: clamp(archetype.aggression + random(-0.08, 0.08), 0.1, 1),
-      speed: archetype.speed * random(0.94, 1.06),
+      speed: baseSpeed,
       attackDamage: archetype.attackDamage,
       energyDrain: archetype.energyDrain || 0,
       fastPhase: Boolean(archetype.fastPhase),
@@ -844,13 +973,14 @@
       respawnTimer: 0,
       stealthTimer: 0,
       stealthed: false,
-      baseSpeed: archetype.speed * random(0.94, 1.06),
+      baseSpeed,
       ...options
     };
   }
 
-  function createBoss() {
-    const template = bossTemplates[Math.floor(Math.random() * bossTemplates.length)];
+  function createBoss(templateId = null) {
+    const template = bossTemplates.find((entry) => entry.id === templateId)
+      || bossTemplates[Math.floor(Math.random() * bossTemplates.length)];
     const phase0 = template.phases[0];
     return createBot(19, {
       id: `boss-${template.id}-${Math.random().toString(36).slice(2, 7)}`,
@@ -1299,6 +1429,7 @@
     loadUpgrades().then(() => {
       resetWorld();
       applyModifiers();
+      captureMutationBaseline(player);
       initAudio();
       startMusic();
       runStats = { kills: 0, score: 0, maxCombo: 0, bossDefeated: 0, bossSpeedKill: 0, runTime: 0, redMotes: 0, noHitBoss: 0 };
@@ -1317,6 +1448,7 @@
   function finishSolo(outcome = "defeat") {
     if (state === "gameover") return;
     endPhase(true);
+    restorePlayerMutations();
     stopMusic();
     checkChallenges();
     state = "gameover";
@@ -1336,6 +1468,7 @@
     ui.finalTime.textContent = formatTime(runTime);
     if (ui.resonanceEarned) ui.resonanceEarned.textContent = `+${pendingResonance}`;
     ui.gameover.classList.remove("is-hidden");
+    updateSkinProgress(player.score, bossDefeatedThisRun);
     sound(victory ? 392 : 132, 0.8, victory ? "triangle" : "sawtooth", 0.045);
     saveRun({ mode: "solo", outcome, bossDefeated: bossDefeatedThisRun });
   }
@@ -1388,6 +1521,8 @@
     ui.pause.classList.add("is-hidden");
     ui.gameover.classList.add("is-hidden");
     ui.mutation.classList.add("is-hidden");
+    ui.skin?.classList.add("is-hidden");
+    document.getElementById("modifier-screen")?.classList.add("is-hidden");
     ui.start.classList.remove("is-hidden");
     document.body.classList.remove("is-playing");
     setStartStatus(message, isError);
@@ -1449,7 +1584,7 @@
     const points = phase.points.map((point) => ({ ...point }));
     const hasAttack = phase.distance > 55;
 
-    let effectiveDamage = player.trailDamage;
+    let effectiveDamage = player.trailDamage * (player.damageDebuff || 1);
     if (player.berserkerBonus && player.berserkerBonus > 1 && player.health < player.maxHealth * 0.5) {
       effectiveDamage *= player.berserkerBonus;
     }
@@ -1486,7 +1621,7 @@
         hue: player.hue,
         life: player.ribbonLife,
         maxLife: player.ribbonLife,
-        width: 11 * (player.ribbonWidthBonus || 1),
+        width: 11 * (player.ribbonWidthBonus || 1) * (player.skinTrail || 1),
         dangerLife: player.trailLinger,
         damage: effectiveDamage * 0.55 * (player.ribbonLingerDamageBonus || 1),
         owner: player,
@@ -1545,6 +1680,30 @@
     if (hit) sound(72, 0.28, "triangle", 0.05);
   }
 
+  function applyBossDefense(bot, amount) {
+    let adjusted = amount;
+    if (bot.archetype === "necrostro" && bot.bossPhaseIndex >= 1) adjusted *= 0.6;
+    if (bot.archetype === "silenciador" && bot.bossPhaseIndex >= 1) adjusted *= 0.75;
+    if (bot.copiedDefense) adjusted *= bot.copiedDefense;
+    return adjusted;
+  }
+
+  function redirectBulwarkDamage(target, amount, attacker) {
+    const guard = bots.find((candidate) => (
+      candidate !== target
+      && !candidate.dead
+      && candidate.archetype === "bulwark"
+      && Math.hypot(candidate.x - target.x, candidate.y - target.y) < 120
+    ));
+    if (!guard) return amount;
+    const absorbed = amount * 0.3;
+    guard.health -= absorbed;
+    guard.hitTimer = Math.max(guard.hitTimer, 0.16);
+    burst(guard.x, guard.y, guard.hue, 4);
+    if (guard.health <= 0) killBot(guard, attacker);
+    return amount - absorbed;
+  }
+
   function damageAlongPath(points, damage, owner, hitIds = new Set()) {
     for (let index = 1; index < points.length; index += 1) {
       const a = points[index - 1];
@@ -1554,12 +1713,9 @@
         const distance = pointToSegmentDistance(bot.x, bot.y, a.x, a.y, b.x, b.y);
         if (distance < bot.radius + 12) {
           hitIds.add(bot.id);
-          let dmg = damage;
-          for (const guard of bots) {
-            if (guard === bot || guard.dead || guard.archetype !== "bulwark") continue;
-            if (Math.hypot(guard.x - bot.x, guard.y - bot.y) < 120) { dmg *= 0.7; break; }
-          }
-          bot.health -= dmg;
+          let dmg = applyBossDefense(bot, damage);
+          dmg = redirectBulwarkDamage(bot, dmg, owner);
+          bot.health -= Math.max(1, dmg);
           bot.hitTimer = 0.22;
           const angle = Math.atan2(b.y - a.y, b.x - a.x);
           bot.vx += Math.cos(angle) * 185;
@@ -1652,14 +1808,9 @@
   function damageBot(bot, amount, attacker, x, y) {
     if (bot.dead || bot.hitTimer > 0) return;
     if (bot.archetype === "phantom" && bot.stealthed) return;
-    let absorbed = 0;
-    for (const other of bots) {
-      if (other === bot || other.dead || other.archetype !== "bulwark") continue;
-      const d = Math.hypot(other.x - bot.x, other.y - bot.y);
-      if (d < 120) { absorbed += amount * 0.3; break; }
-    }
-    const finalDamage = Math.max(1, amount - absorbed);
-    bot.health -= finalDamage;
+    let finalDamage = applyBossDefense(bot, amount);
+    finalDamage = redirectBulwarkDamage(bot, finalDamage, attacker);
+    bot.health -= Math.max(1, finalDamage);
     bot.hitTimer = 0.22;
     const dx = bot.x - x;
     const dy = bot.y - y;
@@ -1673,23 +1824,92 @@
 
   function killBot(bot, owner = null) {
     if (bot.dead) return;
+
+    if (bot.archetype === "prisma" && bot.boss && !bot.prismaFragment && !bot.prismaSplit) {
+      bot.prismaSplit = true;
+      bot.dead = true;
+      bot.phasing = false;
+      bot.phase = null;
+      bot.respawnTimer = Number.POSITIVE_INFINITY;
+      const fragmentHealth = Math.max(70, Math.floor(bot.maxHealth * 0.28));
+      const fragmentData = [
+        { aspect: "red", name: "PRISMA RUBRO", hue: 0, speed: 178, damage: 1.35 },
+        { aspect: "blue", name: "PRISMA AZUL", hue: 205, speed: 205, damage: 0.8 },
+        { aspect: "green", name: "PRISMA VERDE", hue: 120, speed: 155, damage: 0.72 }
+      ];
+      const fragments = fragmentData.map((data, index) => {
+        const fragment = createBot(bots.length + index, {
+          id: `prisma-frag-${data.aspect}-${Math.random().toString(36).slice(2, 7)}`,
+          name: data.name,
+          archetype: "prisma",
+          roleLabel: "FRAGMENTO",
+          boss: true,
+          bossTemplate: bot.bossTemplate,
+          bossPhaseIndex: 1,
+          bossPhaseTransitioning: false,
+          bossPhaseTimer: 0,
+          bossClone: false,
+          prismaFragment: true,
+          prismaAspect: data.aspect,
+          radius: 17,
+          hue: data.hue,
+          health: fragmentHealth,
+          maxHealth: fragmentHealth,
+          energy: 100,
+          score: Math.floor(bot.bossTemplate.score / 3),
+          aggression: 1,
+          speed: data.speed,
+          baseSpeed: data.speed,
+          attackDamage: Math.max(8, Math.floor(bot.attackDamage * data.damage)),
+          cooldown: 0.8,
+          respawnTimer: 0,
+          noRespawn: true
+        });
+        const angle = index * TAU / 3 + random(-0.18, 0.18);
+        fragment.x = clamp(bot.x + Math.cos(angle) * 92, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+        fragment.y = clamp(bot.y + Math.sin(angle) * 92, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+        return fragment;
+      });
+      bots.push(...fragments);
+      activeBoss = fragments[0];
+      showToast("O PRISMA SE FRACIONA EM TRÊS!", 2600);
+      sound(330, 0.4, "triangle", 0.06);
+      spawnWave(bot.x, bot.y, bot.hue, 180, 0.9);
+      burst(bot.x, bot.y, bot.hue, 30);
+      return;
+    }
+
     bot.dead = true;
     bot.phasing = false;
     bot.phase = null;
-    bot.respawnTimer = random(4.5, 7.5);
+    bot.respawnTimer = bot.boss || bot.bossClone || bot.noRespawn ? Number.POSITIVE_INFINITY : random(4.5, 7.5);
     scars.push({ x: bot.x, y: bot.y, hue: bot.hue, life: 18, maxLife: 18, radius: bot.radius * 2.5 });
-    burst(bot.x, bot.y, bot.hue, 28);
-    spawnWave(bot.x, bot.y, bot.hue, 120, 0.8);
-    for (let i = 0; i < 14; i += 1) {
-      const mote = createMote();
-      mote.x = clamp(bot.x + random(-55, 55), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-      mote.y = clamp(bot.y + random(-55, 55), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-      mote.type = i < 3 ? "gold" : i === 3 ? "red" : Math.random() > 0.45 ? "violet" : "cyan";
-      motes.push(mote);
+    burst(bot.x, bot.y, bot.hue, bot.prismaIllusion ? 8 : 28);
+    spawnWave(bot.x, bot.y, bot.hue, bot.prismaIllusion ? 50 : 120, bot.prismaIllusion ? 0.35 : 0.8);
+
+    if (!bot.prismaIllusion) {
+      const moteCount = bot.boss ? 14 : bot.bossClone ? 5 : 8;
+      for (let i = 0; i < moteCount; i += 1) {
+        const mote = createMote();
+        mote.x = clamp(bot.x + random(-55, 55), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+        mote.y = clamp(bot.y + random(-55, 55), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+        mote.type = i < 2 ? "gold" : i === 2 ? "red" : Math.random() > 0.45 ? "violet" : "cyan";
+        motes.push(mote);
+      }
     }
-    if (owner === player) {
+
+    if (bot.silenceAnchor) {
+      restorePlayerMutations();
+      showToast("ÂNCORA DE SILÊNCIO ROMPIDA", 1800);
+    }
+
+    if (owner === player && !bot.prismaIllusion) {
       player.kills += 1;
-      player.score += bot.boss ? (bot.bossTemplate ? bot.bossTemplate.score : 900) : bot.bossClone ? 300 : 24;
+      let reward = 24;
+      if (bot.prismaFragment) reward = Math.floor((bot.bossTemplate?.score || 1300) / 3);
+      else if (bot.boss) reward = bot.bossTemplate ? bot.bossTemplate.score : 900;
+      else if (bot.bossClone) reward = bot.silenceAnchor ? 140 : 120;
+      player.score += reward;
       runStats.kills += 1;
       runStats.score = Math.floor(player.score);
       if (player.killRestore) {
@@ -1700,69 +1920,118 @@
       showToast(`RUPTURA CONFIRMADA // ${bot.name}`, 1200);
       sound(420, 0.25, "triangle", 0.055);
       setTimeout(() => sound(630, 0.22, "sine", 0.035), 70);
-    } else if (owner && owner !== player && !owner.dead) {
+    } else if (owner && owner !== player && !owner.dead && !bot.prismaIllusion) {
       owner.score += 18;
       owner.health = Math.min(owner.maxHealth, owner.health + 8);
       owner.energy = Math.min(100, owner.energy + 20);
       burst(owner.x, owner.y, owner.hue, 8);
     }
-    if (bot.boss) {
-      if (bot.archetype === "prisma" && bot.bossPhaseIndex < 1) {
-        bot.bossPhaseIndex = 1;
-        bot.dead = false;
-        bot.health = Math.floor(bot.maxHealth * 0.3);
-        bot.maxHealth = bot.health;
-        bot.radius = 16;
-        bot.roleLabel = "FRAGMENTO";
-        const prismaColors = [0, 200, 120];
-        const prismaLabels = ["FRAG. VERMELHO", "FRAG. AZUL", "FRAG. VERDE"];
-        for (let i = 0; i < 3; i++) {
-          const frag = createBot(bots.length, {
-            id: `prisma-frag-${i}-${Math.random().toString(36).slice(2, 7)}`,
-            name: prismaLabels[i],
-            archetype: "prisma",
-            roleLabel: "FRAGMENTO",
-            boss: true,
-            bossTemplate: bot.bossTemplate,
-            bossPhaseIndex: 1,
-            bossPhaseTransitioning: false,
-            bossPhaseTimer: 0,
-            bossClone: false,
-            radius: 16,
-            hue: prismaColors[i],
-            health: Math.floor(bot.maxHealth * 0.3),
-            maxHealth: Math.floor(bot.maxHealth * 0.3),
-            energy: 100,
-            score: 400,
-            aggression: 1,
-            speed: 180,
-            attackDamage: Math.floor(bot.attackDamage * 0.7),
-            cooldown: 1,
-            respawnTimer: 0
-          });
-          const angle = (i / 3) * TAU + random(-0.3, 0.3);
-          frag.x = clamp(bot.x + Math.cos(angle) * 80, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-          frag.y = clamp(bot.y + Math.sin(angle) * 80, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-          bots.push(frag);
-        }
-        showToast("O PRISMA SE FRACIONA EM TRÊS!", 2600);
-        sound(330, 0.4, "triangle", 0.06);
-        spawnWave(bot.x, bot.y, bot.hue, 160, 0.8);
-        burst(bot.x, bot.y, bot.hue, 24);
+
+    if (bot.prismaFragment) {
+      const remaining = bots.filter((candidate) => candidate.prismaFragment && !candidate.dead);
+      if (remaining.length > 0) {
+        activeBoss = remaining[0];
+        showToast(`PRISMA // ${remaining.length} FRAGMENTO${remaining.length > 1 ? "S" : ""} RESTANTE${remaining.length > 1 ? "S" : ""}`, 1600);
         return;
       }
-      const allPrismaDead = bot.archetype === "prisma"
-        ? bots.every((b) => b.archetype !== "prisma" || b.bossPhaseIndex < 1 || b.dead)
-        : true;
-      if (allPrismaDead) {
-        bossDefeated = true;
-        bossDefeatedThisRun = true;
-        activeBoss = null;
-        runStats.bossDefeated = 1;
-        if (runTime < 90) runStats.bossSpeedKill = 1;
-        window.setTimeout(() => finishSolo("victory"), 900);
-      }
     }
+
+    if (bot.boss && !bot.bossClone) {
+      if (bot.archetype === "silenciador") restorePlayerMutations();
+      bossDefeated = true;
+      bossDefeatedThisRun = true;
+      activeBoss = null;
+      runStats.bossDefeated = 1;
+      if (runTime < 90) runStats.bossSpeedKill = 1;
+      window.setTimeout(() => finishSolo("victory"), 900);
+    }
+  }
+
+  function copyMimicMutations(bot, requestedCount) {
+    const available = player.mutations
+      .map((id) => mutations.find((mutation) => mutation.id === id))
+      .filter(Boolean)
+      .sort(() => Math.random() - 0.5)
+      .slice(0, Math.min(3, requestedCount));
+    const phase = bot.bossTemplate?.phases?.[bot.bossPhaseIndex] || {};
+    const offensive = new Set(["blade", "overclock", "chain", "resonance"]);
+    const mobile = new Set(["drift", "dualphase", "focus"]);
+    const defensive = new Set(["shell", "prism", "ghostwall"]);
+    const sustain = new Set(["siphon", "reweave", "resonance"]);
+    bot.copiedMutationIds = available.map((mutation) => mutation.id);
+    const offenseCount = bot.copiedMutationIds.filter((id) => offensive.has(id)).length;
+    const mobileCount = bot.copiedMutationIds.filter((id) => mobile.has(id)).length;
+    const defenseCount = bot.copiedMutationIds.filter((id) => defensive.has(id)).length;
+    const sustainCount = bot.copiedMutationIds.filter((id) => sustain.has(id)).length;
+    bot.attackDamage = Math.floor((phase.attackDamage || bot.attackDamage) * (1 + offenseCount * 0.18));
+    bot.speed = (phase.speed || bot.baseSpeed || bot.speed) * (1 + mobileCount * 0.12);
+    bot.baseSpeed = bot.speed;
+    bot.copiedDefense = defenseCount > 0 ? Math.max(0.62, 1 - defenseCount * 0.12) : 1;
+    bot.copiedRegen = sustainCount * 1.5;
+    bot.hue = available.length ? (45 + available.reduce((sum, mutation) => sum + mutations.indexOf(mutation) * 23, 0)) % 360 : 45;
+  }
+
+  function spawnPrismaIllusions(source) {
+    if (bots.some((bot) => bot.prismaIllusion && bot.illusionSourceId === source.id && !bot.dead)) return;
+    for (let index = 0; index < 2; index += 1) {
+      const illusion = createBot(bots.length + index, {
+        id: `prisma-illusion-${Math.random().toString(36).slice(2, 7)}`,
+        name: "REFRAÇÃO",
+        archetype: "prisma",
+        roleLabel: "ILUSÃO",
+        boss: false,
+        bossClone: true,
+        prismaIllusion: true,
+        illusionSourceId: source.id,
+        illusionLife: 4,
+        noRespawn: true,
+        hue: source.hue + random(-18, 18),
+        radius: 13,
+        health: 1,
+        maxHealth: 1,
+        speed: source.speed * 1.12,
+        baseSpeed: source.speed * 1.12,
+        aggression: 0.35,
+        attackDamage: 0,
+        cooldown: 99
+      });
+      const angle = index * Math.PI + random(-0.4, 0.4);
+      illusion.x = clamp(source.x + Math.cos(angle) * 70, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+      illusion.y = clamp(source.y + Math.sin(angle) * 70, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+      bots.push(illusion);
+    }
+  }
+
+  function spawnSilenceAnchor(source) {
+    const existing = bots.find((bot) => bot.silenceAnchor && !bot.dead);
+    if (existing) return existing;
+    const anchor = createBot(bots.length, {
+      id: `silence-anchor-${Math.random().toString(36).slice(2, 7)}`,
+      name: "ÂNCORA DO VÁCUO",
+      archetype: "silenciador",
+      roleLabel: "ÂNCORA",
+      boss: false,
+      bossClone: true,
+      silenceAnchor: true,
+      noRespawn: true,
+      hue: 285,
+      radius: 20,
+      health: 95,
+      maxHealth: 95,
+      speed: 42,
+      baseSpeed: 42,
+      aggression: 0.2,
+      attackDamage: 6,
+      cooldown: 4
+    });
+    const angle = Math.random() * TAU;
+    anchor.x = clamp(source.x + Math.cos(angle) * 180, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+    anchor.y = clamp(source.y + Math.sin(angle) * 180, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+    bots.push(anchor);
+    source.silenceAnchorId = anchor.id;
+    silencePlayer(Number.POSITIVE_INFINITY, true);
+    showToast("ROMPA A ÂNCORA PARA RECUPERAR AS MUTAÇÕES", 2800);
+    return anchor;
   }
 
   function checkBossPhase(bot) {
@@ -1798,6 +2067,35 @@
       }
       if (nextPhaseIndex === 2 && bot.archetype === "tremor-deep") {
         tremorShockwaves(bot);
+      }
+      if (bot.archetype === "necrostro" && nextPhaseIndex === 2) {
+        bot.health = Math.min(bot.maxHealth, bot.health + 50);
+        bot.enraged = true;
+      }
+      if (bot.archetype === "vortice" && nextPhaseIndex === 2) {
+        bot.gravityDirection = -1;
+        bot.gravityModeTimer = 2;
+      }
+      if (bot.archetype === "cicatriz") {
+        const woundCount = nextPhaseIndex === 2 ? 8 : 4;
+        for (let index = 0; index < woundCount; index += 1) {
+          scars.push({
+            x: clamp(bot.x + random(-280, 280), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN),
+            y: clamp(bot.y + random(-280, 280), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN),
+            hue: 350,
+            life: 15,
+            maxLife: 15,
+            radius: 55,
+            wound: true,
+            owner: bot
+          });
+        }
+      }
+      if (bot.archetype === "mimico") {
+        copyMimicMutations(bot, nextPhaseIndex >= 2 ? 3 : 2);
+      }
+      if (bot.archetype === "silenciador" && nextPhaseIndex === 2) {
+        spawnSilenceAnchor(bot);
       }
     }
   }
@@ -1909,12 +2207,11 @@
     player.comboTimer -= dt;
     if (player.comboTimer <= 0) player.combo = 0;
 
-    if (player.silenced) {
+    if (player.skinId === "caotico") player.hue = (runTime * 52) % 360;
+
+    if (player.silenced && !player.silencePermanent) {
       player.silencedTimer -= dt;
-      if (player.silencedTimer <= 0) {
-        player.silenced = false;
-        showToast("MUTAÇÕES RESTAURADAS", 1500);
-      }
+      if (player.silencedTimer <= 0) restorePlayerMutations();
     }
 
     if (player.chainTimer > 0) {
@@ -2008,7 +2305,7 @@
   }
 
   function checkMutation() {
-    if (activeMode !== "solo") return;
+    if (activeMode !== "solo" || player.silenced) return;
     const threshold = MUTATION_THRESHOLDS[player.nextMutationIndex];
     if (threshold && player.score >= threshold && !mutationPending) {
       mutationPending = true;
@@ -2108,7 +2405,7 @@
     for (const bot of bots) {
       if (bot.dead) {
         bot.respawnTimer -= dt;
-        if (bot.respawnTimer <= 0 && !bot.boss) respawnBot(bot);
+        if (bot.respawnTimer <= 0 && !bot.boss && !bot.bossClone && !bot.noRespawn) respawnBot(bot);
         continue;
       }
 
@@ -2127,12 +2424,21 @@
 
       if (bot.archetype === "phantom") {
         bot.stealthTimer += dt;
-        if (bot.stealthTimer > 4) {
+        const threshold = bot.stealthed ? 2 : 4;
+        if (bot.stealthTimer >= threshold) {
           bot.stealthed = !bot.stealthed;
           bot.stealthTimer = 0;
-          if (bot.stealthed) {
-            burst(bot.x, bot.y, bot.hue, 6);
-          }
+          burst(bot.x, bot.y, bot.hue, 6);
+        }
+      }
+
+      if (bot.prismaIllusion) {
+        bot.illusionLife -= dt;
+        if (bot.illusionLife <= 0) {
+          bot.dead = true;
+          bot.respawnTimer = Number.POSITIVE_INFINITY;
+          burst(bot.x, bot.y, bot.hue, 6);
+          continue;
         }
       }
 
@@ -2192,8 +2498,8 @@
           damagePlayer(bot.attackDamage, bot.x, bot.y);
           bot.cooldown = random(1.2, 2.5);
           const angle = Math.atan2(bot.y - player.y, bot.x - player.x);
-          bot.vx += Math.cos(angle) * -200;
-          bot.vy += Math.sin(angle) * -200;
+          bot.vx += Math.cos(angle) * 220;
+          bot.vy += Math.sin(angle) * 220;
         }
       }
 
@@ -2273,37 +2579,49 @@
           }
         }
         if (bot.archetype === "vortice") {
-          const pullStrength = bot.bossPhaseIndex >= 2 ? 220 : bot.bossPhaseIndex >= 1 ? 170 : 130;
-          const pullRadius = 350;
+          const pullStrength = bot.bossPhaseIndex >= 2 ? 230 : bot.bossPhaseIndex >= 1 ? 175 : 135;
+          const pullRadius = 360;
+          let direction = 1;
+          if (bot.bossPhaseIndex >= 2) {
+            bot.gravityModeTimer = (bot.gravityModeTimer || 2) - dt;
+            if (bot.gravityModeTimer <= 0) {
+              bot.gravityDirection = (bot.gravityDirection || 1) * -1;
+              bot.gravityModeTimer = 2;
+              spawnWave(bot.x, bot.y, bot.gravityDirection < 0 ? 188 : bot.hue, 220, 0.55);
+            }
+            direction = bot.gravityDirection || 1;
+          }
           const dxp = bot.x - player.x;
           const dyp = bot.y - player.y;
           const dp = Math.hypot(dxp, dyp) || 1;
           if (dp < pullRadius) {
-            const force = pullStrength * (1 - dp / pullRadius);
+            const force = pullStrength * (1 - dp / pullRadius) * direction;
             player.vx += (dxp / dp) * force * dt;
             player.vy += (dyp / dp) * force * dt;
           }
           for (const other of bots) {
             if (other === bot || other.dead) continue;
-            const d = Math.hypot(other.x - bot.x, other.y - bot.y);
+            const dx = bot.x - other.x;
+            const dy = bot.y - other.y;
+            const d = Math.hypot(dx, dy) || 1;
             if (d < pullRadius) {
-              const force = pullStrength * 0.5 * (1 - d / pullRadius);
-              other.vx += ((bot.x - other.x) / d) * force * dt;
-              other.vy += ((bot.y - other.y) / d) * force * dt;
+              const force = pullStrength * 0.5 * (1 - d / pullRadius) * direction;
+              other.vx += (dx / d) * force * dt;
+              other.vy += (dy / d) * force * dt;
             }
           }
           if (bot.bossPhaseIndex >= 1 && bot.cooldown <= 0 && bot.energy > 20) {
-            for (let i = 0; i < 2; i++) {
-              const angle = Math.random() * TAU;
-              const orbitX = bot.x + Math.cos(angle) * (80 + i * 60);
-              const orbitY = bot.y + Math.sin(angle) * (80 + i * 60);
-              const od = Math.hypot(player.x - orbitX, player.y - orbitY);
-              if (od < 50) {
-                damagePlayer(Math.floor(bot.attackDamage * 0.4), orbitX, orbitY);
+            for (let index = 0; index < 2; index += 1) {
+              const angle = runTime * (1.9 + index * 0.35) + index * Math.PI;
+              const orbitDistance = 85 + index * 58;
+              const orbitX = bot.x + Math.cos(angle) * orbitDistance;
+              const orbitY = bot.y + Math.sin(angle) * orbitDistance;
+              if (Math.hypot(player.x - orbitX, player.y - orbitY) < 54) {
+                damagePlayer(Math.floor(bot.attackDamage * 0.42), orbitX, orbitY);
               }
             }
             spawnWave(bot.x, bot.y, bot.hue, 120, 0.4);
-            bot.cooldown = random(3, 5);
+            bot.cooldown = random(2.8, 4.5);
             bot.energy -= 20;
           }
         }
@@ -2324,28 +2642,41 @@
           bot.energy -= 20;
         }
         if (bot.archetype === "mimico" && bot.cooldown <= 0 && bot.energy > 35 && player.mutations.length > 0) {
-          const maxCopies = bot.bossPhaseIndex >= 2 ? player.mutations.length : bot.bossPhaseIndex >= 1 ? 2 : 1;
-          const shuffled = [...player.mutations].sort(() => Math.random() - 0.5);
-          for (let i = 0; i < Math.min(maxCopies, shuffled.length); i++) {
-            shuffled[i].apply(bot);
-          }
+          const maxCopies = bot.bossPhaseIndex >= 2 ? 3 : bot.bossPhaseIndex >= 1 ? 2 : 1;
+          copyMimicMutations(bot, maxCopies);
+          if (bot.copiedRegen) bot.health = Math.min(bot.maxHealth, bot.health + bot.copiedRegen * 4);
           spawnWave(bot.x, bot.y, bot.hue, 100, 0.5);
-          burst(bot.x, bot.y, 45, 14);
+          burst(bot.x, bot.y, bot.hue, 14);
           sound(380, 0.2, "triangle", 0.04);
-          bot.cooldown = random(6, 10);
+          bot.cooldown = random(6, 9);
           bot.energy -= 35;
         }
-        if (bot.archetype === "silenciador" && bot.cooldown <= 0 && bot.energy > 30) {
-          const silenceDuration = bot.bossPhaseIndex >= 2 ? 999 : bot.bossPhaseIndex >= 1 ? 4 : 3;
-          const silenceInterval = bot.bossPhaseIndex >= 1 ? 5 : 8;
-          if (!player.silenced) {
-            player.silenced = true;
-            player.silencedTimer = silenceDuration;
-            spawnWave(player.x, player.y, 280, 140, 0.7);
-            burst(player.x, player.y, 280, 16);
-            sound(82, 0.3, "sawtooth", 0.05);
-            showToast("SILENCIADO — MUTAÇÕES DESATIVADAS", 2000);
+        if (bot.prismaFragment && bot.cooldown <= 0) {
+          if (bot.prismaAspect === "green") {
+            for (const fragment of bots) {
+              if (!fragment.prismaFragment || fragment.dead) continue;
+              fragment.health = Math.min(fragment.maxHealth, fragment.health + 16);
+              burst(fragment.x, fragment.y, 120, 3);
+            }
+            spawnWave(bot.x, bot.y, 120, 150, 0.55);
+            bot.cooldown = 4.5;
+          } else if (bot.prismaAspect === "blue") {
+            spawnPrismaIllusions(bot);
+            bot.cooldown = 4;
+          } else {
+            bot.energy = Math.min(100, bot.energy + 20);
+            bot.cooldown = 2.4;
           }
+        }
+        if (bot.archetype === "silenciador" && bot.cooldown <= 0 && bot.energy > 30) {
+          const permanent = bot.bossPhaseIndex >= 2 && bots.some((candidate) => candidate.silenceAnchor && !candidate.dead);
+          const silenceDuration = bot.bossPhaseIndex >= 1 ? 4 : 3;
+          const silenceInterval = bot.bossPhaseIndex >= 1 ? 5 : 8;
+          silencePlayer(permanent ? Number.POSITIVE_INFINITY : silenceDuration, permanent);
+          spawnWave(player.x, player.y, 280, 140, 0.7);
+          burst(player.x, player.y, 280, 16);
+          sound(82, 0.3, "sawtooth", 0.05);
+          showToast(permanent ? "SILÊNCIO ABSOLUTO — ROMPA A ÂNCORA" : "SILENCIADO — MUTAÇÕES DESATIVADAS", 2200);
           bot.cooldown = silenceInterval;
           bot.energy -= 30;
         }
@@ -2560,7 +2891,10 @@
     ui.chargeFill.style.width = `${clamp(player.energy, 0, player.maxEnergy || 100) / (player.maxEnergy || 100) * 100}%`;
     ui.abilityRing.style.setProperty("--charge", `${clamp(player.energy, 0, player.maxEnergy || 100) / (player.maxEnergy || 100) * 100}%`);
 
-    if (player.phasing) {
+    if (player.silenced) {
+      ui.abilityTitle.textContent = "MUTAÇÕES SILENCIADAS";
+      ui.abilityHint.textContent = player.silencePermanent ? "Rompa a Âncora do Vácuo para restaurar seu sinal." : `${Math.max(0, player.silencedTimer).toFixed(1)}s até a restauração.`;
+    } else if (player.phasing) {
       ui.abilityTitle.textContent = "NÚCLEO EXPOSTO";
       ui.abilityHint.textContent = "Solte para atravessar o rastro e atacar.";
     } else if (player.cooldown > 0) {
@@ -2621,10 +2955,10 @@
     return value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
   }
 
-  function spawnSoloBoss() {
+  function spawnSoloBoss(templateId = null) {
     if (activeMode !== "solo" || state !== "playing" || bossSpawned) return;
     bossSpawned = true;
-    const boss = createBoss();
+    const boss = createBoss(templateId);
     const stageMultiplier = 1 + soloStage * 0.18;
     boss.health = Math.floor(boss.health * stageMultiplier);
     boss.maxHealth = boss.health;
@@ -2781,6 +3115,21 @@
   }
 
   function drawScars() {
+    if (!MOBILE_QUALITY) {
+      const wounds = scars.filter((scar) => scar.wound && scar.life > 0 && visible(scar.x, scar.y, scar.radius));
+      ctx.save();
+      ctx.strokeStyle = hsl(350, 88, 58, 0.14);
+      ctx.lineWidth = 1;
+      for (let index = 1; index < wounds.length; index += 1) {
+        const previous = toScreen(wounds[index - 1].x, wounds[index - 1].y);
+        const current = toScreen(wounds[index].x, wounds[index].y);
+        ctx.beginPath();
+        ctx.moveTo(previous.x, previous.y);
+        ctx.lineTo(current.x, current.y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
     for (const scar of scars) {
       if (!visible(scar.x, scar.y, scar.radius)) continue;
       const point = toScreen(scar.x, scar.y);
@@ -2889,22 +3238,24 @@
     const healthRatio = clamp(entity.health / (entity.maxHealth || 100), 0, 1);
     const pulse = 1 + Math.sin(time * 0.004 + entity.x) * 0.035;
     const isLowHealth = !isPlayer && !spectral && healthRatio < 0.3 && healthRatio > 0;
+    const renderHue = isPlayer && entity.skinId === "caotico" ? (time * 0.05) % 360 : entity.hue;
+    const glow = isPlayer ? entity.skinGlow || 1 : 1;
     ctx.save();
     if (entity.alpha != null) ctx.globalAlpha = entity.alpha;
     ctx.translate(point.x, point.y);
     ctx.globalCompositeOperation = "lighter";
     if (!MOBILE_QUALITY) {
-      ctx.shadowColor = hsl(entity.hue, 90, 62, spectral ? 0.9 : 0.65);
-      ctx.shadowBlur = spectral ? 24 : 16;
+      ctx.shadowColor = hsl(renderHue, 90, 62, spectral ? 0.9 : 0.65);
+      ctx.shadowBlur = (spectral ? 24 : 16) * glow;
     }
 
     if (!MOBILE_QUALITY || isPlayer) {
-      const auraRadius = isLowHealth ? radius * 2.8 : radius * 2.1;
+      const auraRadius = (isLowHealth ? radius * 2.8 : radius * 2.1) * glow;
       const auraAlpha = isLowHealth ? 0.42 + Math.sin(time * 0.008) * 0.18 : spectral ? 0.42 : 0.34;
       const aura = ctx.createRadialGradient(0, 0, radius * 0.1, 0, 0, auraRadius);
-      aura.addColorStop(0, hsl(isLowHealth ? 0 : entity.hue, 95, isLowHealth ? 55 : 72, auraAlpha));
-      aura.addColorStop(0.35, hsl(isLowHealth ? 0 : entity.hue, 85, 55, spectral ? 0.14 : 0.1));
-      aura.addColorStop(1, hsl(isLowHealth ? 0 : entity.hue, 80, 40, 0));
+      aura.addColorStop(0, hsl(isLowHealth ? 0 : renderHue, 95, isLowHealth ? 55 : 72, auraAlpha));
+      aura.addColorStop(0.35, hsl(isLowHealth ? 0 : renderHue, 85, 55, spectral ? 0.14 : 0.1));
+      aura.addColorStop(1, hsl(isLowHealth ? 0 : renderHue, 80, 40, 0));
       ctx.fillStyle = aura;
       ctx.beginPath();
       ctx.arc(0, 0, auraRadius, 0, TAU);
@@ -2913,8 +3264,8 @@
 
     if (!MOBILE_QUALITY) {
       ctx.rotate(time * 0.00045 * (isPlayer ? 1 : -1) + entity.x * 0.002);
-      ctx.strokeStyle = hsl(entity.hue, 92, 70, spectral ? 0.75 : 0.46);
-      ctx.lineWidth = 1.15;
+      ctx.strokeStyle = hsl(renderHue, 92, 70, spectral ? 0.75 : 0.46);
+      ctx.lineWidth = 1.15 * glow;
       ctx.setLineDash(spectral ? [3, 5] : []);
       ctx.beginPath();
       ctx.ellipse(0, 0, radius * 1.35 * pulse, radius * 0.86, 0.4, 0, TAU);
@@ -2929,25 +3280,74 @@
     if (!MOBILE_QUALITY) {
       const coreGradient = ctx.createRadialGradient(-radius * 0.25, -radius * 0.3, 0, 0, 0, radius);
       coreGradient.addColorStop(0, spectral ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.92)");
-      coreGradient.addColorStop(0.2, hsl(entity.hue, 95, 75, spectral ? 0.75 : 0.95));
-      coreGradient.addColorStop(0.72, hsl(entity.hue, 85, 45, spectral ? 0.23 : 0.68));
-      coreGradient.addColorStop(1, hsl(entity.hue, 85, 35, 0.08));
+      coreGradient.addColorStop(0.2, hsl(renderHue, 95, 75, spectral ? 0.75 : 0.95));
+      coreGradient.addColorStop(0.72, hsl(renderHue, 85, 45, spectral ? 0.23 : 0.68));
+      coreGradient.addColorStop(1, hsl(renderHue, 85, 35, 0.08));
       ctx.fillStyle = coreGradient;
       ctx.beginPath();
-      for (let i = 0; i <= 18; i += 1) {
-        const angle = (i / 18) * TAU;
+      for (let index = 0; index <= 18; index += 1) {
+        const angle = index / 18 * TAU;
         const distortion = 1 + Math.sin(angle * 3 + time * 0.003 + entity.x) * 0.07;
         const x = Math.cos(angle) * radius * distortion;
         const y = Math.sin(angle) * radius * distortion;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.closePath();
       ctx.fill();
     } else {
-      ctx.fillStyle = hsl(entity.hue, 85, 50, spectral ? 0.5 : 0.8);
+      ctx.fillStyle = hsl(renderHue, 85, 50, spectral ? 0.5 : 0.8);
       ctx.beginPath();
       ctx.arc(0, 0, radius, 0, TAU);
       ctx.fill();
+    }
+
+    if (isPlayer && !spectral && !MOBILE_QUALITY) {
+      const skinId = entity.skinId;
+      ctx.save();
+      ctx.rotate(time * 0.0012);
+      if (skinId === "fenix" || skinId === "sangue") {
+        const count = skinId === "fenix" ? 6 : 4;
+        for (let index = 0; index < count; index += 1) {
+          const angle = index * TAU / count;
+          const distance = radius * (1.35 + 0.18 * Math.sin(time * 0.006 + index));
+          ctx.fillStyle = hsl(renderHue + index * 5, 95, 62, 0.58);
+          ctx.beginPath();
+          ctx.arc(Math.cos(angle) * distance, Math.sin(angle) * distance, skinId === "fenix" ? 2.2 : 1.7, 0, TAU);
+          ctx.fill();
+        }
+      } else if (skinId === "gelo") {
+        ctx.strokeStyle = hsl(renderHue, 95, 78, 0.62);
+        for (let index = 0; index < 6; index += 1) {
+          const angle = index * TAU / 6;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+          ctx.lineTo(Math.cos(angle) * radius * 1.55, Math.sin(angle) * radius * 1.55);
+          ctx.stroke();
+        }
+      } else if (skinId === "neon" || skinId === "dourado" || skinId === "caotico") {
+        ctx.strokeStyle = hsl(renderHue, 96, 70, 0.72);
+        ctx.lineWidth = skinId === "neon" ? 2.3 : 1.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 1.45, 0, TAU);
+        ctx.stroke();
+      } else if (skinId === "sombra") {
+        ctx.strokeStyle = hsl(280, 80, 55, 0.38);
+        ctx.setLineDash([2, 6]);
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 1.7, 0, TAU);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.restore();
+    }
+
+    if (!isPlayer && !spectral && entity.faction != null && !entity.boss && !entity.bossClone) {
+      const factionHues = [15, 200, 280];
+      ctx.strokeStyle = hsl(factionHues[entity.faction] || renderHue, 88, 62, 0.34);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius + 5, -Math.PI * 0.75, Math.PI * 0.15);
+      ctx.stroke();
     }
 
     ctx.fillStyle = "rgba(255,255,255,0.9)";
@@ -2963,7 +3363,7 @@
       if (!MOBILE_QUALITY || isPlayer || entity.boss) {
         if (entity.roleLabel) {
           ctx.font = `500 ${entity.boss ? 9 : 7}px Inter, sans-serif`;
-          ctx.fillStyle = entity.boss ? "rgba(255,85,122,0.95)" : hsl(entity.hue, 88, 72, 0.7);
+          ctx.fillStyle = entity.boss ? "rgba(255,85,122,0.95)" : hsl(renderHue, 88, 72, 0.7);
           ctx.fillText(entity.roleLabel, point.x, point.y - radius - 27);
         }
         ctx.font = `${isPlayer || entity.boss ? 600 : 500} ${entity.boss ? 12 : isPlayer ? 10 : 9}px Inter, sans-serif`;
@@ -2974,7 +3374,7 @@
         const barWidth = entity.boss ? 74 : 32;
         ctx.fillStyle = "rgba(255,255,255,0.1)";
         ctx.fillRect(point.x - barWidth / 2, point.y + radius + 10, barWidth, 2);
-        ctx.fillStyle = hsl(entity.hue, 90, 64, 0.85);
+        ctx.fillStyle = hsl(renderHue, 90, 64, 0.85);
         ctx.fillRect(point.x - barWidth / 2, point.y + radius + 10, barWidth * healthRatio, 2);
       }
       ctx.restore();
@@ -3060,6 +3460,53 @@
         ctx.stroke();
         ctx.restore();
       }
+      if (!MOBILE_QUALITY && bot.archetype === "cicatriz" && bot.boss && !bot.dead) {
+        const point = toScreen(bot.x, bot.y);
+        const radius = bot.radius * camera.zoom;
+        ctx.save();
+        ctx.translate(point.x, point.y);
+        ctx.strokeStyle = hsl(350, 90, 58, 0.32 + Math.sin(time * 0.006) * 0.12);
+        ctx.lineWidth = 1.5;
+        for (let index = 0; index < 5; index += 1) {
+          const angle = index * TAU / 5 + time * 0.0004;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(angle) * radius * 0.4, Math.sin(angle) * radius * 0.4);
+          ctx.lineTo(Math.cos(angle + 0.16) * radius * 2.2, Math.sin(angle + 0.16) * radius * 2.2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      if (!MOBILE_QUALITY && bot.archetype === "mimico" && bot.boss && !bot.dead) {
+        const point = toScreen(bot.x, bot.y);
+        const radius = bot.radius * camera.zoom;
+        ctx.save();
+        ctx.translate(point.x, point.y);
+        const copied = bot.copiedMutationIds || [];
+        copied.forEach((id, index) => {
+          const mutation = mutations.find((entry) => entry.id === id);
+          const angle = time * 0.0018 + index * TAU / Math.max(1, copied.length);
+          ctx.fillStyle = mutation?.color || hsl(bot.hue, 90, 65, 0.7);
+          ctx.beginPath();
+          ctx.arc(Math.cos(angle) * (radius + 14), Math.sin(angle) * (radius + 14), 3, 0, TAU);
+          ctx.fill();
+        });
+        ctx.restore();
+      }
+      if (!MOBILE_QUALITY && bot.archetype === "silenciador" && !bot.dead) {
+        const point = toScreen(bot.x, bot.y);
+        const radius = bot.radius * camera.zoom;
+        ctx.save();
+        ctx.translate(point.x, point.y);
+        for (let index = 0; index < 3; index += 1) {
+          const wave = (time * 0.05 + index * 18) % 58;
+          ctx.strokeStyle = hsl(280, 78, 60, 0.3 * (1 - wave / 58));
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.arc(0, 0, radius + wave, 0, TAU);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
       if (!MOBILE_QUALITY && bot.archetype === "prisma" && bot.boss && !bot.dead) {
         const point = toScreen(bot.x, bot.y);
         const radius = bot.radius * camera.zoom;
@@ -3074,6 +3521,10 @@
           ctx.fill();
         }
         ctx.restore();
+      }
+      if (bot.prismaIllusion) {
+        drawEntity({ ...bot, alpha: 0.22 }, false, false, time);
+        continue;
       }
       if (bot.archetype === "phantom" && bot.stealthed) {
         if (bot.phasing && bot.phase) {
@@ -3132,7 +3583,7 @@
       return;
     }
     if (player.phasing && player.phase) {
-      drawRibbon({ points: player.phase.points, hue: player.hue, width: 8 }, true);
+      drawRibbon({ points: player.phase.points, hue: player.hue, width: 8 * (player.skinTrail || 1) }, true);
       drawShell(player, time);
       drawEntity({ ...player, x: player.phase.x, y: player.phase.y }, true, true, time);
 
@@ -3149,6 +3600,21 @@
       ctx.restore();
     } else {
       drawEntity(player, true, false, time);
+    }
+    if (player.silenced) {
+      const point = toScreen(player.phasing && player.phase ? player.phase.x : player.x, player.phasing && player.phase ? player.phase.y : player.y);
+      ctx.save();
+      ctx.translate(point.x, point.y);
+      ctx.strokeStyle = hsl(280, 90, 68, 0.72 + Math.sin(time * 0.009) * 0.16);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, player.radius * camera.zoom + 14, 0, TAU);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-11, 11);
+      ctx.lineTo(11, -11);
+      ctx.stroke();
+      ctx.restore();
     }
   }
 
@@ -3343,7 +3809,7 @@
   ui.startForm.addEventListener("submit", (event) => {
     event.preventDefault();
     if (selectedMode === "multiplayer") connectMultiplayer(ui.roomCode.value);
-    else showModifierScreen();
+    else showSkinScreen();
   });
 
   ui.restart.addEventListener("click", () => {
