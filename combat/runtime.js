@@ -91,6 +91,14 @@
     bot.longRange = false;
     bot.heavyHit = false;
     contracts?.applyContract?.(bot);
+    const record = records.get(bot);
+    if (record) {
+      record.baseHealth = stats.health;
+      record.baseDamage = stats.damage;
+      record.baseSpeed = stats.speed;
+      record.appliedTier = -1;
+      record.generation = `${bot.archetype}:${bot.maxHealth}:${bot.baseSpeed}:0`;
+    }
     emit("enemy:remapped", { id: bot.id, archetype: nextId, tier });
   }
 
@@ -175,7 +183,11 @@
     const wrapped = Object.freeze({
       ...api,
       steerVelocity(entity, ...args) {
-        if (entity?.id === "player") runtime.player = entity;
+        if (entity?.id === "player" && runtime.player !== entity) {
+          runtime.player = entity;
+          runtime.previousPlayerHealth = entity.health;
+          emit("player:registered", { id: entity.id, maxHealth: entity.maxHealth });
+        }
         return nativeSteer(entity, ...args);
       },
       __echoCombatWrapped: true
@@ -240,6 +252,7 @@
     bot.runtimeFleeTimer = Math.max(0, (bot.runtimeFleeTimer || 0) - dt);
     bot.runtimeRestTimer = Math.max(0, (bot.runtimeRestTimer || 0) - dt);
     bot.runtimeExposedTimer = Math.max(0, (bot.runtimeExposedTimer || 0) - dt);
+    if (bot.archetype !== "berserker" && bot.archetype !== "swarmer") bot.speed = bot.baseSpeed;
 
     if (bot.runtimeStunTimer > 0 || bot.runtimeRestTimer > 0) {
       bot.targetX = bot.x;
@@ -408,9 +421,10 @@
     observePlayer();
 
     const player = runtime.player;
+    const runTime = readClock();
     const context = {
-      runTime: readClock(),
-      stage: Math.floor(readClock() / 85),
+      runTime,
+      stage: Math.floor(runTime / 85),
       score: player?.score || readNumber("#score-value"),
       kills: player?.kills || readNumber("#kill-value"),
       healthRatio: player ? player.health / Math.max(1, player.maxHealth) : 1,
