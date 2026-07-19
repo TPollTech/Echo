@@ -38,7 +38,7 @@
   }
 
   root.EchoCore = {
-    version: "0.4.0",
+    version: "0.5.0",
     seed,
     events,
     random: Random,
@@ -46,5 +46,26 @@
     shareUrl
   };
 
+  function loadCombatIdentity() {
+    if (!root.document) return;
+    const sources = [
+      "./combat/enemy-contracts.js",
+      "./combat/threat-director.js",
+      "./ui/accessibility.js",
+      "./combat/runtime.js"
+    ];
+    if (root.document.readyState === "loading") {
+      root.document.write(sources.map((src) => `<script src="${src}"><\/script>`).join(""));
+      return;
+    }
+    for (const src of sources) {
+      const script = root.document.createElement("script");
+      script.src = src;
+      script.async = false;
+      root.document.head.append(script);
+    }
+  }
+
+  loadCombatIdentity();
   events.emit("runtime:ready", { version: root.EchoCore.version, seed });
 })(window);
