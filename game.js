@@ -1082,85 +1082,357 @@
     sound(base + Math.min(player.combo, 8) * 22, type === "red" ? 0.18 : 0.09, type === "red" ? "sawtooth" : "sine", type === "gold" ? 0.055 : type === "red" ? 0.045 : 0.022);
   }
 
-  const MUSIC_LAYERS = [
-    { id: "drone", type: "sawtooth", freq: 55, volume: 0.018, detune: -8 },
-    { id: "drone2", type: "sine", freq: 82.5, volume: 0.012, detune: 4 },
-    { id: "rhythm", type: "square", freq: 110, volume: 0, detune: 0 },
-    { id: "sub", type: "sine", freq: 36.7, volume: 0, detune: 0 },
-    { id: "tension", type: "sawtooth", freq: 220, volume: 0, detune: -15 },
-    { id: "harmony", type: "sine", freq: 165, volume: 0, detune: 7 },
-    { id: "alarm", type: "square", freq: 440, volume: 0, detune: 0 }
+
+  const MUSIC_LOOKAHEAD_MS = 25;
+  const MUSIC_SCHEDULE_AHEAD = 0.18;
+  const MUSIC_PROGRESSIONS = [
+    { chord: [50, 53, 57], bass: 38 },
+    { chord: [46, 50, 53], bass: 34 },
+    { chord: [53, 57, 60], bass: 41 },
+    { chord: [48, 52, 55], bass: 36 }
   ];
+  const MUSIC_MELODY = [
+    69, null, 72, null, 74, null, 72, null,
+    67, null, 69, null, 65, null, null, null,
+    69, null, 70, null, 72, null, 69, null,
+    67, null, 65, null, 62, null, null, null
+  ];
+
+  function midiToFrequency(note) {
+    return 440 * 2 ** ((note - 69) / 12);
+  }
+
+  function createMusicNoiseBuffer() {
+    const buffer = audioContext.createBuffer(1, audioContext.sampleRate, audioContext.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let index = 0; index < data.length; index += 1) {
+      data[index] = Math.random() * 2 - 1;
+    }
+    return buffer;
+  }
+
+  function scheduleMusicTone({
+    note,
+    start,
+    duration,
+    type = "sine",
+    volume = 0.025,
+    attack = 0.01,
+    release = 0.16,
+    detune = 0,
+    cutoff = 2800,
+    echo = false
+  }) {
+    if (!musicActive || !musicLayers.input || muted) return;
+    const oscillator = audioContext.createOscillator();
+    const filter = audioContext.createBiquadFilter();
+    const gain = audioContext.createGain();
+    const peak = Math.max(0.0002, volume);
+    const attackEnd = start + Math.max(0.004, attack);
+    const holdEnd = start + Math.max(attack + 0.01, duration);
+    const stopTime = holdEnd + Math.max(0.04, release);
+
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(midiToFrequency(note), start);
+    oscillator.detune.setValueAtTime(detune, start);
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(cutoff, start);
+    filter.Q.setValueAtTime(0.7, start);
+
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(peak, attackEnd);
+    gain.gain.setValueAtTime(peak * 0.82, holdEnd);
+    gain.gain.exponentialRampToValueAtTime(0.0001, stopTime);
+
+    oscillator.connect(filter).connect(gain).connect(musicLayers.input);
+    if (echo && musicLayers.echoInput) gain.connect(musicLayers.echoInput);
+
+    oscillator.start(start);
+    oscillator.stop(stopTime + 0.03);
+    oscillator.addEventListener("ended", () => {
+      oscillator.disconnect();
+      filter.disconnect();
+      gain.disconnect();
+    }, { once: true });
+  }
+
+  function scheduleMusicNoise(start, duration, volume, frequency, type = "highpass") {
+    if (!musicActive || !musicLayers.input || muted || !musicLayers.noiseBuffer) return;
+    const source = audioContext.createBufferSource();
+    const filter = audioContext.createBiquadFilter();
+    const gain = audioContext.createGain();
+    const stopTime = start + duration;
+
+    source.buffer = musicLayers.noiseBuffer;
+    filter.type = type;
+    filter.frequency.setValueAtTime(frequency, start);
+    filter.Q.setValueAtTime(0.8, start);
+    gain.gain.setValueAtTime(Math.max(0.0001, volume), start);
+    gain.gain.exponentialRampToValueAtTime(0.0001, stopTime);
+
+    source.connect(filter).connect(gain).connect(musicLayers.input);
+    source.start(start);
+    source.stop(stopTime);
+    source.addEventListener("ended", () => {
+      source.disconnect();
+      filter.disconnect();
+      gain.disconnect();
+    }, { once: true });
+  }
+
+  function scheduleMusicKick(start, strength = 1) {
+    if (!musicActive || !musicLayers.input || muted) return;
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const stopTime = start + 0.32;
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(118, start);
+    oscillator.frequency.exponentialRampToValueAtTime(44, stopTime);
+    gain.gain.setValueAtTime(0.075 * strength, start);
+    gain.gain.exponentialRampToValueAtTime(0.0001, stopTime);
+
+    oscillator.connect(gain).connect(musicLayers.input);
+    oscillator.start(start);
+    oscillator.stop(stopTime + 0.02);
+    oscillator.addEventListener("ended", () => {
+      oscillator.disconnect();
+      gain.disconnect();
+    }, { once: true });
+  }
+
+  function scheduleMusicSnare(start, strength = 1) {
+    scheduleMusicNoise(start, 0.13, 0.022 * strength, 1500, "bandpass");
+    scheduleMusicTone({
+      note: 43,
+      start,
+      duration: 0.04,
+      type: "triangle",
+      volume: 0.018 * strength,
+      attack: 0.003,
+      release: 0.1,
+      cutoff: 900
+    });
+  }
+
+  function schedulePadChord(chord, start, intensity) {
+    chord.forEach((note, index) => {
+      scheduleMusicTone({
+        note,
+        start: start + index * 0.018,
+        duration: 1.5,
+        type: index === 1 ? "triangle" : "sine",
+        volume: (0.012 + intensity * 0.004) / (index === 1 ? 1.05 : 1),
+        attack: 0.28,
+        release: 0.72,
+        detune: (index - 1) * 3,
+        cutoff: 1500 + intensity * 1800,
+        echo: true
+      });
+    });
+  }
+
+  function scheduleMusicStep(start, step) {
+    if (!musicActive || !musicLayers.input) return;
+    const intensity = musicLayers.intensity || 0.3;
+    const bossMode = Boolean(musicLayers.bossMode);
+    const barIndex = Math.floor(step / 16) % MUSIC_PROGRESSIONS.length;
+    const localStep = step % 16;
+    const progression = MUSIC_PROGRESSIONS[barIndex];
+
+    if (localStep === 0) {
+      schedulePadChord(progression.chord, start, intensity);
+    }
+
+    if (localStep % 4 === 0) {
+      scheduleMusicKick(start, localStep === 0 ? 1.08 : 0.86);
+      const bassNote = localStep === 8 ? progression.bass + 7 : progression.bass;
+      scheduleMusicTone({
+        note: bassNote,
+        start,
+        duration: 0.22,
+        type: "triangle",
+        volume: 0.045 + intensity * 0.012,
+        attack: 0.008,
+        release: 0.22,
+        cutoff: 720 + intensity * 420
+      });
+    }
+
+    if (localStep === 4 || localStep === 12) {
+      scheduleMusicSnare(start, bossMode ? 1.12 : 0.9);
+    }
+
+    if (intensity > 0.4 && localStep % 2 === 0) {
+      scheduleMusicNoise(start, 0.045, 0.0055 + intensity * 0.003, 5600, "highpass");
+    }
+
+    if (localStep % 2 === 0) {
+      const arpeggioIndex = (localStep / 2 + barIndex) % progression.chord.length;
+      const arpeggioNote = progression.chord[arpeggioIndex] + 12;
+      scheduleMusicTone({
+        note: arpeggioNote,
+        start,
+        duration: 0.07,
+        type: "triangle",
+        volume: 0.012 + intensity * 0.012,
+        attack: 0.004,
+        release: 0.18,
+        cutoff: 2200 + intensity * 2600,
+        echo: true
+      });
+    }
+
+    const melodyNote = MUSIC_MELODY[step % MUSIC_MELODY.length];
+    if (melodyNote && intensity > 0.52) {
+      scheduleMusicTone({
+        note: melodyNote,
+        start: start + 0.012,
+        duration: bossMode ? 0.18 : 0.12,
+        type: bossMode ? "triangle" : "sine",
+        volume: 0.012 + intensity * 0.009,
+        attack: 0.02,
+        release: 0.28,
+        cutoff: 3000 + intensity * 2600,
+        echo: true
+      });
+    }
+
+    if (bossMode && localStep % 4 === 2) {
+      const accentNote = progression.chord[(localStep / 4) % progression.chord.length] + 24;
+      scheduleMusicTone({
+        note: accentNote,
+        start,
+        duration: 0.05,
+        type: "square",
+        volume: 0.007,
+        attack: 0.003,
+        release: 0.11,
+        cutoff: 2500
+      });
+    }
+  }
+
+  function musicScheduler() {
+    if (!musicActive || !audioContext || !musicLayers.input) return;
+    while (musicLayers.nextNoteTime < audioContext.currentTime + MUSIC_SCHEDULE_AHEAD) {
+      scheduleMusicStep(musicLayers.nextNoteTime, musicLayers.step);
+      musicLayers.nextNoteTime += 60 / musicLayers.tempo / 4;
+      musicLayers.step = (musicLayers.step + 1) % 64;
+    }
+  }
 
   function startMusic() {
     if (!audioContext || musicActive) return;
+    const input = audioContext.createGain();
+    const filter = audioContext.createBiquadFilter();
+    const compressor = audioContext.createDynamicsCompressor();
+    const master = audioContext.createGain();
+    const echoInput = audioContext.createGain();
+    const delay = audioContext.createDelay(0.6);
+    const feedback = audioContext.createGain();
+    const wet = audioContext.createGain();
+    const now = audioContext.currentTime;
+
+    filter.type = "lowpass";
+    filter.frequency.value = 2600;
+    filter.Q.value = 0.45;
+    compressor.threshold.value = -24;
+    compressor.knee.value = 20;
+    compressor.ratio.value = 4;
+    compressor.attack.value = 0.004;
+    compressor.release.value = 0.24;
+    delay.delayTime.value = 0.28;
+    feedback.gain.value = 0.16;
+    wet.gain.value = 0.16;
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(Math.max(0.0001, masterVolume * 0.55), now + 0.8);
+
+    input.connect(filter).connect(compressor).connect(master).connect(audioContext.destination);
+    echoInput.connect(delay);
+    delay.connect(feedback).connect(delay);
+    delay.connect(wet).connect(compressor);
+
     musicActive = true;
-    for (const layer of MUSIC_LAYERS) {
-      const osc = new OscillatorNode(audioContext, { type: layer.type, frequency: layer.freq, detune: layer.detune });
-      const gain = new GainNode(audioContext);
-      const lfo = new OscillatorNode(audioContext, { type: "sine", frequency: 0.15 + Math.random() * 0.1 });
-      const lfoGain = new GainNode(audioContext);
-      lfoGain.gain.value = 0.002;
-      lfo.connect(lfoGain).connect(gain.gain);
-      osc.connect(gain).connect(audioContext.destination);
-      gain.gain.value = 0;
-      osc.start();
-      lfo.start();
-      musicLayers[layer.id] = { osc, gain, lfo, lfoGain, target: 0, baseVolume: layer.volume };
-    }
+    musicLayers = {
+      input,
+      filter,
+      compressor,
+      master,
+      echoInput,
+      delay,
+      feedback,
+      wet,
+      noiseBuffer: createMusicNoiseBuffer(),
+      timer: null,
+      nextNoteTime: now + 0.08,
+      step: 0,
+      tempo: 86,
+      intensity: 0.32,
+      bossMode: false
+    };
+    musicLayers.timer = window.setInterval(musicScheduler, MUSIC_LOOKAHEAD_MS);
+    musicScheduler();
   }
 
   function stopMusic() {
     if (!musicActive) return;
-    for (const key of Object.keys(musicLayers)) {
-      const layer = musicLayers[key];
-      try {
-        layer.gain.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.8);
-        const osc = layer.osc;
-        const lfo = layer.lfo;
-        setTimeout(() => { try { osc.stop(); lfo.stop(); } catch (_e) {} }, 1000);
-      } catch (_e) {}
-    }
-    musicLayers = {};
     musicActive = false;
+    const closingLayers = musicLayers;
+    musicLayers = {};
+    if (closingLayers.timer) window.clearInterval(closingLayers.timer);
+    if (!audioContext || !closingLayers.master) return;
+    const now = audioContext.currentTime;
+    closingLayers.master.gain.cancelScheduledValues(now);
+    closingLayers.master.gain.setValueAtTime(Math.max(0.0001, closingLayers.master.gain.value), now);
+    closingLayers.master.gain.exponentialRampToValueAtTime(0.0001, now + 0.36);
+    window.setTimeout(() => {
+      for (const node of [
+        closingLayers.input,
+        closingLayers.filter,
+        closingLayers.compressor,
+        closingLayers.master,
+        closingLayers.echoInput,
+        closingLayers.delay,
+        closingLayers.feedback,
+        closingLayers.wet
+      ]) {
+        try { node?.disconnect(); } catch (_error) {}
+      }
+    }, 450);
   }
 
   function updateMusic() {
-    if (!musicActive || muted) return;
+    if (!musicActive || !audioContext || !musicLayers.master) return;
     const hp = player.health / (player.maxHealth || 100);
-    const energy = player.energy / (player.maxEnergy || 100);
     const combo = player.combo || 0;
-    const isBoss = activeBoss && !activeBoss.dead;
-    const isPhasing = player.phasing;
-    const stage = soloStage || 0;
-    const danger = hp < 0.35;
-    const tempo = 110 + stage * 12 + (isBoss ? 30 : 0) + Math.min(combo, 10) * 3;
+    const isBoss = Boolean(activeBoss && !activeBoss.dead);
+    const isPhasing = Boolean(player.phasing);
+    const stage = Number(soloStage || 0);
+    const intensity = clamp(
+      0.3
+        + stage * 0.08
+        + Math.min(combo, 12) * 0.012
+        + (isBoss ? 0.24 : 0)
+        + (isPhasing ? 0.06 : 0),
+      0.28,
+      0.92
+    );
+    const targetTempo = isBoss ? 104 : 86 + Math.min(12, stage * 4);
+    const targetGain = muted ? 0.0001 : Math.max(0.0001, masterVolume * 0.55);
+    const now = audioContext.currentTime;
 
-    for (const layer of MUSIC_LAYERS) {
-      let target = 0;
-      switch (layer.id) {
-        case "drone": target = 0.018 + stage * 0.003; break;
-        case "drone2": target = 0.012 + stage * 0.002; break;
-        case "rhythm": target = (stage > 0 || combo > 3) ? 0.008 + Math.min(combo, 10) * 0.001 : 0; break;
-        case "sub": target = isBoss ? 0.02 : 0.005 + stage * 0.002; break;
-        case "tension": target = isBoss ? 0.014 : danger ? 0.01 : stage > 2 ? 0.006 : 0; break;
-        case "harmony": target = isPhasing ? 0.012 : energy > 0.6 ? 0.005 : 0; break;
-        case "alarm": target = danger ? 0.008 + Math.sin(audioContext.currentTime * tempo * 0.01) * 0.004 : 0; break;
-      }
-      const mLayer = musicLayers[layer.id];
-      if (mLayer) {
-        mLayer.target = target;
-        const current = mLayer.gain.gain.value;
-        const next = current + (target - current) * 0.06;
-        mLayer.gain.gain.value = Math.max(0, next);
-        if (mLayer.osc.frequency) {
-          mLayer.osc.frequency.linearRampToValueAtTime(
-            layer.freq * (1 + (layer.id === "rhythm" ? combo * 0.008 : 0)),
-            audioContext.currentTime + 0.3
-          );
-        }
-      }
-    }
+    musicLayers.intensity = intensity;
+    musicLayers.bossMode = isBoss;
+    musicLayers.tempo += (targetTempo - musicLayers.tempo) * 0.025;
+    musicLayers.master.gain.cancelScheduledValues(now);
+    musicLayers.master.gain.setTargetAtTime(targetGain, now, 0.08);
+    musicLayers.filter.frequency.setTargetAtTime(
+      2100 + intensity * 2500 + (hp < 0.3 ? -350 : 0),
+      now,
+      0.12
+    );
+    musicLayers.wet.gain.setTargetAtTime(isBoss ? 0.2 : 0.14, now, 0.15);
   }
 
   function loadSettings() {
