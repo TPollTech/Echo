@@ -1,14 +1,14 @@
 {
   "name": "echo-arena",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
-  "description": "ECHO - arena espectral solo e multiplayer local",
+  "description": "ECHO - arena espectral com runs reproduzíveis, QA e multiplayer local",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
     "dev": "node server/index.js",
     "test": "node --test",
-    "check": "node --check game.js && node --check shared/simulation.js && node --check server/database.js && node --check server/multiplayer.js && node --check server/index.js"
+    "check": "node --check game.js && node --check core/events.js && node --check core/random.js && node --check core/runtime.js && node --check core/qa-panel.js && node --check shared/simulation.js && node --check server/database.js && node --check server/multiplayer.js && node --check server/index.js"
   },
   "engines": {
     "node": ">=24.15.0"
