@@ -2,14 +2,15 @@
 
 ## Estado
 
-- [x] Fundação 0.4 iniciada
+- [x] Fundação 0.4 integrada
 - [x] Seed reproduzível
 - [x] Barramento de eventos
 - [x] Painel de QA
 - [x] Testes do núcleo
-- [ ] CI permanente
-- [ ] Integração do núcleo ao carregamento
+- [x] CI permanente
+- [x] Integração do núcleo ao carregamento
 - [ ] Divisão completa do `game.js`
+- [ ] Eventos de gameplay conectados ao barramento
 - [ ] Escala configurável da interface
 - [ ] Diretor de ameaças
 - [ ] Contratos completos dos inimigos
@@ -24,7 +25,7 @@
 ## Versões
 
 ### 0.4 — Fundação
-Arquitetura, seeds, eventos, QA, CI e documentação.
+Arquitetura inicial, seeds, eventos, QA, CI e documentação. A modularização completa do arquivo principal continua incrementalmente para preservar o gameplay existente.
 
 ### 0.5 — Identidade de combate
 Rastro, impactos, contratos dos inimigos e diretor de ameaças.
