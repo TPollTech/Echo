@@ -4,8 +4,8 @@ ECHO é uma arena em Canvas baseada em projeção espectral. O núcleo físico f
 
 ## Modos
 
-- **Solo:** run com quatro escolhas de mutação, arquétipos de inimigos, escalada de ameaça e o chefe Coroa Vazia.
-- **Multiplayer local:** salas para até oito jogadores, dois bots de treino, placar sincronizado e servidor autoritativo básico.
+- **Solo:** run com quatro escolhas de mutação, arquétipos de inimigos, escalada de ameaça e diferentes bosses.
+- **Multiplayer local:** salas para até oito jogadores, bots de treino, placar sincronizado e servidor autoritativo básico.
 
 ## Executar
 
@@ -35,6 +35,31 @@ npm start
 - `Esc` pausa; no multiplayer, somente a interface pausa e o servidor continua.
 - `M` ativa ou desativa o áudio.
 
+## Fundação 0.4
+
+A versão 0.4 inicia a execução do Hiperplano ECHO 1.0:
+
+- runs reproduzíveis por seed;
+- barramento de eventos desacoplado;
+- painel de QA com seed, FPS e comandos rápidos;
+- testes do núcleo determinístico;
+- CI permanente em pushes e pull requests;
+- documentação de arquitetura e roadmap em `docs/`.
+
+Para reproduzir uma run específica:
+
+```text
+http://localhost:4174/?seed=ECHO-7F42A
+```
+
+Para abrir o painel de QA na mesma run:
+
+```text
+http://localhost:4174/?qa&seed=ECHO-7F42A
+```
+
+No modo QA, `U` força uma mutação, `B` invoca o boss e `V` abre o estado de vitória solo.
+
 ## Desenvolvimento
 
 ```powershell
@@ -42,4 +67,4 @@ npm test
 npm run check
 ```
 
-Com `?qa` na URL, `U` força uma mutação, `B` invoca o chefe e `V` abre o estado de vitória solo.
+Consulte `docs/ARCHITECTURE.md` para a arquitetura da Fundação 0.4 e `docs/HYPERPLAN.md` para o andamento até a versão 1.0.
