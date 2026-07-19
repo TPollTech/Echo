@@ -1,0 +1,156 @@
+name: Apply ECHO 0.4 Foundation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/apply-echo-v04.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Create foundation modules
+        env:
+          ECHO_FILES: '{"core/events.js": "KGZ1bmN0aW9uIChyb290LCBmYWN0b3J5KSB7CiAgInVzZSBzdHJpY3QiOwogIGNvbnN0IGFwaSA9IGZhY3RvcnkoKTsKICBpZiAodHlwZW9mIG1vZHVsZSA9PT0gIm9iamVjdCIgJiYgbW9kdWxlLmV4cG9ydHMpIG1vZHVsZS5leHBvcnRzID0gYXBpOwogIGlmIChyb290KSByb290LkVjaG9FdmVudHMgPSBhcGk7Cn0pKHR5cGVvZiBnbG9iYWxUaGlzICE9PSAidW5kZWZpbmVkIiA/IGdsb2JhbFRoaXMgOiB0aGlzLCBmdW5jdGlvbiAoKSB7CiAgInVzZSBzdHJpY3QiOwoKICBmdW5jdGlvbiBhc3NlcnRFdmVudE5hbWUoZXZlbnROYW1lKSB7CiAgICBpZiAodHlwZW9mIGV2ZW50TmFtZSAhPT0gInN0cmluZyIgfHwgIWV2ZW50TmFtZS50cmltKCkpIHsKICAgICAgdGhyb3cgbmV3IFR5cGVFcnJvcigiTyBub21lIGRvIGV2ZW50byBwcmVjaXNhIHNlciB1bWEgc3RyaW5nIG7Do28gdmF6aWEuIik7CiAgICB9CiAgICByZXR1cm4gZXZlbnROYW1lLnRyaW0oKTsKICB9CgogIGZ1bmN0aW9uIGNyZWF0ZUV2ZW50QnVzKCkgewogICAgY29uc3QgbGlzdGVuZXJzID0gbmV3IE1hcCgpOwoKICAgIGZ1bmN0aW9uIG9uKGV2ZW50TmFtZSwgbGlzdGVuZXIpIHsKICAgICAgY29uc3QgbmFtZSA9IGFzc2VydEV2ZW50TmFtZShldmVudE5hbWUpOwogICAgICBpZiAodHlwZW9mIGxpc3RlbmVyICE9PSAiZnVuY3Rpb24iKSB7CiAgICAgICAgdGhyb3cgbmV3IFR5cGVFcnJvcigiTyBsaXN0ZW5lciBwcmVjaXNhIHNlciB1bWEgZnVuw6fDo28uIik7CiAgICAgIH0KICAgICAgY29uc3QgYnVja2V0ID0gbGlzdGVuZXJzLmdldChuYW1lKSB8fCBuZXcgU2V0KCk7CiAgICAgIGJ1Y2tldC5hZGQobGlzdGVuZXIpOwogICAgICBsaXN0ZW5lcnMuc2V0KG5hbWUsIGJ1Y2tldCk7CiAgICAgIHJldHVybiAoKSA9PiBvZmYobmFtZSwgbGlzdGVuZXIpOwogICAgfQoKICAgIGZ1bmN0aW9uIG9uY2UoZXZlbnROYW1lLCBsaXN0ZW5lcikgewogICAgICBsZXQgdW5zdWJzY3JpYmUgPSBudWxsOwogICAgICB1bnN1YnNjcmliZSA9IG9uKGV2ZW50TmFtZSwgKHBheWxvYWQpID0+IHsKICAgICAgICB1bnN1YnNjcmliZSgpOwogICAgICAgIGxpc3RlbmVyKHBheWxvYWQpOwogICAgICB9KTsKICAgICAgcmV0dXJuIHVuc3Vic2NyaWJlOwogICAgfQoKICAgIGZ1bmN0aW9uIG9mZihldmVudE5hbWUsIGxpc3RlbmVyKSB7CiAgICAgIGNvbnN0IG5hbWUgPSBhc3NlcnRFdmVudE5hbWUoZXZlbnROYW1lKTsKICAgICAgY29uc3QgYnVja2V0ID0gbGlzdGVuZXJzLmdldChuYW1lKTsKICAgICAgaWYgKCFidWNrZXQpIHJldHVybiBmYWxzZTsKICAgICAgY29uc3QgcmVtb3ZlZCA9IGJ1Y2tldC5kZWxldGUobGlzdGVuZXIpOwogICAgICBpZiAoYnVja2V0LnNpemUgPT09IDApIGxpc3RlbmVycy5kZWxldGUobmFtZSk7CiAgICAgIHJldHVybiByZW1vdmVkOwogICAgfQoKICAgIGZ1bmN0aW9uIGVtaXQoZXZlbnROYW1lLCBwYXlsb2FkKSB7CiAgICAgIGNvbnN0IG5hbWUgPSBhc3NlcnRFdmVudE5hbWUoZXZlbnROYW1lKTsKICAgICAgY29uc3QgZGlyZWN0ID0gbGlzdGVuZXJzLmdldChuYW1lKSB8fCBuZXcgU2V0KCk7CiAgICAgIGNvbnN0IHdpbGRjYXJkID0gbGlzdGVuZXJzLmdldCgiKiIpIHx8IG5ldyBTZXQoKTsKICAgICAgaWYgKGRpcmVjdC5zaXplID09PSAwICYmIHdpbGRjYXJkLnNpemUgPT09IDApIHJldHVybiAwOwogICAgICBsZXQgY2FsbGVkID0gMDsKICAgICAgZm9yIChjb25zdCBsaXN0ZW5lciBvZiBbLi4uZGlyZWN0XSkgewogICAgICAgIHRyeSB7CiAgICAgICAgICBsaXN0ZW5lcihwYXlsb2FkKTsKICAgICAgICB9IGNhdGNoIChlcnJvcikgewogICAgICAgICAgcXVldWVNaWNyb3Rhc2soKCkgPT4geyB0aHJvdyBlcnJvcjsgfSk7CiAgICAgICAgfQogICAgICAgIGNhbGxlZCArPSAxOwogICAgICB9CiAgICAgIGZvciAoY29uc3QgbGlzdGVuZXIgb2YgWy4uLndpbGRjYXJkXSkgewogICAgICAgIHRyeSB7CiAgICAgICAgICBsaXN0ZW5lcih7IGV2ZW50TmFtZTogbmFtZSwgcGF5bG9hZCB9KTsKICAgICAgICB9IGNhdGNoIChlcnJvcikgewogICAgICAgICAgcXVldWVNaWNyb3Rhc2soKCkgPT4geyB0aHJvdyBlcnJvcjsgfSk7CiAgICAgICAgfQogICAgICAgIGNhbGxlZCArPSAxOwogICAgICB9CiAgICAgIHJldHVybiBjYWxsZWQ7CiAgICB9CgogICAgZnVuY3Rpb24gY2xlYXIoZXZlbnROYW1lKSB7CiAgICAgIGlmICh0eXBlb2YgZXZlbnROYW1lID09PSAidW5kZWZpbmVkIikgewogICAgICAgIGxpc3RlbmVycy5jbGVhcigpOwogICAgICAgIHJldHVybjsKICAgICAgfQogICAgICBsaXN0ZW5lcnMuZGVsZXRlKGFzc2VydEV2ZW50TmFtZShldmVudE5hbWUpKTsKICAgIH0KCiAgICBmdW5jdGlvbiBsaXN0ZW5lckNvdW50KGV2ZW50TmFtZSkgewogICAgICByZXR1cm4gbGlzdGVuZXJzLmdldChhc3NlcnRFdmVudE5hbWUoZXZlbnROYW1lKSk/LnNpemUgfHwgMDsKICAgIH0KCiAgICByZXR1cm4gT2JqZWN0LmZyZWV6ZSh7IG9uLCBvbmNlLCBvZmYsIGVtaXQsIGNsZWFyLCBsaXN0ZW5lckNvdW50IH0pOwogIH0KCiAgcmV0dXJuIE9iamVjdC5mcmVlemUoeyBjcmVhdGVFdmVudEJ1cyB9KTsKfSk7Cg==", "core/random.js": "KGZ1bmN0aW9uIChyb290LCBmYWN0b3J5KSB7CiAgInVzZSBzdHJpY3QiOwogIGNvbnN0IGFwaSA9IGZhY3RvcnkoKTsKICBpZiAodHlwZW9mIG1vZHVsZSA9PT0gIm9iamVjdCIgJiYgbW9kdWxlLmV4cG9ydHMpIG1vZHVsZS5leHBvcnRzID0gYXBpOwogIGlmIChyb290KSByb290LkVjaG9SYW5kb20gPSBhcGk7Cn0pKHR5cGVvZiBnbG9iYWxUaGlzICE9PSAidW5kZWZpbmVkIiA/IGdsb2JhbFRoaXMgOiB0aGlzLCBmdW5jdGlvbiAoKSB7CiAgInVzZSBzdHJpY3QiOwoKICBmdW5jdGlvbiBub3JtYWxpemVTZWVkKHNlZWQpIHsKICAgIGNvbnN0IHZhbHVlID0gU3RyaW5nKHNlZWQgPz8gIiIpLnRyaW0oKS50b1VwcGVyQ2FzZSgpLnJlcGxhY2UoL1teQS1aMC05Xy1dL2csICIiKTsKICAgIHJldHVybiB2YWx1ZS5zbGljZSgwLCAzMikgfHwgIkVDSE8tMDAwMDAwMDAiOwogIH0KCiAgZnVuY3Rpb24gaGFzaFNlZWQoc2VlZCkgewogICAgY29uc3QgdGV4dCA9IG5vcm1hbGl6ZVNlZWQoc2VlZCk7CiAgICBsZXQgaGFzaCA9IDIxNjYxMzYyNjE7CiAgICBmb3IgKGxldCBpbmRleCA9IDA7IGluZGV4IDwgdGV4dC5sZW5ndGg7IGluZGV4ICs9IDEpIHsKICAgICAgaGFzaCBePSB0ZXh0LmNoYXJDb2RlQXQoaW5kZXgpOwogICAgICBoYXNoID0gTWF0aC5pbXVsKGhhc2gsIDE2Nzc3NjE5KTsKICAgIH0KICAgIHJldHVybiBoYXNoID4+PiAwOwogIH0KCiAgZnVuY3Rpb24gbXVsYmVycnkzMihpbml0aWFsU3RhdGUpIHsKICAgIGxldCBzdGF0ZSA9IGluaXRpYWxTdGF0ZSA+Pj4gMDsKICAgIHJldHVybiBmdW5jdGlvbiByYW5kb20oKSB7CiAgICAgIHN0YXRlID0gKHN0YXRlICsgMHg2RDJCNzlGNSkgPj4+IDA7CiAgICAgIGxldCB2YWx1ZSA9IHN0YXRlOwogICAgICB2YWx1ZSA9IE1hdGguaW11bCh2YWx1ZSBeICh2YWx1ZSA+Pj4gMTUpLCB2YWx1ZSB8IDEpOwogICAgICB2YWx1ZSBePSB2YWx1ZSArIE1hdGguaW11bCh2YWx1ZSBeICh2YWx1ZSA+Pj4gNyksIHZhbHVlIHwgNjEpOwogICAgICByZXR1cm4gKCh2YWx1ZSBeICh2YWx1ZSA+Pj4gMTQpKSA+Pj4gMCkgLyA0Mjk0OTY3Mjk2OwogICAgfTsKICB9CgogIGZ1bmN0aW9uIGNyZWF0ZVNlZWRlZFJhbmRvbShzZWVkKSB7CiAgICByZXR1cm4gbXVsYmVycnkzMihoYXNoU2VlZChzZWVkKSk7CiAgfQoKICBmdW5jdGlvbiBjcmVhdGVTZWVkKCkgewogICAgY29uc3QgdmFsdWVzID0gbmV3IFVpbnQzMkFycmF5KDIpOwogICAgaWYgKHR5cGVvZiBjcnlwdG8gIT09ICJ1bmRlZmluZWQiICYmIHR5cGVvZiBjcnlwdG8uZ2V0UmFuZG9tVmFsdWVzID09PSAiZnVuY3Rpb24iKSB7CiAgICAgIGNyeXB0by5nZXRSYW5kb21WYWx1ZXModmFsdWVzKTsKICAgIH0gZWxzZSB7CiAgICAgIHZhbHVlc1swXSA9IERhdGUubm93KCkgPj4+IDA7CiAgICAgIHZhbHVlc1sxXSA9IE1hdGguZmxvb3IoTWF0aC5yYW5kb20oKSAqIDB4RkZGRkZGRkYpID4+PiAwOwogICAgfQogICAgcmV0dXJuIGBFQ0hPLSR7dmFsdWVzWzBdLnRvU3RyaW5nKDM2KX0ke3ZhbHVlc1sxXS50b1N0cmluZygzNil9YC50b1VwcGVyQ2FzZSgpLnNsaWNlKDAsIDE4KTsKICB9CgogIGZ1bmN0aW9uIGluc3RhbGxHbG9iYWxSYW5kb20oc2VlZCwgdGFyZ2V0ID0gZ2xvYmFsVGhpcykgewogICAgY29uc3Qgbm9ybWFsaXplZCA9IG5vcm1hbGl6ZVNlZWQoc2VlZCk7CiAgICBjb25zdCByYW5kb20gPSBjcmVhdGVTZWVkZWRSYW5kb20obm9ybWFsaXplZCk7CiAgICBjb25zdCBvcmlnaW5hbCA9IHRhcmdldC5NYXRoLnJhbmRvbTsKICAgIHRhcmdldC5NYXRoLnJhbmRvbSA9IHJhbmRvbTsKICAgIHJldHVybiBPYmplY3QuZnJlZXplKHsKICAgICAgc2VlZDogbm9ybWFsaXplZCwKICAgICAgcmFuZG9tLAogICAgICByZXN0b3JlKCkgewogICAgICAgIGlmICh0YXJnZXQuTWF0aC5yYW5kb20gPT09IHJhbmRvbSkgdGFyZ2V0Lk1hdGgucmFuZG9tID0gb3JpZ2luYWw7CiAgICAgIH0KICAgIH0pOwogIH0KCiAgcmV0dXJuIE9iamVjdC5mcmVlemUoewogICAgbm9ybWFsaXplU2VlZCwKICAgIGhhc2hTZWVkLAogICAgY3JlYXRlU2VlZGVkUmFuZG9tLAogICAgY3JlYXRlU2VlZCwKICAgIGluc3RhbGxHbG9iYWxSYW5kb20KICB9KTsKfSk7Cg==", "core/runtime.js": "KGZ1bmN0aW9uIChyb290KSB7CiAgInVzZSBzdHJpY3QiOwoKICBjb25zdCBFdmVudHMgPSByb290LkVjaG9FdmVudHM7CiAgY29uc3QgUmFuZG9tID0gcm9vdC5FY2hvUmFuZG9tOwogIGlmICghRXZlbnRzIHx8ICFSYW5kb20pIHsKICAgIHRocm93IG5ldyBFcnJvcigiT3MgbcOzZHVsb3MgZnVuZGFtZW50YWlzIGRvIEVDSE8gbsOjbyBmb3JhbSBjYXJyZWdhZG9zLiIpOwogIH0KCiAgY29uc3QgU1RPUkFHRV9LRVkgPSAiZWNoby5ydW5TZWVkIjsKICBjb25zdCBwYXJhbXMgPSBuZXcgVVJMU2VhcmNoUGFyYW1zKHJvb3QubG9jYXRpb24uc2VhcmNoKTsKICBjb25zdCByZXF1ZXN0ZWRTZWVkID0gcGFyYW1zLmdldCgic2VlZCIpOwogIGNvbnN0IHN0b3JlZFNlZWQgPSByb290LnNlc3Npb25TdG9yYWdlLmdldEl0ZW0oU1RPUkFHRV9LRVkpOwogIGxldCBzZWVkID0gUmFuZG9tLm5vcm1hbGl6ZVNlZWQocmVxdWVzdGVkU2VlZCB8fCBzdG9yZWRTZWVkIHx8IFJhbmRvbS5jcmVhdGVTZWVkKCkpOwogIGxldCByYW5kb21IYW5kbGUgPSBSYW5kb20uaW5zdGFsbEdsb2JhbFJhbmRvbShzZWVkLCByb290KTsKICBjb25zdCBldmVudHMgPSBFdmVudHMuY3JlYXRlRXZlbnRCdXMoKTsKCiAgcm9vdC5zZXNzaW9uU3RvcmFnZS5zZXRJdGVtKFNUT1JBR0VfS0VZLCBzZWVkKTsKCiAgZnVuY3Rpb24gc2V0U2VlZChuZXh0U2VlZCwgb3B0aW9ucyA9IHt9KSB7CiAgICBjb25zdCBub3JtYWxpemVkID0gUmFuZG9tLm5vcm1hbGl6ZVNlZWQobmV4dFNlZWQgfHwgUmFuZG9tLmNyZWF0ZVNlZWQoKSk7CiAgICByYW5kb21IYW5kbGUucmVzdG9yZSgpOwogICAgc2VlZCA9IG5vcm1hbGl6ZWQ7CiAgICByYW5kb21IYW5kbGUgPSBSYW5kb20uaW5zdGFsbEdsb2JhbFJhbmRvbShzZWVkLCByb290KTsKICAgIHJvb3Quc2Vzc2lvblN0b3JhZ2Uuc2V0SXRlbShTVE9SQUdFX0tFWSwgc2VlZCk7CiAgICByb290LkVjaG9Db3JlLnNlZWQgPSBzZWVkOwogICAgZXZlbnRzLmVtaXQoInJ1bjpzZWVkLWNoYW5nZWQiLCB7IHNlZWQgfSk7CiAgICBpZiAob3B0aW9ucy5yZWxvYWQpIHsKICAgICAgY29uc3QgdXJsID0gbmV3IFVSTChyb290LmxvY2F0aW9uLmhyZWYpOwogICAgICB1cmwuc2VhcmNoUGFyYW1zLnNldCgic2VlZCIsIHNlZWQpOwogICAgICByb290LmxvY2F0aW9uLmFzc2lnbih1cmwudG9TdHJpbmcoKSk7CiAgICB9CiAgICByZXR1cm4gc2VlZDsKICB9CgogIGZ1bmN0aW9uIHNoYXJlVXJsKCkgewogICAgY29uc3QgdXJsID0gbmV3IFVSTChyb290LmxvY2F0aW9uLmhyZWYpOwogICAgdXJsLnNlYXJjaFBhcmFtcy5zZXQoInNlZWQiLCBzZWVkKTsKICAgIHJldHVybiB1cmwudG9TdHJpbmcoKTsKICB9CgogIHJvb3QuRWNob0NvcmUgPSB7CiAgICB2ZXJzaW9uOiAiMC40LjAiLAogICAgc2VlZCwKICAgIGV2ZW50cywKICAgIHJhbmRvbTogUmFuZG9tLAogICAgc2V0U2VlZCwKICAgIHNoYXJlVXJsCiAgfTsKCiAgZXZlbnRzLmVtaXQoInJ1bnRpbWU6cmVhZHkiLCB7IHZlcnNpb246IHJvb3QuRWNob0NvcmUudmVyc2lvbiwgc2VlZCB9KTsKfSkod2luZG93KTsK", "core/qa-panel.js": "KGZ1bmN0aW9uIChyb290KSB7CiAgInVzZSBzdHJpY3QiOwoKICBpZiAoIW5ldyBVUkxTZWFyY2hQYXJhbXMocm9vdC5sb2NhdGlvbi5zZWFyY2gpLmhhcygicWEiKSkgcmV0dXJuOwogIGNvbnN0IGNvcmUgPSByb290LkVjaG9Db3JlOwogIGlmICghY29yZSkgcmV0dXJuOwoKICBjb25zdCBzdHlsZSA9IGRvY3VtZW50LmNyZWF0ZUVsZW1lbnQoInN0eWxlIik7CiAgc3R5bGUudGV4dENvbnRlbnQgPSBgCiAgICAuZWNoby1xYS1wYW5lbHtwb3NpdGlvbjpmaXhlZDtyaWdodDoxMnB4O2JvdHRvbToxMnB4O3otaW5kZXg6OTk5OTt3aWR0aDptaW4oMzIwcHgsY2FsYygxMDB2dyAtIDI0cHgpKTtwYWRkaW5nOjE0cHg7Ym9yZGVyOjFweCBzb2xpZCByZ2JhKDExNSwyMjksMjU1LC4zNSk7Ym9yZGVyLXJhZGl1czoxNHB4O2JhY2tncm91bmQ6cmdiYSg1LDQsMTIsLjk0KTtjb2xvcjojZjdmNGZmO2ZvbnQ6MTJweC8xLjQgdWktbW9ub3NwYWNlLFNGTW9uby1SZWd1bGFyLENvbnNvbGFzLG1vbm9zcGFjZTtib3gtc2hhZG93OjAgMTZweCA1MHB4IHJnYmEoMCwwLDAsLjQ1KX0KICAgIC5lY2hvLXFhLXBhbmVsIHN0cm9uZ3tmb250LXNpemU6MTNweH0uZWNoby1xYS1wYW5lbCBzbWFsbHtjb2xvcjojOWI5NmFjfS5lY2hvLXFhLWdyaWR7ZGlzcGxheTpncmlkO2dyaWQtdGVtcGxhdGUtY29sdW1uczpyZXBlYXQoMywxZnIpO2dhcDo3cHg7bWFyZ2luLXRvcDoxMHB4fQogICAgLmVjaG8tcWEtcGFuZWwgYnV0dG9uLC5lY2hvLXFhLXBhbmVsIGlucHV0e21pbi1oZWlnaHQ6MzRweDtib3JkZXI6MXB4IHNvbGlkIHJnYmEoMjU1LDI1NSwyNTUsLjE4KTtib3JkZXItcmFkaXVzOjlweDtiYWNrZ3JvdW5kOiMxMjEwMjA7Y29sb3I6aW5oZXJpdDtmb250OmluaGVyaXR9CiAgICAuZWNoby1xYS1wYW5lbCBidXR0b257Y3Vyc29yOnBvaW50ZXJ9LmVjaG8tcWEtcGFuZWwgYnV0dG9uOmhvdmVye2JvcmRlci1jb2xvcjojNzNlNWZmfS5lY2hvLXFhLXBhbmVsIGlucHV0e3dpZHRoOjEwMCU7cGFkZGluZzowIDlweDttYXJnaW4tdG9wOjhweH0KICAgIC5lY2hvLXFhLXN0YXRze2Rpc3BsYXk6ZmxleDtqdXN0aWZ5LWNvbnRlbnQ6c3BhY2UtYmV0d2VlbjtnYXA6MTJweDttYXJnaW4tdG9wOjhweH0uZWNoby1xYS1sb2d7bWF4LWhlaWdodDo3MnB4O292ZXJmbG93OmhpZGRlbjttYXJnaW4tdG9wOjhweDtjb2xvcjojYjliNGNhfQogIGA7CiAgZG9jdW1lbnQuaGVhZC5hcHBlbmRDaGlsZChzdHlsZSk7CgogIGNvbnN0IHBhbmVsID0gZG9jdW1lbnQuY3JlYXRlRWxlbWVudCgiYXNpZGUiKTsKICBwYW5lbC5jbGFzc05hbWUgPSAiZWNoby1xYS1wYW5lbCI7CiAgcGFuZWwuc2V0QXR0cmlidXRlKCJhcmlhLWxhYmVsIiwgIlBhaW5lbCBkZSBxdWFsaWRhZGUgRUNITyIpOwogIHBhbmVsLmlubmVySFRNTCA9IGAKICAgIDxzdHJvbmc+UUEgLy8gRUNITyAke2NvcmUudmVyc2lvbn08L3N0cm9uZz4KICAgIDxkaXYgY2xhc3M9ImVjaG8tcWEtc3RhdHMiPjxzcGFuPlNFRUQgPGIgZGF0YS1zZWVkPjwvYj48L3NwYW4+PHNwYW4+RlBTIDxiIGRhdGEtZnBzPi0tPC9iPjwvc3Bhbj48L2Rpdj4KICAgIDxpbnB1dCBkYXRhLXVybCByZWFkb25seSBhcmlhLWxhYmVsPSJVUkwgcmVwcm9kdXrDrXZlbCBkYSBydW4iPgogICAgPGRpdiBjbGFzcz0iZWNoby1xYS1ncmlkIj4KICAgICAgPGJ1dHRvbiB0eXBlPSJidXR0b24iIGRhdGEta2V5PSJ1Ij5NVVRBw4fDg08gW1VdPC9idXR0b24+CiAgICAgIDxidXR0b24gdHlwZT0iYnV0dG9uIiBkYXRhLWtleT0iYiI+Qk9TUyBbQl08L2J1dHRvbj4KICAgICAgPGJ1dHRvbiB0eXBlPSJidXR0b24iIGRhdGEta2V5PSJ2Ij5WSVTDk1JJQSBbVl08L2J1dHRvbj4KICAgICAgPGJ1dHRvbiB0eXBlPSJidXR0b24iIGRhdGEtYWN0aW9uPSJuZXctc2VlZCI+Tk9WQSBTWUVEDQo8L2J1dHRvbj4KICAgICAgPGJ1dHRvbiB0eXBlPSJidXR0b24iIGRhdGEtYWN0aW9uPSJ0b2dnbGUtbG9nIj5FVkVOVE9TPC9idXR0b24+CiAgICAgIDxidXR0b24gdHlwZT0iYnV0dG9uIiBkYXRhLWFjdGlvbj0iaGlkZSI+T0NVTFRBUjwvYnV0dG9uPgogICAgPC9kaXY+CiAgICA8ZGl2IGNsYXNzPSJlY2hvLXFhLWxvZyIgZGF0YS1sb2cgYXJpYS1saXZlPSJwb2xpdGUiPjwvZGl2PgogIGA7CiAgZG9jdW1lbnQuYm9keS5hcHBlbmRDaGlsZChwYW5lbCk7CgogIGNvbnN0IHNlZWROb2RlID0gcGFuZWwucXVlcnlTZWxlY3RvciAoIltkYXRhLXNlZWRdIik7CiAgY29uc3QgdXJsTm9kZSA9IHBhbmVsLnF1ZXJ5U2VsZWN0b3IoIltkYXRhLXVybF0iKTsKICBjb25zdCBmcHNOb2RlID0gcGFuZWwucXVlcnlTZWxlY3RvciAoIltkYXRhLWZwc10iKTsKICBjb25zdCBsb2dOb2RlID0gcGFuZWwucXVlcnlTZWxlY3RvciAoIltkYXRhLWxvZ10iKTsKICBjb25zdCBldmVudExvZyA9IFtdOwogIHNlZWROb2RlLnRleHRDb250ZW50ID0gY29yZS5zZWVkOwogIHVybE5vZGUudmFsdWUgPSBjb3JlLnNoYXJlVXJsKCk7CgogIHBhbmVsLmFkZEV2ZW50TGlzdGVuZXIoImNsaWNrIiwgKGV2ZW50KSA9PiB7CiAgICBjb25zdCBidXR0b24gPSBldmVudC50YXJnZXQuY2xvc2VzdCgiYnV0dG9uIik7CiAgICBpZiAoIWJ1dHRvbikgcmV0dXJuOwogICAgaWYgKGJ1dHRvbi5kYXRhc2V0LmtleSkgewogICAgICBkb2N1bWVudC5kaXNwYXRjaEV2ZW50KG5ldyBLZXlib2FyZEV2ZW50KCJrZXlkb3duIiwgeyBrZXk6IGJ1dHRvbi5kYXRhc2V0LmtleSwgYnViYmxlczogdHJ1ZSB9KSk7CiAgICAgIHJldHVybjsKICAgIH0KICAgIGlmIChidXR0b24uZGF0YXNldC5hY3Rpb24gPT09ICJuZXctc2VlZCIpIGNvcmUuc2V0U2VlZChjb3JlLnJhbmRvbS5jcmVhdGVTZWVkKCksIHsgcmVsb2FkOiB0cnVlIH0pOwogICAgaWYgKGJ1dHRvbi5kYXRhc2V0LmFjdGlvbiA9PT0gInRvZ2dsZS1sb2ciKSBsb2dOb2RlLmhpZGRlbiA9ICFsb2dOb2RlLmhpZGRlbjsKICAgIGlmIChidXR0b24uZGF0YXNldC5hY3Rpb24gPT09ICJoaWRlIikgcGFuZWwuaGlkZGVuID0gdHJ1ZTsKICB9KTsKCiAgdXJsTm9kZS5hZGRFdmVudExpc3RlbmVyKCJmb2N1cyIsICgpID0+IHVybE5vZGUuc2VsZWN0KCkpOwoKICBjb3JlLmV2ZW50cy5vbigiKiIsICh7IGV2ZW50TmFtZSwgcGF5bG9hZCB9KSA9PiB7CiAgICBldmVudExvZy51bnNoaWZ0KGAke2V2ZW50TmFtZX0ke3BheWxvYWQ/LnNlZWQgPyBgIC8vICR7cGF5bG9hZC5zZWVkfWAgOiAiIn1gKTsKICAgIGV2ZW50TG9nLnNwbGljZSg2KTsKICAgIGxvZ05vZGUudGV4dENvbnRlbnQgPSBldmVudExvZy5qb2luKCJcbiIpOwogIH0pOwoKICBsZXQgZnJhbWVzID0gMDsKICBsZXQgbGFzdCA9IHBlcmZvcm1hbmNlLm5vdygpOwogIGZ1bmN0aW9uIHRpY2sobm93KSB7CiAgICBmcmFtZXMgKz0gMTsKICAgIGlmIChub3cgLSBsYXN0ID49IDUwMCkgewogICAgICBmcHNOb2RlLnRleHRDb250ZW50ID0gU3RyaW5nKE1hdGgucm91bmQoKGZyYW1lcyAqIDEwMDApIC8gKG5vdyAtIGxhc3QpKSk7CiAgICAgIGZyYW1lcyA9IDA7CiAgICAgIGxhc3QgPSBub3c7CiAgICB9CiAgICByb290LnJlcXVlc3RBbmltYXRpb25GcmFtZSh0aWNrKTsKICB9CiAgcm9vdC5yZXF1ZXN0QW5pbWF0aW9uRnJhbWUodGljayk7Cn0pKHdpbmRvdyk7Cg==", "test/core-events.test.js": "InVzZSBzdHJpY3QiOwoKY29uc3QgdGVzdCA9IHJlcXVpcmUoIm5vZGU6dGVzdCIpOwpjb25zdCBhc3NlcnQgPSByZXF1aXJlKCJub2RlOmFzc2VydC9zdHJpY3QiKTsKY29uc3QgeyBjcmVhdGVFdmVudEJ1cyB9ID0gcmVxdWlyZSgiLi4vY29yZS9ldmVudHMuanMiKTsKCnRlc3QoImV2ZW50IGJ1cyBwdWJsaWNhIGUgcmVtb3ZlIGxpc3RlbmVycyIsICgpID0+IHsKICBjb25zdCBldmVudHMgPSBjcmVhdGVFdmVudEJ1cygpOwogIGNvbnN0IHJlY2VpdmVkID0gW107CiAgY29uc3QgdW5zdWJzY3JpYmUgPSBldmVudHMub24oInJ1bjpzdGFydGVkIiwgKHBheWxvYWQpID0+IHJlY2VpdmVkLnB1c2gocGF5bG9hZC5zZWVkKSk7CgogIGFzc2VydC5lcXVhbChldmVudHMuZW1pdCgicnVuOnN0YXJ0ZWQiLCB7IHNlZWQ6ICJFQ0hPLVRFU1QiIH0pLCAxKTsKICB1bnN1YnNjcmliZSgpOwogIGFzc2VydC5lcXVhbChldmVudHMuZW1pdCgicnVuOnN0YXJ0ZWQiLCB7IHNlZWQ6ICJJR05PUkVEIiB9KSwgMCk7CiAgYXNzZXJ0LmRlZXBFcXVhbChyZWNlaXZlZCwgWyJFQ0hPLVRFU1QiXSk7Cn0pOwoKdGVzdCgiZXZlbnQgYnVzIGV4ZWN1dGEgb25jZSBhcGVuYXMgdW1hIHZleiIsICgpID0+IHsKICBjb25zdCBldmVudHMgPSBjcmVhdGVFdmVudEJ1cygpOwogIGxldCBjb3VudCA9IDA7CiAgZXZlbnRzLm9uY2UoImJvc3M6ZGVmZWF0ZWQiLCAoKSA9PiB7IGNvdW50ICs9IDE7IH0pOwogIGV2ZW50cy5lbWl0KCJib3NzOmRlZmVhdGVkIik7CiAgZXZlbnRzLmVtaXQoImJvc3M6ZGVmZWF0ZWQiKTsKICBhc3NlcnQuZXF1YWwoY291bnQsIDEpOwp9KTsK", "test/core-random.test.js": "InVzZSBzdHJpY3QiOwoKY29uc3QgdGVzdCA9IHJlcXVpcmUoIm5vZGU6dGVzdCIpOwpjb25zdCBhc3NlcnQgPSByZXF1aXJlKCJub2RlOmFzc2VydC9zdHJpY3QiKTsKY29uc3QgewogIG5vcm1hbGl6ZVNlZWQsCiAgaGFzaFNlZWQsCiAgY3JlYXRlU2VlZGVkUmFuZG9tCn0gPSByZXF1aXJlKCIuLi9jb3JlL3JhbmRvbS5qcyIpOwoKdGVzdCgiYSBtZXNtYSBzZWVkIGdlcmEgYSBtZXNtYSBzZXF1w6puY2lhIiwgKCkgPT4gewogIGNvbnN0IGZpcnN0ID0gY3JlYXRlU2VlZGVkUmFuZG9tKCJFQ0hPLTdGNDJBIik7CiAgY29uc3Qgc2Vjb25kID0gY3JlYXRlU2VlZGVkUmFuZG9tKCJFQ0hPLTdGNDJBIik7CiAgY29uc3QgYSA9IEFycmF5LmZyb20oeyBsZW5ndGg6IDggfSwgKCkgPT4gZmlyc3QoKSk7CiAgY29uc3QgYiA9IEFycmF5LmZyb20oeyBsZW5ndGg6IDggfSwgKCkgPT4gc2Vjb25kKCkpOwogIGFzc2VydC5kZWVwRXF1YWwoYSwgYik7Cn0pOwoKdGVzdCgic2VlZHMgZGlmZXJlbnRlcyBnZXJhbSBzZXF1w6puY2lhcyBkaWZlcmVudGVzIiwgKCkgPT4gewogIGNvbnN0IGZpcnN0ID0gY3JlYXRlU2VlZGVkUmFuZG9tKCJFQ0hPLUEiKTsKICBjb25zdCBzZWNvbmQgPSBjcmVhdGVTZWVkZWRSYW5kb20oIkVDSE8tQiIpOwogIGFzc2VydC5ub3REZWVwRXF1YWwoCiAgICBBcnJheS5mcm9tKHsgbGVuZ3RoOiA0IH0sICgpID0+IGZpcnN0KCkpLAogICAgQXJyYXkuZnJvbSh7IGxlbmd0aDogNCB9LCAoKSA9PiBzZWNvbmQoKSkKICApOwp9KTsKCnRlc3QoIm5vcm1hbGl6YcOnw6NvIG1hbnTDqW0gYSBzZWVkIGNvbXBhcnRpbGjDoXZlbCIsICgpID0+IHsKICBhc3NlcnQuZXF1YWwobm9ybWFsaXplU2VlZCgiIGVjaG8gdGVzdGUhICAiKSwgIkVDSE9URVNURSIpOwogIGFzc2VydC5lcXVhbChoYXNoU2VlZCgiZWNoby1hIiksIGhhc2hTZWVkKCJFQ0hPLUEiKSk7Cn0pOwo=", ".github/workflows/ci.yml": "bmFtZTogRUNITyBDSQoKb246CiAgcHVzaDoKICAgIGJyYW5jaGVzOiBbbWFpbl0KICBwdWxsX3JlcXVlc3Q6CiAgICBicmFuY2hlczogW21haW5dCgpwZXJtaXNzaW9uczoKICBjb250ZW50czogcmVhZAoKam9iczoKICB2YWxpZGF0ZToKICAgIHJ1bnMtb246IHVidW50dS1sYXRlc3QKICAgIHRpbWVvdXQtbWludXRlczogMTAKICAgIHN0ZXBzOgogICAgICAtIHVzZXM6IGFjdGlvbnMvY2hlY2tvdXRAdjQKICAgICAgLSB1c2VzOiBhY3Rpb25zL3NldHVwLW5vZGVAdjQKICAgICAgICB3aXRoOgogICAgICAgICAgbm9kZS12ZXJzaW9uOiAyNAogICAgICAgICAgY2FjaGU6IG5wbQogICAgICAtIHJ1bjogbnBtIGluc3RhbGwgLS1pZ25vcmUtc2NyaXB0cwogICAgICAtIHJ1bjogbnBtIHJ1biBjaGVjawogICAgICAtIHJ1bjogbnBtIHRlc3QK", "docs/ARCHITECTURE.md": "IyBBcnF1aXRldHVyYSBFQ0hPIDAuNAoKQSB2ZXJzw6NvIDAuNCBpbmljaWEgYSBtaWdyYcOnw6NvIGRvIHByb3TDs3RpcG8gbW9ub2zDrXRpY28gcGFyYSBtw7NkdWxvcyBjb21wYXTDrXZlaXMgY29tIG5hdmVnYWRvciBlIE5vZGUuanMuCgojIyBOw7pjbGVvIGNyaWFkbwoKLSBgY29yZS9ldmVudHMuanNgOiBiYXJyYW1lbnRvIGRlIGV2ZW50b3MgZGVzYWNvcGxhZG8uCi0gYGNvcmUvcmFuZG9tLmpzYDogYWxlYXRvcmllZGFkZSByZXByb2R1esOtdmVsIHBvciBzZWVkLgotIGBjb3JlL3J1bnRpbWUuanNgOiBpbmljaWFsaXphw6fDo28sIHBlcnNpc3TDqm5jaWEgZGEgc2VlZCBlIEFQSSBgd2luZG93LkVjaG9Db3JlYC4KLSBgY29yZS9xYS1wYW5lbC5qc2A6IHBhaW5lbCB2aXN1YWwgZGlzcG9uw612ZWwgY29tIGA/cWFgLgoKIyMgQ29udHJhdG8gZ2xvYmFsIHRlbXBvcsOhcmlvCgpFbnF1YW50byBgZ2FtZS5qc2Agw6kgZGl2aWRpZG8gcHJvZ3Jlc3NpdmFtZW50ZSwgb3MgbcOzZHVsb3Mgc8OjbyBleHBvc3RvcyBwb3I6CgpgYGBqcwp3aW5kb3cuRWNob0NvcmUKd2luZG93LkVjaG9FdmVudHMKd2luZG93LkVjaG9SYW5kb20KYGBgCgpPIG9iamV0aXZvIMOpIGVsaW1pbmFyIGVzc2UgY29udHJhdG8gZ2xvYmFsIGFvcyBwb3Vjb3MsIHNlbSBpbnRlcnJvbXBlciBvIGpvZ28gYXR1YWwuCgojIyBFdmVudG9zIHBsYW5lamFkb3MKCi0gYHJ1bjpzdGFydGVkYAotIGBydW46ZmluaXNoZWRgCi0gYHJ1bjpzZWVkLWNoYW5nZWRgCi0gYHBsYXllcjpkYW1hZ2VkYAotIGBlbmVteTpraWxsZWRgCi0gYGJvc3M6c3Bhd25lZGAKLSBgYm9zczpwaGFzZS1jaGFuZ2VkYAotIGBib3NzOmRlZmVhdGVkYAotIGBtdXRhdGlvbjpzZWxlY3RlZGAKLSBgbXVzaWM6aW50ZW5zaXR5LWNoYW5nZWRgCgojIyBSZWdyYSBkZSBtaWdyYcOnw6NvCgpDYWRhIGV4dHJhw6fDo28gZGV2ZToKCjEuIFByZXNlcnZhciBvIGNvbXBvcnRhbWVudG8gZXhpc3RlbnRlLgoyLiBBZGljaW9uYXIgdGVzdGVzIHBhcmEgbyBtw7NkdWxvIGV4dHJhw61kby4KMy4gUGFzc2FyIGVtIGBucG0gcnVuIGNoZWNrYCBlIGBucG0gdGVzdGAuCjQuIEV2aXRhciBkZXBlbmTDqm5jaWEgZGlyZXRhIGVudHJlIGludGVyZmFjZSwgw6F1ZGlvIGUgY29tYmF0ZS4K", "docs/HYPERPLAN.md": "IyBFQ0hPIDEuMCDigJQgSGlwZXJwbGFubyBleGVjdXTDoXZlbAoKIyMgRXN0YWRvCgotIFt4XSBGdW5kYcOnw6NvIDAuNCBpbmljaWFkYQotIFt4XSBTZWVkIHJlcHJvZHV6w612ZWwKLSBbeF0gQmFycmFtZW50byBkZSBldmVudG9zCi0gW3hdIFBhaW5lbCBkZSBRQQotIFt4XSBDSSBwZXJtYW5lbnRlCi0gWyBdIERpdmlzw6NvIGNvbXBsZXRhIGRvIGBnYW1lLmpzYAotIFsgXSBFc2NhbGEgY29uZmlndXLDoXZlbCBkYSBpbnRlcmZhY2UKLSBbIF0gRGlyZXRvciBkZSBhbWVhw6dhcwotIFsgXSBDb250cmF0b3MgY29tcGxldG9zIGRvcyBpbmltaWdvCi0gWyBdIFJldmlzw6NvIGluZGl2aWR1YWwgZG9zIGJvc3NlcwotIFsgXSBDw7NkaWNlIGUgcHJvZ3Jlc3PDp28gaG9yaXpvbnRhbAotIFsgXSBBcmVuYXMgZSBldmVudG9zCi0gWyBdIENvb3BlcmF0aXZvCi0gWyBdIE90aW1pemHDp8OjbyBlc3BhY2lhbAotIFsgXSBCYWxhbmNlYW1lbnRvIHBvciBzaW11bGHDp8OjbwotIFsgXSBQcmVwYXJhw6fDo28gZGEgdmVycsOjbyAxLjAKCiMjIFZlcnPDtWVzCgojIyMgMC40IOKAlCBGdW5kYcOnw6NvCkFycXVpdGV0dXJhLCBzZWVkcywgZXZlbnRvcywgUUEsIENJIGUgZG9jdW1lbnRhw6fDo28uCgojIyMgMC41IOKAlCBJZGVudGlkYWRlIGRlIGNvbWJhdGUKUmFzdHJvLCBpbXBhY3RvcywgY29udHJhdG9zIGRvcyBpbmltaWdvcyBlIGRpcmV0b3IgZGUgYW1lYcOnYXMuCgojIyMgMC42IOKAlCBCb3NzZXMKTm92ZSBsdXRhcyByZXZpc2FkYXMsIHRlbGVncmFwaHMsIHJlY29tcGVuc2FzIGUgdGVzdGVzLgoKIyMjIDAuNyDigJQgUHJvZ3Jlc3PDp28KTXV0YcOnw7Vlcywgc2luZXJnaWFzLCBjw7NkaWNlLCBvZmljaW5hIGhvcml6b250YWwgZSBkaWZpY3VsZGFkZXMuCgojIyMgMC44IOKAlCBNdW5kbyBlIMOhdWRpbwpBcmVuYXMsIGV2ZW50b3MsIG3DunNpY2EgcG9yIGVzdGFkb3MgZSBhY2Vzc2liaWxpZGFkZSBjb21wbGV0YS4KCiMjIyAwLjkg4oCUIFJlZGUgZSBkZXNlbXBlbmhvCkNvb3BlcmF0aXZvLCByZWNvbmV4w6NvLCBzcGF0aWFsIGhhc2gsIHBvb2xpbmcgZSBxdWFsaWRhZGUgYWRhcHRhdGl2YS4KCiMjIyAxLjAg4oCUIExhbsOnYW1lbnRvClR1dG9yaWFsLCBiYWxhbmNlYW1lbnRvLCBlbXBhY290YW1lbnRvIGUgZG9jdW1lbnRhw6fDo28gZmluYWwuCg=="}'
+        run: |
+          python - <<'PY'
+          import base64
+          import json
+          import os
+          from pathlib import Path
+
+          files = json.loads(os.environ["ECHO_FILES"])
+          for path, encoded in files.items():
+              target = Path(path)
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_bytes(base64.b64decode(encoded))
+          PY
+
+      - name: Integrate foundation
+        run: |
+          python - <<'PY'
+          import json
+          import textwrap
+          from pathlib import Path
+
+          package_path = Path("package.json")
+          package = json.loads(package_path.read_text(encoding="utf-8"))
+          package["version"] = "0.4.0"
+          package["description"] = "ECHO - arena espectral com runs reproduzíveis, QA e multiplayer local"
+          checks = [
+              "node --check game.js",
+              "node --check core/events.js",
+              "node --check core/random.js",
+              "node --check core/runtime.js",
+              "node --check core/qa-panel.js",
+              "node --check shared/simulation.js",
+              "node --check server/database.js",
+              "node --check server/multiplayer.js",
+              "node --check server/index.js"
+          ]
+          package.setdefault("scripts", {})["check"] = " && ".join(checks)
+          package_path.write_text(json.dumps(package, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+          index_path = Path("index.html")
+          index = index_path.read_text(encoding="utf-8")
+          index = index.replace("BUILD 0.3", "BUILD 0.4")
+          old_scripts = '''  <script src="./shared/simulation.js"></script>
+  <script src="./game.js"></script>'''
+          new_scripts = '''  <script src="./core/events.js"></script>
+  <script src="./core/random.js"></script>
+  <script src="./core/runtime.js"></script>
+  <script src="./shared/simulation.js"></script>
+  <script src="./game.js"></script>
+  <script src="./core/qa-panel.js"></script>'''
+          if old_scripts not in index:
+              raise SystemExit("Bloco de scripts esperado não foi encontrado em index.html")
+          index = index.replace(old_scripts, new_scripts)
+          index_path.write_text(index, encoding="utf-8")
+
+          game_path = Path("game.js")
+          game = game_path.read_text(encoding="utf-8")
+          old_boot = '''  const simulation = window.EchoSimulation;
+  if (!simulation) throw new Error("O módulo compartilhado de simulação não foi carregado.");
+  const {'''
+          new_boot = '''  const core = window.EchoCore;
+  if (!core) throw new Error("O núcleo modular do ECHO não foi carregado.");
+  const gameEvents = core.events;
+  const simulation = window.EchoSimulation;
+  if (!simulation) throw new Error("O módulo compartilhado de simulação não foi carregado.");
+  const {'''
+          if old_boot not in game:
+              raise SystemExit("Bootstrap esperado não foi encontrado em game.js")
+          game = game.replace(old_boot, new_boot, 1)
+          marker = '''  } = simulation;
+  const ui = {'''
+          replacement = '''  } = simulation;
+  window.EchoGameEvents = gameEvents;
+  gameEvents.emit("runtime:game-loaded", { version: core.version, seed: core.seed });
+  const ui = {'''
+          if marker not in game:
+              raise SystemExit("Marcador de integração não foi encontrado em game.js")
+          game = game.replace(marker, replacement, 1)
+          game_path.write_text(game, encoding="utf-8")
+
+          readme_path = Path("README.md")
+          readme = readme_path.read_text(encoding="utf-8")
+          section = '''
+
+## Fundação 0.4
+
+A versão 0.4 inicia a execução do Hiperplano ECHO 1.0:
+
+- runs reproduzíveis por seed (`?seed=ECHO-7F42A`);
+- barramento de eventos desacoplado em `core/events.js`;
+- painel de QA com `?qa`;
+- CI permanente em todo push e pull request;
+- testes do núcleo determinístico;
+- documentação de arquitetura e roadmap em `docs/`.
+
+Para reproduzir uma run específica:
+
+```text
+http://localhost:4174/?seed=ECHO-7F42A
+```
+
+Para abrir o painel de QA:
+
+```text
+http://localhost:4174/?qa&seed=ECHO-7F42A
+```
+'''
+          if "## Fundação 0.4" not in readme:
+              readme = readme.rstrip() + "\n" + textwrap.dedent(section).strip() + "\n"
+          readme_path.write_text(readme, encoding="utf-8")
+          PY
+
+      - name: Install and validate
+        run: |
+          npm install --ignore-scripts
+          npm run check
+          npm test
+
+      - name: Commit foundation
+        run: |
+          rm -f .github/workflows/apply-echo-v04.yml
+          git config user.name "ECHO Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add package.json package-lock.json index.html game.js README.md core test docs .github/workflows/ci.yml .github/workflows/apply-echo-v04.yml
+          git commit -m "Build ECHO 0.4 foundation"
+          git push origin main
