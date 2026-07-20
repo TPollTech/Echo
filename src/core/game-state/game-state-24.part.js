@@ -1,0 +1,1 @@
+  let playerResonance = 0;

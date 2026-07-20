@@ -1,0 +1,1 @@
+  let previousTime = performance.now();

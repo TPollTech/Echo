@@ -1,0 +1,1 @@
+  let leaderboardTimer = 0;

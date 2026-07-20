@@ -1,0 +1,1 @@
+  let flashEnabled = true;

@@ -1,0 +1,1 @@
+  loadChallenges();

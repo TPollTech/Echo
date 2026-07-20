@@ -1,0 +1,1 @@
+  let toastTimer = 0;

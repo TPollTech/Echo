@@ -1,0 +1,1 @@
+  let flash = 0;

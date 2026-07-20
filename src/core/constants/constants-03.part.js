@@ -1,0 +1,1 @@
+  const MUTATION_THRESHOLDS = [45, 160, 360, 650];

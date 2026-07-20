@@ -1,0 +1,1 @@
+  let height = window.innerHeight;

@@ -1,0 +1,1 @@
+  let multiplayerSnapshot = null;

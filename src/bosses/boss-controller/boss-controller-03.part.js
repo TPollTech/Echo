@@ -1,0 +1,1 @@
+  let bossDefeatedThisRun = false;
