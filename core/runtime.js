@@ -38,7 +38,7 @@
   }
 
   root.EchoCore = {
-    version: "0.5.0",
+    version: "0.5.1",
     seed,
     events,
     random: Random,
