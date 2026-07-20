@@ -1,5 +1,117 @@
 /* ECHO source module. Sections are assembled by src/build-order.json. */
 /*__ECHO_SECTION:0072__*/
+  const defaultEnemyBehavior = Object.freeze({});
+  const enemyBehaviorRegistry = Object.freeze({
+    hunter: Object.freeze({ attackRange: 430 }),
+    berserker: Object.freeze({
+      beforeMovement(bot) {
+        const definition = botArchetypes.find((entry) => entry.id === bot.archetype);
+        if (bot.health < bot.maxHealth * 0.4) {
+          bot.speed = bot.baseSpeed * 1.4;
+          bot.attackDamage = Math.ceil(definition.attackDamage * 1.5);
+        } else {
+          bot.speed = bot.baseSpeed;
+          bot.attackDamage = definition.attackDamage;
+        }
+      }
+    }),
+    swarmer: Object.freeze({
+      attackRange: 310,
+      beforeMovement(bot) {
+        let nearbyPack = 0;
+        for (const ally of bots) {
+          if (ally === bot || ally.dead || ally.faction !== bot.faction || ally.archetype !== bot.archetype) continue;
+          if (distanceSq(bot.x, bot.y, ally.x, ally.y) < 190 * 190) nearbyPack += 1;
+        }
+        bot.speed = bot.baseSpeed * (1 + Math.min(0.3, nearbyPack * 0.1));
+      }
+    }),
+    phantom: Object.freeze({
+      untargetableWhileStealthed: true,
+      beforeMovement(bot, dt) {
+        bot.stealthTimer += dt;
+        const threshold = bot.stealthed ? 2 : 4;
+        if (bot.stealthTimer >= threshold) {
+          bot.stealthed = !bot.stealthed;
+          bot.stealthTimer = 0;
+          burst(bot.x, bot.y, bot.hue, 6);
+        }
+      }
+    }),
+    sniper: Object.freeze({
+      attackRange: 580,
+      phaseAttack: false,
+      updateTarget(bot) {
+        const dx = bot.x - player.x;
+        const dy = bot.y - player.y;
+        const distanceToPlayer = Math.hypot(dx, dy) || 1;
+        const ideal = bot.idealRange || 470;
+        if (distanceToPlayer < ideal - 115) {
+          bot.targetX = clamp(bot.x + (dx / distanceToPlayer) * 300, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+          bot.targetY = clamp(bot.y + (dy / distanceToPlayer) * 300, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+        } else if (distanceToPlayer > ideal + 135) {
+          bot.targetX = player.x;
+          bot.targetY = player.y;
+        } else if (bot.sniperAimTimer <= 0) {
+          const strafeDirection = Math.sin(runTime * 0.7 + bot.x) >= 0 ? 1 : -1;
+          bot.targetX = clamp(player.x + (dx / distanceToPlayer) * ideal + (-dy / distanceToPlayer) * 150 * strafeDirection, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+          bot.targetY = clamp(player.y + (dy / distanceToPlayer) * ideal + (dx / distanceToPlayer) * 150 * strafeDirection, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+        } else {
+          bot.targetX = bot.x;
+          bot.targetY = bot.y;
+        }
+      },
+      movementSpeed(bot) {
+        return bot.sniperAimTimer > 0 ? bot.speed * 0.22 : bot.speed;
+      },
+      afterMovement(bot, dt) {
+        updateSniper(bot, dt);
+      }
+    }),
+    sprinter: Object.freeze({
+      phaseAttack: false,
+      afterMovement(bot) {
+        if (bot.cooldown <= 0) {
+          const distToPlayer = Math.hypot(bot.x - player.x, bot.y - player.y);
+          if (distToPlayer < player.radius + bot.radius + 8) {
+            damagePlayer(bot.attackDamage, bot.x, bot.y);
+            bot.cooldown = random(1.2, 2.5);
+            const angle = Math.atan2(bot.y - player.y, bot.x - player.x);
+            bot.vx += Math.cos(angle) * 220;
+            bot.vy += Math.sin(angle) * 220;
+          }
+        }
+
+        let closestEnemy = null;
+        let closestDist = Infinity;
+        for (const other of bots) {
+          if (other === bot || other.dead || other.faction === bot.faction || other.boss) continue;
+          const distance = Math.hypot(bot.x - other.x, bot.y - other.y);
+          if (distance < closestDist) {
+            closestEnemy = other;
+            closestDist = distance;
+          }
+        }
+        if (closestEnemy && closestDist < 300) {
+          bot.targetX = closestEnemy.x;
+          bot.targetY = closestEnemy.y;
+        } else {
+          const playerDistance = Math.hypot(bot.x - player.x, bot.y - player.y);
+          if (playerDistance < 400) {
+            bot.targetX = player.x;
+            bot.targetY = player.y;
+          }
+        }
+      }
+    }),
+    bruiser: Object.freeze({ attackRange: 320 }),
+    bulwark: Object.freeze({ attackRange: 320 })
+  });
+
+  function getEnemyBehavior(bot) {
+    return enemyBehaviorRegistry[bot.archetype] || defaultEnemyBehavior;
+  }
+
   function updateBots(dt) {
     for (const bot of bots) {
       if (bot.dead) {
@@ -12,33 +124,8 @@
       bot.hitTimer = Math.max(0, bot.hitTimer - dt);
       bot.thinkTimer -= dt;
       bot.energy = Math.min(100, bot.energy + 8 * dt);
-
-      if (bot.archetype === "berserker" && bot.health < bot.maxHealth * 0.4) {
-        bot.speed = bot.baseSpeed * 1.4;
-        bot.attackDamage = Math.ceil(botArchetypes.find((a) => a.id === "berserker").attackDamage * 1.5);
-      } else if (bot.archetype === "berserker") {
-        bot.speed = bot.baseSpeed;
-        bot.attackDamage = botArchetypes.find((a) => a.id === "berserker").attackDamage;
-      }
-
-      if (bot.archetype === "swarmer") {
-        let nearbyPack = 0;
-        for (const ally of bots) {
-          if (ally === bot || ally.dead || ally.faction !== bot.faction || ally.archetype !== "swarmer") continue;
-          if (distanceSq(bot.x, bot.y, ally.x, ally.y) < 190 * 190) nearbyPack += 1;
-        }
-        bot.speed = bot.baseSpeed * (1 + Math.min(0.3, nearbyPack * 0.1));
-      }
-
-      if (bot.archetype === "phantom") {
-        bot.stealthTimer += dt;
-        const threshold = bot.stealthed ? 2 : 4;
-        if (bot.stealthTimer >= threshold) {
-          bot.stealthed = !bot.stealthed;
-          bot.stealthTimer = 0;
-          burst(bot.x, bot.y, bot.hue, 6);
-        }
-      }
+      const behavior = getEnemyBehavior(bot);
+      behavior.beforeMovement?.(bot, dt);
 
       if (bot.prismaIllusion) {
         bot.illusionLife -= dt;
@@ -67,8 +154,11 @@
         let closestEnemyDist = Infinity;
         for (const other of bots) {
           if (other === bot || other.dead || other.faction === bot.faction || other.boss) continue;
-          const d = Math.hypot(bot.x - other.x, bot.y - other.y);
-          if (d < closestEnemyDist) { closestEnemy = other; closestEnemyDist = d; }
+          const distance = Math.hypot(bot.x - other.x, bot.y - other.y);
+          if (distance < closestEnemyDist) {
+            closestEnemy = other;
+            closestEnemyDist = distance;
+          }
         }
         if (closestEnemy && closestEnemyDist < 480 && bot.aggression > 0.45 && bot.health > 32) {
           bot.targetX = closestEnemy.x + (closestEnemy.vx || 0) * 0.6;
@@ -84,76 +174,30 @@
             let closestDistance = Infinity;
             for (let sample = 0; sample < 28; sample += 1) {
               const mote = motes[Math.floor(Math.random() * motes.length)];
-              const dist = distanceSq(bot.x, bot.y, mote.x, mote.y);
-              if (dist < closestDistance) { closest = mote; closestDistance = dist; }
+              const distance = distanceSq(bot.x, bot.y, mote.x, mote.y);
+              if (distance < closestDistance) {
+                closest = mote;
+                closestDistance = distance;
+              }
             }
-            if (closest) { bot.targetX = closest.x; bot.targetY = closest.y; }
+            if (closest) {
+              bot.targetX = closest.x;
+              bot.targetY = closest.y;
+            }
           }
         }
       }
 
-      if (bot.archetype === "sniper") {
-        const dx = bot.x - player.x;
-        const dy = bot.y - player.y;
-        const distanceToPlayer = Math.hypot(dx, dy) || 1;
-        const ideal = bot.idealRange || 470;
-        if (distanceToPlayer < ideal - 115) {
-          bot.targetX = clamp(bot.x + (dx / distanceToPlayer) * 300, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-          bot.targetY = clamp(bot.y + (dy / distanceToPlayer) * 300, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-        } else if (distanceToPlayer > ideal + 135) {
-          bot.targetX = player.x;
-          bot.targetY = player.y;
-        } else if (bot.sniperAimTimer <= 0) {
-          const strafeDirection = Math.sin(runTime * 0.7 + bot.x) >= 0 ? 1 : -1;
-          bot.targetX = clamp(player.x + (dx / distanceToPlayer) * ideal + (-dy / distanceToPlayer) * 150 * strafeDirection, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-          bot.targetY = clamp(player.y + (dy / distanceToPlayer) * ideal + (dx / distanceToPlayer) * 150 * strafeDirection, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-        } else {
-          bot.targetX = bot.x;
-          bot.targetY = bot.y;
-        }
-      }
-
+      behavior.updateTarget?.(bot, dt);
       const desired = { x: bot.x, y: bot.y, vx: bot.vx, vy: bot.vy };
-      const movementSpeed = bot.archetype === "sniper" && bot.sniperAimTimer > 0 ? bot.speed * 0.22 : bot.speed;
+      const movementSpeed = behavior.movementSpeed?.(bot) ?? bot.speed;
       steerVelocity(desired, bot.targetX, bot.targetY, movementSpeed, dt, 3.3);
       bot.vx = desired.vx;
       bot.vy = desired.vy;
       bot.x = clamp(bot.x + bot.vx * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
       bot.y = clamp(bot.y + bot.vy * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
       collectBotMotes(bot);
-
-      if (bot.archetype === "sniper") updateSniper(bot, dt);
-
-      if (bot.archetype === "sprinter" && bot.cooldown <= 0) {
-        const distToPlayer = Math.hypot(bot.x - player.x, bot.y - player.y);
-        if (distToPlayer < player.radius + bot.radius + 8) {
-          damagePlayer(bot.attackDamage, bot.x, bot.y);
-          bot.cooldown = random(1.2, 2.5);
-          const angle = Math.atan2(bot.y - player.y, bot.x - player.x);
-          bot.vx += Math.cos(angle) * 220;
-          bot.vy += Math.sin(angle) * 220;
-        }
-      }
-
-      if (bot.archetype === "sprinter") {
-        let closestEnemy = null;
-        let closestDist = Infinity;
-        for (const other of bots) {
-          if (other === bot || other.dead || other.faction === bot.faction || other.boss) continue;
-          const d = Math.hypot(bot.x - other.x, bot.y - other.y);
-          if (d < closestDist) { closestEnemy = other; closestDist = d; }
-        }
-        if (closestEnemy && closestDist < 300) {
-          bot.targetX = closestEnemy.x;
-          bot.targetY = closestEnemy.y;
-        } else {
-          const pd = Math.hypot(bot.x - player.x, bot.y - player.y);
-          if (pd < 400) {
-            bot.targetX = player.x;
-            bot.targetY = player.y;
-          }
-        }
-      }
+      behavior.afterMovement?.(bot, dt);
 
       const distanceToPlayer = Math.hypot(bot.x - player.x, bot.y - player.y);
       const allyAlreadyAttacking = bots.some((other) => (
@@ -162,14 +206,14 @@
         && other.faction === bot.faction
         && distanceSq(other.x, other.y, player.x, player.y) < 600 * 600
       ));
-      let attackRange = bot.boss ? 540 : bot.archetype === "hunter" ? 430 : 360;
+      let attackRange = bot.boss ? 540 : (behavior.attackRange ?? 360);
       if (bot.longRange) attackRange = 580;
       if (bot.swarmer) attackRange = 310;
       if (bot.heavyHit) attackRange = 320;
 
 /*__ECHO_SECTION_END:0072__*/
 /*__ECHO_SECTION:0074__*/
-      if (bot.archetype !== "sprinter" && bot.archetype !== "sniper" && !bot.stealthed && !(bot.boss && bot.bossPhaseTransitioning)) {
+      if (behavior.phaseAttack !== false && !bot.stealthed && !(bot.boss && bot.bossPhaseTransitioning)) {
         if (bot.factionTarget && !bot.factionTarget.dead && bot.cooldown <= 0 && bot.energy > 45 && bot.aggression > 0.5) {
           const distToTarget = Math.hypot(bot.x - bot.factionTarget.x, bot.y - bot.factionTarget.y);
           if (distToTarget < attackRange) {
@@ -255,7 +299,8 @@
           }
         }
         for (const other of bots) {
-          if (other === bot || other.dead || other.faction === bot.faction || hitBots.has(other.id) || (other.archetype === "phantom" && other.stealthed)) continue;
+          const otherBehavior = getEnemyBehavior(other);
+          if (other === bot || other.dead || other.faction === bot.faction || hitBots.has(other.id) || (otherBehavior.untargetableWhileStealthed && other.stealthed)) continue;
           if (pointToSegmentDistance(other.x, other.y, a.x, a.y, b.x, b.y) < other.radius + 10) {
             let dmg = bot.attackDamage * random(0.88, 1.12);
             if (bot.heavyHit) dmg *= 1.4;
