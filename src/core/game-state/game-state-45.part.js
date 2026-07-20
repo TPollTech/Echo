@@ -1,2 +1,0 @@
-  const MINIMAP_SIZE = MOBILE_QUALITY ? 100 : 140;
-

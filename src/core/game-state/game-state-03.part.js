@@ -1,1 +1,4 @@
-  const ctx = canvas.getContext("2d", { alpha: false });
+  let screenShakeEnabled = true;
+  let flashEnabled = true;
+  let toastTimer = 0;
+  let leaderboardTimer = 0;

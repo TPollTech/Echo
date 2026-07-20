@@ -1,1 +1,1 @@
-  let activeChallenges = [];
+  loadChallenges();

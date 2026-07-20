@@ -1,25 +1,32 @@
-  function showSkinScreen() {
-    state = "skin-select";
-    ui.start.classList.add("is-hidden");
-    ui.skin.classList.remove("is-hidden");
-    ui.skinCards.replaceChildren();
-    const selectedId = getSelectedSkin().id;
-    for (const skin of skins) {
-      const locked = !skin.unlocked();
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `skin-card${selectedId === skin.id ? " is-selected" : ""}`;
-      button.disabled = locked;
-      button.style.setProperty("--skin-hue", String(skin.hue < 0 ? 188 : skin.hue));
-      button.innerHTML = `
-        <span class="skin-preview"><i></i><b>${skin.symbol}</b></span>
-        <h3>${skin.name}</h3>
-        <p>${skin.description}</p>
-        <span class="skin-state">${locked ? "BLOQUEADO" : selectedId === skin.id ? "SELECIONADO" : "DISPONÍVEL"}</span>
-      `;
-      if (!locked) button.addEventListener("click", () => selectSkin(skin));
-      ui.skinCards.append(button);
+  function loadSkinProgress() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SKIN_PROGRESS_KEY) || "{}");
+      return {
+        bestScore: Math.max(0, Number(saved.bestScore) || 0),
+        bossesDefeated: Math.max(0, Number(saved.bossesDefeated) || 0)
+      };
+    } catch (_error) {
+      return { bestScore: 0, bossesDefeated: 0 };
     }
-    sound(330, 0.25, "sine", 0.03);
+  }
+
+  function saveSkinProgress() {
+    try {
+      localStorage.setItem(SKIN_PROGRESS_KEY, JSON.stringify(skinProgress));
+    } catch (_error) {}
+  }
+
+  function updateSkinProgress(score, defeatedBoss) {
+    skinProgress.bestScore = Math.max(skinProgress.bestScore, Math.floor(score || 0));
+    if (defeatedBoss) skinProgress.bossesDefeated += 1;
+    saveSkinProgress();
+  }
+
+  function getSelectedSkin() {
+    const savedSkinId = localStorage.getItem(SKIN_KEY) || "spectro";
+    const selected = skins.find((skin) => skin.id === savedSkinId && skin.unlocked());
+    if (selected) return selected;
+    localStorage.setItem(SKIN_KEY, "spectro");
+    return skins[0];
   }
 

@@ -1,1 +1,3 @@
-  let bossDefeated = false;
+  let bossDefeatedThisRun = false;
+  let activeBoss = null;
+

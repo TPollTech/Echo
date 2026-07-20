@@ -1,1 +1,0 @@
-  const MUSIC_SCHEDULE_AHEAD = 0.18;

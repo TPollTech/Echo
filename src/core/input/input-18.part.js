@@ -1,1 +1,0 @@
-  canvas.addEventListener("pointercancel", releaseCanvasPointer);

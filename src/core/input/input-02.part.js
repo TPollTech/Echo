@@ -4,3 +4,9 @@
     else showSkinScreen();
   });
 
+  ui.restart.addEventListener("click", () => {
+    if (activeMode === "multiplayer") returnToMenu();
+    else startSoloGame();
+  });
+
+  ui.soloMode.addEventListener("click", () => setSelectedMode("solo"));

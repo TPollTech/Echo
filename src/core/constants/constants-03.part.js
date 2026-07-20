@@ -1,1 +1,1 @@
-  const MUTATION_THRESHOLDS = [45, 160, 360, 650];
+  const CHALLENGES_KEY = "echo.challenges";

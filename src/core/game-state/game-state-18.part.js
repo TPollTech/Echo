@@ -1,1 +1,4 @@
-  let selectedMode = "solo";
+  loadSettings();
+  resize();
+  resetWorld();
+  loadProfile();

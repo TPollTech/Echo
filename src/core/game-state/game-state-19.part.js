@@ -1,1 +1,5 @@
-  let activeMode = "solo";
+  requestAnimationFrame((now) => {
+    previousTime = now;
+    requestAnimationFrame(frame);
+  });
+

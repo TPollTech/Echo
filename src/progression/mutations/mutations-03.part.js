@@ -9,3 +9,18 @@
     "chainMaxStacks", "phasePickupBonus", "ghostwallNova"
   ];
 
+  function snapshotMutationState(target) {
+    const snapshot = {};
+    for (const key of MUTATION_STATE_KEYS) snapshot[key] = target[key];
+    return snapshot;
+  }
+
+  function restoreMutationState(target, snapshot) {
+    if (!snapshot) return;
+    for (const key of MUTATION_STATE_KEYS) target[key] = snapshot[key];
+  }
+
+  function captureMutationBaseline(target) {
+    target.mutationBaseline = snapshotMutationState(target);
+  }
+

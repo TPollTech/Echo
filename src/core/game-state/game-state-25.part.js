@@ -1,1 +1,0 @@
-  let pendingResonance = 0;

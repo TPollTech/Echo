@@ -1,1 +1,0 @@
-  let minimapFrame = 0;
