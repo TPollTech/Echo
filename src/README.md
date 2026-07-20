@@ -1,52 +1,98 @@
 # Fonte modular do ECHO
 
-O arquivo `game.js` na raiz é um bundle gerado. O código editável está dividido em fragmentos ordenados por domínio dentro de `src/`.
+O arquivo `game.js` na raiz é um **bundle gerado**. O código editável do jogo está organizado em módulos canônicos dentro de `src/`.
 
-Esta primeira migração é mecânica e preserva o gameplay: os fragmentos são concatenados no mesmo escopo léxico do runtime anterior. Isso permite converter cada domínio para módulos independentes gradualmente, sem uma reescrita arriscada.
+A versão 0.5.1 preserva o escopo léxico e a ordem do runtime anterior por meio de seções identificadas no `src/build-order.json`. Isso permitiu separar responsabilidades sem alterar deliberadamente o gameplay.
 
-## Regras
+## Fluxo obrigatório
 
-- Edite os arquivos em `src/`, nunca o bundle diretamente.
-- Execute `npm run build` após alterações.
-- `npm run check` recusa bundle divergente e fragmentos grandes.
-- Ordem de montagem: `src/build-order.json`.
+```powershell
+npm run build
+npm run check
+npm test
+```
 
-## Domínios gerados
+- Edite somente arquivos em `src/`.
+- Nunca edite `game.js` manualmente.
+- Execute `npm run build` para regenerar o bundle.
+- `npm run check` recusa divergência entre fonte e bundle.
+- `npm test` inclui testes permanentes da arquitetura.
 
-- `core/game-state`
-- `ui/hud`
-- `core/constants`
-- `enemies/archetypes`
-- `progression/skins`
-- `progression/mutations`
-- `progression/synergies`
-- `bosses/boss-definitions`
-- `audio/audio-engine`
-- `bosses/boss-controller`
-- `core/multiplayer`
-- `progression/challenges`
-- `progression/modifiers`
-- `core/input`
-- `core/camera`
-- `combat/status-effects`
-- `entities/player`
-- `entities/bot`
-- `entities/mote`
-- `audio/sfx`
-- `audio/music`
-- `ui/accessibility`
-- `ui/menus`
-- `progression/upgrades`
-- `combat/trail`
-- `combat/damage`
-- `enemies/bulwark`
-- `bosses/mechanics`
-- `entities/effects`
-- `enemies/enemy-ai`
-- `enemies/sniper`
-- `combat/collision`
-- `core/game-loop`
-- `rendering/renderer`
-- `rendering/effects`
-- `rendering/entities`
-- `rendering/telegraphs`
+## Organização
+
+```text
+src/
+├── main.js
+├── build-order.json
+├── core/
+│   ├── game-state.js
+│   ├── game-loop.js
+│   ├── input.js
+│   ├── camera.js
+│   ├── constants.js
+│   ├── multiplayer.js
+│   ├── random.js
+│   └── events.js
+├── entities/
+│   ├── player.js
+│   ├── bot.js
+│   ├── mote.js
+│   └── effects.js
+├── combat/
+│   ├── damage.js
+│   ├── collision.js
+│   ├── trail.js
+│   └── status-effects.js
+├── enemies/
+│   ├── archetypes.js
+│   ├── enemy-ai.js
+│   ├── sniper.js
+│   ├── bulwark.js
+│   └── phantom.js
+├── bosses/
+│   ├── boss-controller.js
+│   ├── boss-definitions.js
+│   └── mechanics/
+├── progression/
+│   ├── mutations.js
+│   ├── synergies.js
+│   ├── modifiers.js
+│   ├── skins.js
+│   ├── challenges.js
+│   └── upgrades.js
+├── rendering/
+│   ├── renderer.js
+│   ├── entities.js
+│   ├── effects.js
+│   └── telegraphs.js
+├── audio/
+│   ├── audio-engine.js
+│   ├── music.js
+│   └── sfx.js
+└── ui/
+    ├── hud.js
+    ├── menus.js
+    ├── boss-hud.js
+    └── accessibility.js
+```
+
+## Registros de comportamento
+
+`src/enemies/enemy-ai.js` contém `enemyBehaviorRegistry`. Cada arquétipo declara apenas as etapas e parâmetros que utiliza; o loop geral faz um único despacho.
+
+`src/bosses/mechanics/runtime.js` contém `bossMechanicRegistry`. O loop principal chama `runBossMechanic(bot, dt)` sem conhecer as mecânicas específicas de cada luta.
+
+## Limites automáticos
+
+A auditoria estrutural exige:
+
+- todos os módulos obrigatórios;
+- no máximo 70 módulos canônicos;
+- no máximo 650 linhas por módulo principal;
+- nenhum arquivo `.part.js`;
+- dados de inimigos e bosses nos arquivos corretos;
+- presença dos dois registros de comportamento;
+- ausência de cadeias `bot.archetype === ...` nos módulos centrais de IA e bosses;
+- bundle perfeitamente sincronizado.
+
+As marcações `/*__ECHO_SECTION...__*/` preservam a ordem de montagem e não devem ser removidas até a conversão futura para imports explícitos.
