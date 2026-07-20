@@ -48,6 +48,7 @@ const REQUIRED_FILES = [
   "audio/sfx.js",
   "ui/hud.js",
   "ui/menus.js",
+  "ui/boss-hud.js",
   "ui/accessibility.js"
 ];
 
@@ -63,6 +64,17 @@ function extractSection(relativePath, section) {
   const endIndex = source.indexOf(end, startIndex + start.length);
   if (startIndex < 0 || endIndex < 0) fail(`Seção ${section} inválida em ${relativePath}.`);
   return source.slice(startIndex + start.length, endIndex);
+}
+
+function assertRegistryArchitecture() {
+  const enemyAi = fs.readFileSync(path.join(SRC, "enemies", "enemy-ai.js"), "utf8");
+  const bossRuntime = fs.readFileSync(path.join(SRC, "bosses", "mechanics", "runtime.js"), "utf8");
+  if (!enemyAi.includes("const enemyBehaviorRegistry")) fail("Registro de comportamento dos inimigos ausente.");
+  if (!enemyAi.includes("function getEnemyBehavior")) fail("Despachante de IA dos inimigos ausente.");
+  if (/bot\.archetype\s*===/.test(enemyAi)) fail("enemy-ai.js voltou a decidir comportamento por cadeia de arquétipos.");
+  if (!bossRuntime.includes("const bossMechanicRegistry")) fail("Registro de mecânicas dos bosses ausente.");
+  if (!bossRuntime.includes("function runBossMechanic")) fail("Despachante de mecânicas dos bosses ausente.");
+  if (/bot\.archetype\s*===/.test(bossRuntime)) fail("runtime de bosses voltou a decidir mecânicas por cadeia de arquétipos.");
 }
 
 function main() {
@@ -90,7 +102,6 @@ function main() {
 
   let bossDefinitions = 0;
   let enemyDefinitions = 0;
-  let bossMechanics = 0;
   const seenSections = new Set();
 
   for (const entry of order) {
@@ -106,15 +117,11 @@ function main() {
       enemyDefinitions += 1;
       if (entry.path !== "src/enemies/archetypes.js") fail("botArchetypes saiu de src/enemies/archetypes.js.");
     }
-    if (source.includes("bot.boss && bot.bossTemplate")) {
-      bossMechanics += 1;
-      if (!entry.path.startsWith("src/bosses/mechanics/")) fail("Mecânica de boss ficou espalhada fora de src/bosses/mechanics/.");
-    }
   }
 
   if (bossDefinitions !== 1) fail(`Esperado um bossTemplates; encontrados: ${bossDefinitions}.`);
   if (enemyDefinitions !== 1) fail(`Esperado um botArchetypes; encontrados: ${enemyDefinitions}.`);
-  if (bossMechanics < 1) fail("Nenhuma mecânica de boss foi isolada.");
+  assertRegistryArchitecture();
 
   const bundleCheck = spawnSync(process.execPath, [path.join(__dirname, "build-game.js"), "--check"], {
     cwd: ROOT,
