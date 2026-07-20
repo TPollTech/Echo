@@ -82,7 +82,7 @@ function main() {
       const relativePath = numberedPath(base, file.index).replace(/^src\//, "");
       const target = path.join(TEMP, relativePath);
       fs.mkdirSync(path.dirname(target), { recursive: true });
-      const header = `/* ECHO source module. Sections are assembled by src/build-order.json. */\n`;
+      const header = "/* ECHO source module. Sections are assembled by src/build-order.json. */\n";
       fs.writeFileSync(target, header + file.sections.map((section) => sectionBlock(section.id, section.source)).join(""));
     }
   }
@@ -102,8 +102,9 @@ function main() {
 
   ensureBridge("core/random.js", `"use strict";\nmodule.exports = require("../../core/random.js");\n`);
   ensureBridge("core/events.js", `"use strict";\nmodule.exports = require("../../core/events.js");\n`);
-  ensureBridge("enemies/phantom.js", `"use strict";\n// O comportamento do Espelho ainda é montado pelas seções de enemy-ai.js.\nmodule.exports = Object.freeze({ id: "phantom", source: "./enemy-ai.js" });\n`);
+  ensureBridge("enemies/phantom.js", `"use strict";\n// O comportamento do Espelho é montado pelas seções de enemy-ai.js até a extração de IA específica.\nmodule.exports = Object.freeze({ id: "phantom", source: "./enemy-ai.js" });\n`);
   ensureBridge("bosses/mechanics/index.js", `"use strict";\nmodule.exports = Object.freeze({ runtime: "./runtime.js" });\n`);
+  ensureBridge("ui/boss-hud.js", `"use strict";\nmodule.exports = Object.freeze({ source: "./hud.js" });\n`);
 
   const moduleCount = [...buckets.values()].reduce((total, files) => total + files.length, 0);
   console.log(`Fonte consolidada em ${moduleCount} módulos canônicos, com limite de ${MAX_MODULE_LINES} linhas úteis.`);
