@@ -2445,6 +2445,197 @@
     }
   }
 
+  function runPrismaFragmentMechanic(bot) {
+    if (!bot.prismaFragment || bot.cooldown > 0) return;
+    const prismaAspectHandlers = {
+      green() {
+        for (const fragment of bots) {
+          if (!fragment.prismaFragment || fragment.dead) continue;
+          fragment.health = Math.min(fragment.maxHealth, fragment.health + 16);
+          burst(fragment.x, fragment.y, 120, 3);
+        }
+        spawnWave(bot.x, bot.y, 120, 150, 0.55);
+        bot.cooldown = 4.5;
+      },
+      blue() {
+        spawnPrismaIllusions(bot);
+        bot.cooldown = 4;
+      },
+      red() {
+        bot.energy = Math.min(100, bot.energy + 20);
+        bot.cooldown = 2.4;
+      }
+    };
+    (prismaAspectHandlers[bot.prismaAspect] || prismaAspectHandlers.red)();
+  }
+
+  const bossMechanicRegistry = Object.freeze({
+    "tremor-deep": Object.freeze({
+      update(bot, _dt, context) {
+        if (bot.bossPhaseIndex < 1 || bot.cooldown > 0 || context.distToPlayer >= 200 || bot.energy <= 30) return;
+        spawnWave(bot.x, bot.y, bot.hue, 160, 0.6);
+        burst(bot.x, bot.y, bot.hue, 18);
+        sound(40, 0.3, "sawtooth", 0.05);
+        const dx = player.x - bot.x;
+        const dy = player.y - bot.y;
+        const distance = Math.hypot(dx, dy) || 1;
+        if (distance < 160) damagePlayer(Math.floor(bot.attackDamage * 0.6), bot.x, bot.y);
+        bot.cooldown = bot.bossPhaseIndex >= 2 ? random(2.5, 4) : random(4, 6);
+        bot.energy -= 30;
+      }
+    }),
+    "espectro-decisivo": Object.freeze({
+      update(bot) {
+        if (bot.bossClone || Math.random() >= 0.02 * (bot.bossPhaseIndex + 1)) return;
+        for (const clone of bots) {
+          if (clone === bot || !clone.bossClone || clone.dead) continue;
+          clone.x = clamp(player.x + random(-80, 80), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+          clone.y = clamp(player.y + random(-80, 80), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+          burst(clone.x, clone.y, clone.hue, 12);
+          sound(330, 0.2, "triangle", 0.04);
+        }
+      }
+    }),
+    necrostro: Object.freeze({
+      update(bot) {
+        if (bot.cooldown > 0 || bot.energy <= 25) return;
+        const healAmount = bot.bossPhaseIndex >= 2 ? 50 : bot.bossPhaseIndex >= 1 ? 18 : 12;
+        const healRadius = bot.bossPhaseIndex >= 1 ? 450 : 400;
+        for (const other of bots) {
+          if (other === bot || other.dead) continue;
+          const distance = Math.hypot(other.x - bot.x, other.y - bot.y);
+          if (distance < healRadius) {
+            const effective = Math.floor(healAmount * (1 - distance / healRadius));
+            other.health = Math.min(other.maxHealth, other.health + effective);
+            burst(other.x, other.y, 120, 3);
+          }
+        }
+        spawnWave(bot.x, bot.y, 120, 180, 0.5);
+        sound(220, 0.25, "sine", 0.03);
+        bot.cooldown = bot.bossPhaseIndex >= 2 ? random(3, 5) : random(5, 8);
+        bot.energy -= 25;
+        if (bot.bossPhaseIndex >= 1) bot.health = Math.min(bot.maxHealth, bot.health + 3);
+      }
+    }),
+    vortice: Object.freeze({
+      update(bot, dt) {
+        const pullStrength = bot.bossPhaseIndex >= 2 ? 230 : bot.bossPhaseIndex >= 1 ? 175 : 135;
+        const pullRadius = 360;
+        let direction = 1;
+        if (bot.bossPhaseIndex >= 2) {
+          bot.gravityModeTimer = (bot.gravityModeTimer || 2) - dt;
+          if (bot.gravityModeTimer <= 0) {
+            bot.gravityDirection = (bot.gravityDirection || 1) * -1;
+            bot.gravityModeTimer = 2;
+            spawnWave(bot.x, bot.y, bot.gravityDirection < 0 ? 188 : bot.hue, 220, 0.55);
+          }
+          direction = bot.gravityDirection || 1;
+        }
+        const dxp = bot.x - player.x;
+        const dyp = bot.y - player.y;
+        const playerDistance = Math.hypot(dxp, dyp) || 1;
+        if (playerDistance < pullRadius) {
+          const force = pullStrength * (1 - playerDistance / pullRadius) * direction;
+          player.vx += (dxp / playerDistance) * force * dt;
+          player.vy += (dyp / playerDistance) * force * dt;
+        }
+        for (const other of bots) {
+          if (other === bot || other.dead) continue;
+          const dx = bot.x - other.x;
+          const dy = bot.y - other.y;
+          const distance = Math.hypot(dx, dy) || 1;
+          if (distance < pullRadius) {
+            const force = pullStrength * 0.5 * (1 - distance / pullRadius) * direction;
+            other.vx += (dx / distance) * force * dt;
+            other.vy += (dy / distance) * force * dt;
+          }
+        }
+        if (bot.bossPhaseIndex >= 1 && bot.cooldown <= 0 && bot.energy > 20) {
+          for (let index = 0; index < 2; index += 1) {
+            const angle = runTime * (1.9 + index * 0.35) + index * Math.PI;
+            const orbitDistance = 85 + index * 58;
+            const orbitX = bot.x + Math.cos(angle) * orbitDistance;
+            const orbitY = bot.y + Math.sin(angle) * orbitDistance;
+            if (Math.hypot(player.x - orbitX, player.y - orbitY) < 54) {
+              damagePlayer(Math.floor(bot.attackDamage * 0.42), orbitX, orbitY);
+            }
+          }
+          spawnWave(bot.x, bot.y, bot.hue, 120, 0.4);
+          bot.cooldown = random(2.8, 4.5);
+          bot.energy -= 20;
+        }
+      }
+    }),
+    cicatriz: Object.freeze({
+      update(bot) {
+        if (bot.cooldown > 0 || bot.energy <= 20) return;
+        const woundCount = bot.bossPhaseIndex >= 2 ? 5 : bot.bossPhaseIndex >= 1 ? 3 : 1;
+        for (let index = 0; index < woundCount; index += 1) {
+          const woundX = bot.bossPhaseIndex >= 2
+            ? clamp(random(WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN)
+            : clamp(bot.x + random(-120, 120), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+          const woundY = bot.bossPhaseIndex >= 2
+            ? clamp(random(WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN)
+            : clamp(bot.y + random(-120, 120), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+          scars.push({ x: woundX, y: woundY, hue: 350, life: 15, maxLife: 15, radius: 55, wound: true, owner: bot });
+        }
+        spawnWave(bot.x, bot.y, 350, 80, 0.4);
+        sound(55, 0.2, "sawtooth", 0.04);
+        bot.cooldown = bot.bossPhaseIndex >= 2 ? random(2, 3.5) : random(3.5, 6);
+        bot.energy -= 20;
+      }
+    }),
+    mimico: Object.freeze({
+      update(bot) {
+        if (bot.cooldown > 0 || bot.energy <= 35 || player.mutations.length === 0) return;
+        const maxCopies = bot.bossPhaseIndex >= 2 ? 3 : bot.bossPhaseIndex >= 1 ? 2 : 1;
+        copyMimicMutations(bot, maxCopies);
+        if (bot.copiedRegen) bot.health = Math.min(bot.maxHealth, bot.health + bot.copiedRegen * 4);
+        spawnWave(bot.x, bot.y, bot.hue, 100, 0.5);
+        burst(bot.x, bot.y, bot.hue, 14);
+        sound(380, 0.2, "triangle", 0.04);
+        bot.cooldown = random(6, 9);
+        bot.energy -= 35;
+      }
+    }),
+    silenciador: Object.freeze({
+      update(bot) {
+        if (bot.cooldown > 0 || bot.energy <= 30) return;
+        const permanent = bot.bossPhaseIndex >= 2 && bots.some((candidate) => candidate.silenceAnchor && !candidate.dead);
+        const silenceDuration = bot.bossPhaseIndex >= 1 ? 4 : 3;
+        const silenceInterval = bot.bossPhaseIndex >= 1 ? 5 : 8;
+        silencePlayer(permanent ? Number.POSITIVE_INFINITY : silenceDuration, permanent);
+        spawnWave(player.x, player.y, 280, 140, 0.7);
+        burst(player.x, player.y, 280, 16);
+        sound(82, 0.3, "sawtooth", 0.05);
+        showToast(permanent ? "SILÊNCIO ABSOLUTO — ROMPA A ÂNCORA" : "SILENCIADO — MUTAÇÕES DESATIVADAS", 2200);
+        bot.cooldown = silenceInterval;
+        bot.energy -= 30;
+      }
+    }),
+    prisma: Object.freeze({
+      update(bot) {
+        if (bot.cooldown > 0 || bot.energy <= 25) return;
+        const dashAngle = Math.random() * TAU;
+        bot.vx += Math.cos(dashAngle) * 250;
+        bot.vy += Math.sin(dashAngle) * 250;
+        spawnWave(bot.x, bot.y, bot.hue, 60, 0.3);
+        burst(bot.x, bot.y, bot.hue, 8);
+        bot.cooldown = random(1.5, 3);
+        bot.energy -= 25;
+      }
+    })
+  });
+
+  function runBossMechanic(bot, dt) {
+    if (!bot.boss || !bot.bossTemplate || bot.bossPhaseTransitioning) return;
+    runPrismaFragmentMechanic(bot);
+    const mechanic = bossMechanicRegistry[bot.archetype];
+    mechanic?.update(bot, dt, {
+      distToPlayer: Math.hypot(bot.x - player.x, bot.y - player.y)
+    });
+  }
+
   function respawnBot(bot) {
     if (bot.boss) return;
     const fresh = createBot(Math.floor(Math.random() * names.length));
@@ -2688,6 +2879,118 @@
     }
   }
 
+  const defaultEnemyBehavior = Object.freeze({});
+  const enemyBehaviorRegistry = Object.freeze({
+    hunter: Object.freeze({ attackRange: 430 }),
+    berserker: Object.freeze({
+      beforeMovement(bot) {
+        const definition = botArchetypes.find((entry) => entry.id === bot.archetype);
+        if (bot.health < bot.maxHealth * 0.4) {
+          bot.speed = bot.baseSpeed * 1.4;
+          bot.attackDamage = Math.ceil(definition.attackDamage * 1.5);
+        } else {
+          bot.speed = bot.baseSpeed;
+          bot.attackDamage = definition.attackDamage;
+        }
+      }
+    }),
+    swarmer: Object.freeze({
+      attackRange: 310,
+      beforeMovement(bot) {
+        let nearbyPack = 0;
+        for (const ally of bots) {
+          if (ally === bot || ally.dead || ally.faction !== bot.faction || ally.archetype !== bot.archetype) continue;
+          if (distanceSq(bot.x, bot.y, ally.x, ally.y) < 190 * 190) nearbyPack += 1;
+        }
+        bot.speed = bot.baseSpeed * (1 + Math.min(0.3, nearbyPack * 0.1));
+      }
+    }),
+    phantom: Object.freeze({
+      untargetableWhileStealthed: true,
+      beforeMovement(bot, dt) {
+        bot.stealthTimer += dt;
+        const threshold = bot.stealthed ? 2 : 4;
+        if (bot.stealthTimer >= threshold) {
+          bot.stealthed = !bot.stealthed;
+          bot.stealthTimer = 0;
+          burst(bot.x, bot.y, bot.hue, 6);
+        }
+      }
+    }),
+    sniper: Object.freeze({
+      attackRange: 580,
+      phaseAttack: false,
+      updateTarget(bot) {
+        const dx = bot.x - player.x;
+        const dy = bot.y - player.y;
+        const distanceToPlayer = Math.hypot(dx, dy) || 1;
+        const ideal = bot.idealRange || 470;
+        if (distanceToPlayer < ideal - 115) {
+          bot.targetX = clamp(bot.x + (dx / distanceToPlayer) * 300, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+          bot.targetY = clamp(bot.y + (dy / distanceToPlayer) * 300, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+        } else if (distanceToPlayer > ideal + 135) {
+          bot.targetX = player.x;
+          bot.targetY = player.y;
+        } else if (bot.sniperAimTimer <= 0) {
+          const strafeDirection = Math.sin(runTime * 0.7 + bot.x) >= 0 ? 1 : -1;
+          bot.targetX = clamp(player.x + (dx / distanceToPlayer) * ideal + (-dy / distanceToPlayer) * 150 * strafeDirection, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+          bot.targetY = clamp(player.y + (dy / distanceToPlayer) * ideal + (dx / distanceToPlayer) * 150 * strafeDirection, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+        } else {
+          bot.targetX = bot.x;
+          bot.targetY = bot.y;
+        }
+      },
+      movementSpeed(bot) {
+        return bot.sniperAimTimer > 0 ? bot.speed * 0.22 : bot.speed;
+      },
+      afterMovement(bot, dt) {
+        updateSniper(bot, dt);
+      }
+    }),
+    sprinter: Object.freeze({
+      phaseAttack: false,
+      afterMovement(bot) {
+        if (bot.cooldown <= 0) {
+          const distToPlayer = Math.hypot(bot.x - player.x, bot.y - player.y);
+          if (distToPlayer < player.radius + bot.radius + 8) {
+            damagePlayer(bot.attackDamage, bot.x, bot.y);
+            bot.cooldown = random(1.2, 2.5);
+            const angle = Math.atan2(bot.y - player.y, bot.x - player.x);
+            bot.vx += Math.cos(angle) * 220;
+            bot.vy += Math.sin(angle) * 220;
+          }
+        }
+
+        let closestEnemy = null;
+        let closestDist = Infinity;
+        for (const other of bots) {
+          if (other === bot || other.dead || other.faction === bot.faction || other.boss) continue;
+          const distance = Math.hypot(bot.x - other.x, bot.y - other.y);
+          if (distance < closestDist) {
+            closestEnemy = other;
+            closestDist = distance;
+          }
+        }
+        if (closestEnemy && closestDist < 300) {
+          bot.targetX = closestEnemy.x;
+          bot.targetY = closestEnemy.y;
+        } else {
+          const playerDistance = Math.hypot(bot.x - player.x, bot.y - player.y);
+          if (playerDistance < 400) {
+            bot.targetX = player.x;
+            bot.targetY = player.y;
+          }
+        }
+      }
+    }),
+    bruiser: Object.freeze({ attackRange: 320 }),
+    bulwark: Object.freeze({ attackRange: 320 })
+  });
+
+  function getEnemyBehavior(bot) {
+    return enemyBehaviorRegistry[bot.archetype] || defaultEnemyBehavior;
+  }
+
   function updateBots(dt) {
     for (const bot of bots) {
       if (bot.dead) {
@@ -2700,33 +3003,8 @@
       bot.hitTimer = Math.max(0, bot.hitTimer - dt);
       bot.thinkTimer -= dt;
       bot.energy = Math.min(100, bot.energy + 8 * dt);
-
-      if (bot.archetype === "berserker" && bot.health < bot.maxHealth * 0.4) {
-        bot.speed = bot.baseSpeed * 1.4;
-        bot.attackDamage = Math.ceil(botArchetypes.find((a) => a.id === "berserker").attackDamage * 1.5);
-      } else if (bot.archetype === "berserker") {
-        bot.speed = bot.baseSpeed;
-        bot.attackDamage = botArchetypes.find((a) => a.id === "berserker").attackDamage;
-      }
-
-      if (bot.archetype === "swarmer") {
-        let nearbyPack = 0;
-        for (const ally of bots) {
-          if (ally === bot || ally.dead || ally.faction !== bot.faction || ally.archetype !== "swarmer") continue;
-          if (distanceSq(bot.x, bot.y, ally.x, ally.y) < 190 * 190) nearbyPack += 1;
-        }
-        bot.speed = bot.baseSpeed * (1 + Math.min(0.3, nearbyPack * 0.1));
-      }
-
-      if (bot.archetype === "phantom") {
-        bot.stealthTimer += dt;
-        const threshold = bot.stealthed ? 2 : 4;
-        if (bot.stealthTimer >= threshold) {
-          bot.stealthed = !bot.stealthed;
-          bot.stealthTimer = 0;
-          burst(bot.x, bot.y, bot.hue, 6);
-        }
-      }
+      const behavior = getEnemyBehavior(bot);
+      behavior.beforeMovement?.(bot, dt);
 
       if (bot.prismaIllusion) {
         bot.illusionLife -= dt;
@@ -2755,8 +3033,11 @@
         let closestEnemyDist = Infinity;
         for (const other of bots) {
           if (other === bot || other.dead || other.faction === bot.faction || other.boss) continue;
-          const d = Math.hypot(bot.x - other.x, bot.y - other.y);
-          if (d < closestEnemyDist) { closestEnemy = other; closestEnemyDist = d; }
+          const distance = Math.hypot(bot.x - other.x, bot.y - other.y);
+          if (distance < closestEnemyDist) {
+            closestEnemy = other;
+            closestEnemyDist = distance;
+          }
         }
         if (closestEnemy && closestEnemyDist < 480 && bot.aggression > 0.45 && bot.health > 32) {
           bot.targetX = closestEnemy.x + (closestEnemy.vx || 0) * 0.6;
@@ -2772,76 +3053,30 @@
             let closestDistance = Infinity;
             for (let sample = 0; sample < 28; sample += 1) {
               const mote = motes[Math.floor(Math.random() * motes.length)];
-              const dist = distanceSq(bot.x, bot.y, mote.x, mote.y);
-              if (dist < closestDistance) { closest = mote; closestDistance = dist; }
+              const distance = distanceSq(bot.x, bot.y, mote.x, mote.y);
+              if (distance < closestDistance) {
+                closest = mote;
+                closestDistance = distance;
+              }
             }
-            if (closest) { bot.targetX = closest.x; bot.targetY = closest.y; }
+            if (closest) {
+              bot.targetX = closest.x;
+              bot.targetY = closest.y;
+            }
           }
         }
       }
 
-      if (bot.archetype === "sniper") {
-        const dx = bot.x - player.x;
-        const dy = bot.y - player.y;
-        const distanceToPlayer = Math.hypot(dx, dy) || 1;
-        const ideal = bot.idealRange || 470;
-        if (distanceToPlayer < ideal - 115) {
-          bot.targetX = clamp(bot.x + (dx / distanceToPlayer) * 300, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-          bot.targetY = clamp(bot.y + (dy / distanceToPlayer) * 300, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-        } else if (distanceToPlayer > ideal + 135) {
-          bot.targetX = player.x;
-          bot.targetY = player.y;
-        } else if (bot.sniperAimTimer <= 0) {
-          const strafeDirection = Math.sin(runTime * 0.7 + bot.x) >= 0 ? 1 : -1;
-          bot.targetX = clamp(player.x + (dx / distanceToPlayer) * ideal + (-dy / distanceToPlayer) * 150 * strafeDirection, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-          bot.targetY = clamp(player.y + (dy / distanceToPlayer) * ideal + (dx / distanceToPlayer) * 150 * strafeDirection, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-        } else {
-          bot.targetX = bot.x;
-          bot.targetY = bot.y;
-        }
-      }
-
+      behavior.updateTarget?.(bot, dt);
       const desired = { x: bot.x, y: bot.y, vx: bot.vx, vy: bot.vy };
-      const movementSpeed = bot.archetype === "sniper" && bot.sniperAimTimer > 0 ? bot.speed * 0.22 : bot.speed;
+      const movementSpeed = behavior.movementSpeed?.(bot) ?? bot.speed;
       steerVelocity(desired, bot.targetX, bot.targetY, movementSpeed, dt, 3.3);
       bot.vx = desired.vx;
       bot.vy = desired.vy;
       bot.x = clamp(bot.x + bot.vx * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
       bot.y = clamp(bot.y + bot.vy * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
       collectBotMotes(bot);
-
-      if (bot.archetype === "sniper") updateSniper(bot, dt);
-
-      if (bot.archetype === "sprinter" && bot.cooldown <= 0) {
-        const distToPlayer = Math.hypot(bot.x - player.x, bot.y - player.y);
-        if (distToPlayer < player.radius + bot.radius + 8) {
-          damagePlayer(bot.attackDamage, bot.x, bot.y);
-          bot.cooldown = random(1.2, 2.5);
-          const angle = Math.atan2(bot.y - player.y, bot.x - player.x);
-          bot.vx += Math.cos(angle) * 220;
-          bot.vy += Math.sin(angle) * 220;
-        }
-      }
-
-      if (bot.archetype === "sprinter") {
-        let closestEnemy = null;
-        let closestDist = Infinity;
-        for (const other of bots) {
-          if (other === bot || other.dead || other.faction === bot.faction || other.boss) continue;
-          const d = Math.hypot(bot.x - other.x, bot.y - other.y);
-          if (d < closestDist) { closestEnemy = other; closestDist = d; }
-        }
-        if (closestEnemy && closestDist < 300) {
-          bot.targetX = closestEnemy.x;
-          bot.targetY = closestEnemy.y;
-        } else {
-          const pd = Math.hypot(bot.x - player.x, bot.y - player.y);
-          if (pd < 400) {
-            bot.targetX = player.x;
-            bot.targetY = player.y;
-          }
-        }
-      }
+      behavior.afterMovement?.(bot, dt);
 
       const distanceToPlayer = Math.hypot(bot.x - player.x, bot.y - player.y);
       const allyAlreadyAttacking = bots.some((other) => (
@@ -2850,168 +3085,14 @@
         && other.faction === bot.faction
         && distanceSq(other.x, other.y, player.x, player.y) < 600 * 600
       ));
-      let attackRange = bot.boss ? 540 : bot.archetype === "hunter" ? 430 : 360;
+      let attackRange = bot.boss ? 540 : (behavior.attackRange ?? 360);
       if (bot.longRange) attackRange = 580;
       if (bot.swarmer) attackRange = 310;
       if (bot.heavyHit) attackRange = 320;
 
-      if (bot.boss && bot.bossTemplate && !bot.bossPhaseTransitioning) {
-        const distToPlayer = Math.hypot(bot.x - player.x, bot.y - player.y);
-        if (bot.archetype === "tremor-deep" && bot.bossPhaseIndex >= 1 && bot.cooldown <= 0 && distToPlayer < 200 && bot.energy > 30) {
-          spawnWave(bot.x, bot.y, bot.hue, 160, 0.6);
-          burst(bot.x, bot.y, bot.hue, 18);
-          sound(40, 0.3, "sawtooth", 0.05);
-          const dx = player.x - bot.x;
-          const dy = player.y - bot.y;
-          const d = Math.hypot(dx, dy) || 1;
-          if (d < 160) damagePlayer(Math.floor(bot.attackDamage * 0.6), bot.x, bot.y);
-          bot.cooldown = bot.bossPhaseIndex >= 2 ? random(2.5, 4) : random(4, 6);
-          bot.energy -= 30;
-        }
-        if (bot.archetype === "espectro-decisivo" && !bot.bossClone && Math.random() < 0.02 * (bot.bossPhaseIndex + 1)) {
-          for (const clone of bots) {
-            if (clone !== bot && clone.bossClone && !clone.dead) {
-              clone.x = clamp(player.x + random(-80, 80), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-              clone.y = clamp(player.y + random(-80, 80), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-              burst(clone.x, clone.y, clone.hue, 12);
-              sound(330, 0.2, "triangle", 0.04);
-            }
-          }
-        }
-        if (bot.archetype === "necrostro" && bot.cooldown <= 0 && bot.energy > 25) {
-          const healAmount = bot.bossPhaseIndex >= 2 ? 50 : bot.bossPhaseIndex >= 1 ? 18 : 12;
-          const healRadius = bot.bossPhaseIndex >= 1 ? 450 : 400;
-          for (const other of bots) {
-            if (other === bot || other.dead) continue;
-            const d = Math.hypot(other.x - bot.x, other.y - bot.y);
-            if (d < healRadius) {
-              const effective = Math.floor(healAmount * (1 - d / healRadius));
-              other.health = Math.min(other.maxHealth, other.health + effective);
-              burst(other.x, other.y, 120, 3);
-            }
-          }
-          spawnWave(bot.x, bot.y, 120, 180, 0.5);
-          sound(220, 0.25, "sine", 0.03);
-          bot.cooldown = bot.bossPhaseIndex >= 2 ? random(3, 5) : random(5, 8);
-          bot.energy -= 25;
-          if (bot.bossPhaseIndex >= 1) {
-            bot.health = Math.min(bot.maxHealth, bot.health + 3);
-          }
-        }
-        if (bot.archetype === "vortice") {
-          const pullStrength = bot.bossPhaseIndex >= 2 ? 230 : bot.bossPhaseIndex >= 1 ? 175 : 135;
-          const pullRadius = 360;
-          let direction = 1;
-          if (bot.bossPhaseIndex >= 2) {
-            bot.gravityModeTimer = (bot.gravityModeTimer || 2) - dt;
-            if (bot.gravityModeTimer <= 0) {
-              bot.gravityDirection = (bot.gravityDirection || 1) * -1;
-              bot.gravityModeTimer = 2;
-              spawnWave(bot.x, bot.y, bot.gravityDirection < 0 ? 188 : bot.hue, 220, 0.55);
-            }
-            direction = bot.gravityDirection || 1;
-          }
-          const dxp = bot.x - player.x;
-          const dyp = bot.y - player.y;
-          const dp = Math.hypot(dxp, dyp) || 1;
-          if (dp < pullRadius) {
-            const force = pullStrength * (1 - dp / pullRadius) * direction;
-            player.vx += (dxp / dp) * force * dt;
-            player.vy += (dyp / dp) * force * dt;
-          }
-          for (const other of bots) {
-            if (other === bot || other.dead) continue;
-            const dx = bot.x - other.x;
-            const dy = bot.y - other.y;
-            const d = Math.hypot(dx, dy) || 1;
-            if (d < pullRadius) {
-              const force = pullStrength * 0.5 * (1 - d / pullRadius) * direction;
-              other.vx += (dx / d) * force * dt;
-              other.vy += (dy / d) * force * dt;
-            }
-          }
-          if (bot.bossPhaseIndex >= 1 && bot.cooldown <= 0 && bot.energy > 20) {
-            for (let index = 0; index < 2; index += 1) {
-              const angle = runTime * (1.9 + index * 0.35) + index * Math.PI;
-              const orbitDistance = 85 + index * 58;
-              const orbitX = bot.x + Math.cos(angle) * orbitDistance;
-              const orbitY = bot.y + Math.sin(angle) * orbitDistance;
-              if (Math.hypot(player.x - orbitX, player.y - orbitY) < 54) {
-                damagePlayer(Math.floor(bot.attackDamage * 0.42), orbitX, orbitY);
-              }
-            }
-            spawnWave(bot.x, bot.y, bot.hue, 120, 0.4);
-            bot.cooldown = random(2.8, 4.5);
-            bot.energy -= 20;
-          }
-        }
-        if (bot.archetype === "cicatriz" && bot.cooldown <= 0 && bot.energy > 20) {
-          const woundCount = bot.bossPhaseIndex >= 2 ? 5 : bot.bossPhaseIndex >= 1 ? 3 : 1;
-          for (let w = 0; w < woundCount; w++) {
-            const wx = bot.bossPhaseIndex >= 2
-              ? clamp(random(WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN)
-              : clamp(bot.x + random(-120, 120), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-            const wy = bot.bossPhaseIndex >= 2
-              ? clamp(random(WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN)
-              : clamp(bot.y + random(-120, 120), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-            scars.push({ x: wx, y: wy, hue: 350, life: 15, maxLife: 15, radius: 55, wound: true, owner: bot });
-          }
-          spawnWave(bot.x, bot.y, 350, 80, 0.4);
-          sound(55, 0.2, "sawtooth", 0.04);
-          bot.cooldown = bot.bossPhaseIndex >= 2 ? random(2, 3.5) : random(3.5, 6);
-          bot.energy -= 20;
-        }
-        if (bot.archetype === "mimico" && bot.cooldown <= 0 && bot.energy > 35 && player.mutations.length > 0) {
-          const maxCopies = bot.bossPhaseIndex >= 2 ? 3 : bot.bossPhaseIndex >= 1 ? 2 : 1;
-          copyMimicMutations(bot, maxCopies);
-          if (bot.copiedRegen) bot.health = Math.min(bot.maxHealth, bot.health + bot.copiedRegen * 4);
-          spawnWave(bot.x, bot.y, bot.hue, 100, 0.5);
-          burst(bot.x, bot.y, bot.hue, 14);
-          sound(380, 0.2, "triangle", 0.04);
-          bot.cooldown = random(6, 9);
-          bot.energy -= 35;
-        }
-        if (bot.prismaFragment && bot.cooldown <= 0) {
-          if (bot.prismaAspect === "green") {
-            for (const fragment of bots) {
-              if (!fragment.prismaFragment || fragment.dead) continue;
-              fragment.health = Math.min(fragment.maxHealth, fragment.health + 16);
-              burst(fragment.x, fragment.y, 120, 3);
-            }
-            spawnWave(bot.x, bot.y, 120, 150, 0.55);
-            bot.cooldown = 4.5;
-          } else if (bot.prismaAspect === "blue") {
-            spawnPrismaIllusions(bot);
-            bot.cooldown = 4;
-          } else {
-            bot.energy = Math.min(100, bot.energy + 20);
-            bot.cooldown = 2.4;
-          }
-        }
-        if (bot.archetype === "silenciador" && bot.cooldown <= 0 && bot.energy > 30) {
-          const permanent = bot.bossPhaseIndex >= 2 && bots.some((candidate) => candidate.silenceAnchor && !candidate.dead);
-          const silenceDuration = bot.bossPhaseIndex >= 1 ? 4 : 3;
-          const silenceInterval = bot.bossPhaseIndex >= 1 ? 5 : 8;
-          silencePlayer(permanent ? Number.POSITIVE_INFINITY : silenceDuration, permanent);
-          spawnWave(player.x, player.y, 280, 140, 0.7);
-          burst(player.x, player.y, 280, 16);
-          sound(82, 0.3, "sawtooth", 0.05);
-          showToast(permanent ? "SILÊNCIO ABSOLUTO — ROMPA A ÂNCORA" : "SILENCIADO — MUTAÇÕES DESATIVADAS", 2200);
-          bot.cooldown = silenceInterval;
-          bot.energy -= 30;
-        }
-        if (bot.archetype === "prisma" && bot.cooldown <= 0 && bot.energy > 25) {
-          const dashAngle = Math.random() * TAU;
-          bot.vx += Math.cos(dashAngle) * 250;
-          bot.vy += Math.sin(dashAngle) * 250;
-          spawnWave(bot.x, bot.y, bot.hue, 60, 0.3);
-          burst(bot.x, bot.y, bot.hue, 8);
-          bot.cooldown = random(1.5, 3);
-          bot.energy -= 25;
-        }
-      }
+      runBossMechanic(bot, dt);
 
-      if (bot.archetype !== "sprinter" && bot.archetype !== "sniper" && !bot.stealthed && !(bot.boss && bot.bossPhaseTransitioning)) {
+      if (behavior.phaseAttack !== false && !bot.stealthed && !(bot.boss && bot.bossPhaseTransitioning)) {
         if (bot.factionTarget && !bot.factionTarget.dead && bot.cooldown <= 0 && bot.energy > 45 && bot.aggression > 0.5) {
           const distToTarget = Math.hypot(bot.x - bot.factionTarget.x, bot.y - bot.factionTarget.y);
           if (distToTarget < attackRange) {
@@ -3186,7 +3267,8 @@
           }
         }
         for (const other of bots) {
-          if (other === bot || other.dead || other.faction === bot.faction || hitBots.has(other.id) || (other.archetype === "phantom" && other.stealthed)) continue;
+          const otherBehavior = getEnemyBehavior(other);
+          if (other === bot || other.dead || other.faction === bot.faction || hitBots.has(other.id) || (otherBehavior.untargetableWhileStealthed && other.stealthed)) continue;
           if (pointToSegmentDistance(other.x, other.y, a.x, a.y, b.x, b.y) < other.radius + 10) {
             let dmg = bot.attackDamage * random(0.88, 1.12);
             if (bot.heavyHit) dmg *= 1.4;
