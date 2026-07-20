@@ -2,16 +2,17 @@
 
 ECHO é uma arena em Canvas baseada em projeção espectral. O núcleo físico fica parado e vulnerável enquanto o eco se move; ao materializar, o trajeto vira um ataque.
 
-## Versão atual — 0.5.0
+## Versão atual — 0.5.1
 
-A atualização **Identidade de Combate** adiciona uma camada modular sobre a simulação existente:
+Esta versão conclui o **Incremento 1 — Separar o `game.js`**, preservando o gameplay da versão 0.5.0.
 
-- contratos de função, intenção, fraqueza e tempo de reação para os onze arquétipos comuns;
-- diretor de ameaças que adapta escalada, pressão simultânea, elites e recuperação conforme a run;
-- eventos observáveis de run, jogador, inimigos, mutações e bosses;
-- comportamentos adicionais para Caçador, Sentinela, Parasita, Corredor, Destruinte, Tanque e Espelho;
-- escala de interface configurável entre 90% e 150%;
-- seed reproduzível e painel de QA mantidos da Fundação 0.4.
+- o código editável foi movido para módulos canônicos dentro de `src/`;
+- `game.js` agora é um bundle gerado e não deve ser editado manualmente;
+- estado, entidades, combate, inimigos, bosses, progressão, renderização, áudio e interface têm arquivos próprios;
+- inimigos usam `enemyBehaviorRegistry` em vez de cadeias de decisões espalhadas;
+- bosses usam `bossMechanicRegistry` para despachar suas mecânicas;
+- `npm run check` recusa bundle divergente, módulos ausentes, arquivos exagerados e regressões para cadeias por arquétipo;
+- a identidade de combate, o diretor de ameaças, a escala da interface, as seeds e o painel de QA continuam ativos.
 
 ## Modos
 
@@ -56,12 +57,17 @@ Na tela de pausa é possível ajustar volume, tremor, flashes e escala da interf
 
 ## Desenvolvimento
 
+O fluxo correto é editar a fonte modular, gerar o bundle e validar:
+
 ```powershell
-npm test
+npm run build
 npm run check
+npm test
 ```
 
-O workflow `ECHO CI` executa validação de sintaxe e testes em pushes e pull requests direcionados ao `main`.
+`npm run build` monta `game.js` seguindo `src/build-order.json`. O `check` confirma que o bundle está sincronizado e valida a arquitetura antes das checagens de sintaxe.
+
+O workflow `ECHO CI` executa `npm run check` e `npm test` em pushes e pull requests direcionados ao `main`.
 
 ## QA
 
@@ -79,12 +85,16 @@ Atalhos existentes:
 
 ## Arquitetura
 
-- `core/`: seed, eventos, runtime e ferramentas de QA.
-- `combat/enemy-contracts.js`: identidade declarativa dos inimigos.
-- `combat/threat-director.js`: avaliação de intensidade e composição.
-- `combat/runtime.js`: integração não invasiva com a simulação atual.
-- `ui/accessibility.js`: escala persistente da interface.
-- `shared/`: cálculos compartilhados entre navegador e servidor.
+- `src/core/`: estado, loop, entrada, câmera, constantes e multiplayer.
+- `src/entities/`: jogador, bots, fragmentos e efeitos.
+- `src/combat/`: dano, colisão, rastro e efeitos de estado.
+- `src/enemies/`: dados dos arquétipos, registro de IA e comportamentos especializados.
+- `src/bosses/`: definições, controle de fases e registro de mecânicas.
+- `src/progression/`: mutações, sinergias, modificadores, skins, desafios e upgrades.
+- `src/rendering/`: renderizador, entidades, efeitos e telegraphs.
+- `src/audio/`: engine, música e efeitos sonoros.
+- `src/ui/`: HUD, menus, HUD de boss e acessibilidade.
+- `core/` e `combat/` na raiz: módulos auxiliares já desacoplados usados pelo runtime 0.4/0.5.
 - `server/`: persistência e multiplayer local.
 
-A divisão completa do `game.js` continua incrementalmente para preservar o comportamento já funcional. Consulte `docs/ARCHITECTURE.md` e `docs/HYPERPLAN.md` para o andamento até a versão 1.0.
+Consulte `src/README.md`, `docs/ARCHITECTURE.md` e `docs/HYPERPLAN.md`.
