@@ -1,72 +1,120 @@
-# Arquitetura ECHO 0.5
+# Arquitetura ECHO 0.5.1
 
-A versão 0.5 continua a migração do protótipo monolítico para módulos compatíveis com navegador e Node.js, preservando o `game.js` funcional enquanto novas responsabilidades são extraídas.
+A versão 0.5.1 conclui a primeira separação estrutural do runtime principal sem alterar o gameplay. O arquivo `game.js` continua sendo entregue ao navegador, mas agora é uma saída gerada a partir da fonte canônica em `src/`.
 
-## Núcleo 0.4 mantido
+## Regra principal
 
-- `core/events.js`: barramento de eventos desacoplado.
-- `core/random.js`: aleatoriedade reproduzível por seed.
-- `core/runtime.js`: inicialização, persistência da seed, carregamento dos módulos e API `window.EchoCore`.
-- `core/qa-panel.js`: painel visual disponível com `?qa`.
+1. O código do jogo é editado em `src/`.
+2. `src/build-order.json` preserva a ordem léxica necessária ao runtime atual.
+3. `npm run build` gera o `game.js`.
+4. `npm run check` confirma que o bundle está sincronizado e que a arquitetura não regrediu.
+5. `game.js` não deve receber alterações manuais.
 
-## Camada de combate 0.5
+Essa estratégia preserva exatamente o escopo e a ordem do protótipo enquanto permite continuar a extração para módulos totalmente independentes.
 
-### `combat/enemy-contracts.js`
+## Fonte canônica
 
-Declara a identidade dos onze arquétipos comuns:
+### `src/core/`
 
-- função tática;
-- intenção de comportamento;
-- fraqueza;
-- tempo mínimo de comunicação visual;
-- nível de ameaça necessário para aparecer naturalmente.
+- `game-state.js`: estado da partida, ciclo de runs e variáveis compartilhadas.
+- `game-loop.js`: atualização e frame principal.
+- `input.js`: eventos de teclado, ponteiro e controles.
+- `camera.js`: câmera, conversões e redimensionamento.
+- `constants.js`: constantes e dados globais estáveis.
+- `multiplayer.js`: comunicação e snapshots de rede.
+- `random.js` e `events.js`: pontes para os módulos fundamentais já existentes.
 
-Esses contratos não dependem da renderização ou da interface.
+### `src/entities/`
 
-### `combat/threat-director.js`
+- `player.js`
+- `bot.js`
+- `mote.js`
+- `effects.js`
 
-Avalia a pressão da run usando:
+### `src/combat/`
 
-- tempo;
-- estágio estimado;
-- pontuação;
-- eliminações;
-- integridade do jogador;
-- presença de boss.
+- `damage.js`
+- `collision.js`
+- `trail.js`
+- `status-effects.js`
 
-O resultado controla escala de vida, dano, velocidade, recarga, chance de elite, demora de respawn e quantidade máxima de atacantes simultâneos. Quando a integridade fica crítica, o diretor ativa um modo curto de recuperação sem entregar a vitória.
+### `src/enemies/`
 
-### `combat/runtime.js`
+- `archetypes.js`: atributos-base dos onze inimigos comuns.
+- `enemy-ai.js`: loop geral e `enemyBehaviorRegistry`.
+- `sniper.js`: disparo e mira do Franco-atirador.
+- `bulwark.js`: redirecionamento de dano do Tanque.
+- `phantom.js`: ponto de extração reservado para o Espelho.
 
-Integra os módulos ao jogo atual sem duplicar o loop principal. Ele:
+O loop geral não decide mais comportamento usando uma sequência de `if (bot.archetype === ...)`. Cada arquétipo registra somente as etapas que utiliza, como atualização anterior ao movimento, seleção de alvo, velocidade especial, comportamento posterior ao movimento, alcance e permissão de ruptura.
 
-- registra bots criados por `Array.from`, `push` e ciclos de respawn;
-- captura a referência do jogador através do módulo compartilhado de movimento;
-- aplica contratos e níveis de ameaça;
-- limita ataques simultâneos;
-- adiciona estados de guarda, fuga, descanso, exposição e atordoamento;
-- observa dano, eliminações, mutações, fases de boss e início/fim de run;
-- publica esses acontecimentos no barramento de eventos.
+### `src/bosses/`
 
-Essa integração é transitória. Conforme o `game.js` for dividido, os hooks serão substituídos por chamadas explícitas aos módulos.
+- `boss-definitions.js`: dados das nove lutas e suas fases.
+- `boss-controller.js`: criação, transição de fase, defesa e conclusão.
+- `mechanics/runtime.js`: `bossMechanicRegistry` e helpers de mecânicas.
 
-### `ui/accessibility.js`
+O loop do jogo chama apenas `runBossMechanic(bot, dt)`. Tremor Deep, Espectro Decisivo, Necróstro, Vórtice, Cicatriz, Mímico, Silenciador e Prisma têm handlers próprios no registro; Coroa Vazia usa o comportamento-base até a revisão 0.6.
 
-Adiciona escala persistente de interface entre 90% e 150% na tela de pausa e emite `settings:ui-scale`.
+### `src/progression/`
 
-## Contrato global temporário
+- `mutations.js`
+- `synergies.js`
+- `modifiers.js`
+- `skins.js`
+- `challenges.js`
+- `upgrades.js`
 
-Enquanto a migração acontece, os módulos ficam disponíveis em:
+### `src/rendering/`
 
-```js
-window.EchoCore
-window.EchoEvents
-window.EchoRandom
-window.EchoEnemyContracts
-window.EchoThreatDirector
-window.EchoCombatRuntime
-window.EchoAccessibility
-```
+- `renderer.js`
+- `entities.js`
+- `effects.js`
+- `telegraphs.js`
+
+### `src/audio/`
+
+- `audio-engine.js`
+- `music.js`
+- `sfx.js`
+
+### `src/ui/`
+
+- `hud.js`
+- `menus.js`
+- `boss-hud.js`
+- `accessibility.js`
+
+## Proteções automáticas
+
+`scripts/check-source-structure.js` impede:
+
+- ausência de domínios ou módulos obrigatórios;
+- retorno de arquivos `.part.js` à arquitetura final;
+- mais de 70 módulos canônicos;
+- módulo principal acima de 650 linhas;
+- `bossTemplates` fora de `src/bosses/boss-definitions.js`;
+- `botArchetypes` fora de `src/enemies/archetypes.js`;
+- remoção dos registros de comportamento;
+- retorno de cadeias por arquétipo nos módulos centrais de IA e bosses;
+- divergência entre `src/` e `game.js`.
+
+A suíte também inclui `tests/source-structure.test.js`, que repete as garantias no `npm test`.
+
+## Núcleo anterior mantido
+
+Os módulos independentes da Fundação 0.4 e Identidade de Combate 0.5 continuam ativos:
+
+- `core/events.js`
+- `core/random.js`
+- `core/runtime.js`
+- `core/qa-panel.js`
+- `combat/enemy-contracts.js`
+- `combat/threat-director.js`
+- `combat/runtime.js`
+- `ui/accessibility.js`
+
+Os hooks de `combat/runtime.js` ainda são transitórios. Agora que a fonte principal está separada, eles poderão ser substituídos por chamadas explícitas durante os incrementos seguintes.
 
 ## Eventos ativos
 
@@ -93,12 +141,13 @@ window.EchoAccessibility
 - `threat:recovery-changed`
 - `settings:ui-scale`
 
-## Regra de migração
+## Regra para os próximos incrementos
 
-Cada extração deve:
+Cada alteração deve:
 
-1. Preservar o comportamento existente.
-2. Adicionar testes para o módulo extraído.
-3. Passar em `npm run check` e `npm test`.
-4. Evitar dependência direta entre interface, áudio e combate.
-5. Manter o gameplay utilizável durante toda a transição.
+1. Modificar a fonte em `src/`.
+2. Preservar ou atualizar deliberadamente o comportamento documentado.
+3. Executar `npm run build`.
+4. Passar em `npm run check` e `npm test`.
+5. Manter inimigos e bosses baseados em dados e registros.
+6. Evitar dependência direta entre interface, áudio e combate.
