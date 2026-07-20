@@ -1,1 +1,1 @@
-apply compact source refactor
+generate canonical source modules
