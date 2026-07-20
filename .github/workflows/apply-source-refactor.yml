@@ -29,7 +29,9 @@ jobs:
         run: npm ci
 
       - name: Generate modular source
-        run: node scripts/refactor-game-source.js --write --force
+        run: |
+          node scripts/refactor-game-source.js --write --force
+          node scripts/group-game-source.js
 
       - name: Verify byte-equivalent bundle
         run: node scripts/build-game.js --check
@@ -51,5 +53,5 @@ jobs:
             echo "No generated changes."
             exit 0
           fi
-          git commit -m "Separate game source into domain modules"
+          git commit -m "Compact game source modules"
           git push origin main
