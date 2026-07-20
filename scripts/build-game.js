@@ -20,14 +20,34 @@ function readBuildOrder() {
   return order;
 }
 
+function validatePath(relativePath) {
+  if (typeof relativePath !== "string" || !relativePath.startsWith("src/") || relativePath.includes("..")) {
+    throw new Error(`Caminho inválido no build-order: ${relativePath}`);
+  }
+  const absolutePath = path.join(ROOT, relativePath);
+  if (!fs.existsSync(absolutePath)) throw new Error(`Módulo ausente: ${relativePath}`);
+  return absolutePath;
+}
+
+function extractSection(relativePath, section) {
+  const source = normalize(fs.readFileSync(validatePath(relativePath), "utf8"));
+  const start = `/*__ECHO_SECTION:${section}__*/\n`;
+  const end = `/*__ECHO_SECTION_END:${section}__*/`;
+  const startIndex = source.indexOf(start);
+  if (startIndex < 0) throw new Error(`Seção ${section} ausente em ${relativePath}.`);
+  const contentStart = startIndex + start.length;
+  const endIndex = source.indexOf(end, contentStart);
+  if (endIndex < 0) throw new Error(`Fim da seção ${section} ausente em ${relativePath}.`);
+  return source.slice(contentStart, endIndex);
+}
+
 function buildBundle() {
-  return readBuildOrder().map((relativePath) => {
-    if (typeof relativePath !== "string" || !relativePath.startsWith("src/") || relativePath.includes("..")) {
-      throw new Error(`Caminho inválido no build-order: ${relativePath}`);
+  return readBuildOrder().map((entry) => {
+    if (typeof entry === "string") return normalize(fs.readFileSync(validatePath(entry), "utf8"));
+    if (!entry || typeof entry !== "object" || typeof entry.path !== "string" || typeof entry.section !== "string") {
+      throw new Error("Entrada inválida em src/build-order.json.");
     }
-    const absolutePath = path.join(ROOT, relativePath);
-    if (!fs.existsSync(absolutePath)) throw new Error(`Fragmento ausente: ${relativePath}`);
-    return normalize(fs.readFileSync(absolutePath, "utf8"));
+    return extractSection(entry.path, entry.section);
   }).join("");
 }
 
