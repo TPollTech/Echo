@@ -1,4 +1,0 @@
-  loadSettings();
-  resize();
-  resetWorld();
-  loadProfile();

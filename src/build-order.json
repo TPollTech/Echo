@@ -1,115 +1,454 @@
 [
-  "src/core/game-state/game-state-01.part.js",
-  "src/ui/hud/hud-01.part.js",
-  "src/core/constants/constants-01.part.js",
-  "src/enemies/archetypes/archetypes-01.part.js",
-  "src/core/constants/constants-02.part.js",
-  "src/progression/skins/skins-01.part.js",
-  "src/progression/mutations/mutations-01.part.js",
-  "src/progression/synergies/synergies-01.part.js",
-  "src/bosses/boss-definitions/boss-definitions-01.part.js",
-  "src/core/game-state/game-state-02.part.js",
-  "src/audio/audio-engine/audio-engine-01.part.js",
-  "src/core/game-state/game-state-03.part.js",
-  "src/progression/mutations/mutations-02.part.js",
-  "src/core/game-state/game-state-04.part.js",
-  "src/bosses/boss-controller/boss-controller-01.part.js",
-  "src/core/game-state/game-state-05.part.js",
-  "src/core/multiplayer/multiplayer-01.part.js",
-  "src/core/game-state/game-state-06.part.js",
-  "src/bosses/boss-controller/boss-controller-02.part.js",
-  "src/core/constants/constants-03.part.js",
-  "src/progression/challenges/challenges-01.part.js",
-  "src/progression/modifiers/modifiers-01.part.js",
-  "src/progression/skins/skins-02.part.js",
-  "src/core/input/input-01.part.js",
-  "src/core/camera/camera-01.part.js",
-  "src/core/game-state/game-state-07.part.js",
-  "src/progression/skins/skins-03.part.js",
-  "src/progression/mutations/mutations-03.part.js",
-  "src/combat/status-effects/status-effects-01.part.js",
-  "src/entities/player/player-01.part.js",
-  "src/entities/bot/bot-01.part.js",
-  "src/bosses/boss-controller/boss-controller-03.part.js",
-  "src/entities/mote/mote-01.part.js",
-  "src/core/game-state/game-state-08.part.js",
-  "src/audio/audio-engine/audio-engine-02.part.js",
-  "src/audio/sfx/sfx-01.part.js",
-  "src/audio/audio-engine/audio-engine-03.part.js",
-  "src/audio/music/music-01.part.js",
-  "src/audio/audio-engine/audio-engine-04.part.js",
-  "src/core/game-state/game-state-09.part.js",
-  "src/audio/audio-engine/audio-engine-05.part.js",
-  "src/audio/music/music-02.part.js",
-  "src/ui/accessibility/accessibility-01.part.js",
-  "src/ui/menus/menus-01.part.js",
-  "src/core/multiplayer/multiplayer-02.part.js",
-  "src/progression/upgrades/upgrades-01.part.js",
-  "src/ui/menus/menus-02.part.js",
-  "src/core/multiplayer/multiplayer-03.part.js",
-  "src/core/game-state/game-state-10.part.js",
-  "src/core/multiplayer/multiplayer-04.part.js",
-  "src/core/game-state/game-state-11.part.js",
-  "src/ui/menus/menus-03.part.js",
-  "src/ui/hud/hud-02.part.js",
-  "src/combat/trail/trail-01.part.js",
-  "src/combat/damage/damage-01.part.js",
-  "src/bosses/boss-controller/boss-controller-04.part.js",
-  "src/enemies/bulwark/bulwark-01.part.js",
-  "src/combat/trail/trail-02.part.js",
-  "src/combat/damage/damage-02.part.js",
-  "src/bosses/boss-controller/boss-controller-05.part.js",
-  "src/bosses/mechanics/mechanics-01.part.js",
-  "src/bosses/boss-controller/boss-controller-06.part.js",
-  "src/bosses/mechanics/mechanics-02.part.js",
-  "src/entities/bot/bot-02.part.js",
-  "src/entities/effects/effects-01.part.js",
-  "src/core/camera/camera-02.part.js",
-  "src/entities/player/player-02.part.js",
-  "src/entities/mote/mote-02.part.js",
-  "src/progression/mutations/mutations-04.part.js",
-  "src/progression/synergies/synergies-02.part.js",
-  "src/progression/mutations/mutations-05.part.js",
-  "src/enemies/enemy-ai/enemy-ai-01.part.js",
-  "src/bosses/mechanics/mechanics-03.part.js",
-  "src/enemies/enemy-ai/enemy-ai-02.part.js",
-  "src/enemies/sniper/sniper-01.part.js",
-  "src/entities/bot/bot-03.part.js",
-  "src/enemies/enemy-ai/enemy-ai-03.part.js",
-  "src/combat/collision/collision-01.part.js",
-  "src/entities/effects/effects-02.part.js",
-  "src/core/camera/camera-03.part.js",
-  "src/ui/hud/hud-03.part.js",
-  "src/core/game-state/game-state-12.part.js",
-  "src/bosses/boss-controller/boss-controller-07.part.js",
-  "src/core/game-state/game-state-13.part.js",
-  "src/core/multiplayer/multiplayer-05.part.js",
-  "src/core/game-loop/game-loop-01.part.js",
-  "src/rendering/renderer/renderer-01.part.js",
-  "src/core/game-state/game-state-14.part.js",
-  "src/rendering/effects/effects-01.part.js",
-  "src/rendering/entities/entities-01.part.js",
-  "src/rendering/effects/effects-02.part.js",
-  "src/rendering/entities/entities-02.part.js",
-  "src/rendering/entities/entities-03.part.js",
-  "src/rendering/effects/effects-03.part.js",
-  "src/core/game-state/game-state-15.part.js",
-  "src/ui/hud/hud-04.part.js",
-  "src/rendering/telegraphs/telegraphs-01.part.js",
-  "src/rendering/renderer/renderer-02.part.js",
-  "src/core/game-loop/game-loop-02.part.js",
-  "src/core/camera/camera-04.part.js",
-  "src/ui/menus/menus-04.part.js",
-  "src/core/input/input-02.part.js",
-  "src/core/multiplayer/multiplayer-06.part.js",
-  "src/core/input/input-03.part.js",
-  "src/core/game-state/game-state-16.part.js",
-  "src/core/input/input-04.part.js",
-  "src/core/game-state/game-state-17.part.js",
-  "src/core/input/input-05.part.js",
-  "src/core/multiplayer/multiplayer-07.part.js",
-  "src/core/game-state/game-state-18.part.js",
-  "src/progression/challenges/challenges-02.part.js",
-  "src/core/game-state/game-state-19.part.js",
-  "src/core/input/input-06.part.js"
+  {
+    "path": "src/core/game-state.js",
+    "section": "0001"
+  },
+  {
+    "path": "src/ui/hud.js",
+    "section": "0002"
+  },
+  {
+    "path": "src/core/constants.js",
+    "section": "0003"
+  },
+  {
+    "path": "src/enemies/archetypes.js",
+    "section": "0004"
+  },
+  {
+    "path": "src/core/constants.js",
+    "section": "0005"
+  },
+  {
+    "path": "src/progression/skins.js",
+    "section": "0006"
+  },
+  {
+    "path": "src/progression/mutations.js",
+    "section": "0007"
+  },
+  {
+    "path": "src/progression/synergies.js",
+    "section": "0008"
+  },
+  {
+    "path": "src/bosses/boss-definitions.js",
+    "section": "0009"
+  },
+  {
+    "path": "src/core/game-state.js",
+    "section": "0010"
+  },
+  {
+    "path": "src/audio/audio-engine.js",
+    "section": "0011"
+  },
+  {
+    "path": "src/core/game-state.js",
+    "section": "0012"
+  },
+  {
+    "path": "src/progression/mutations.js",
+    "section": "0013"
+  },
+  {
+    "path": "src/core/game-state.js",
+    "section": "0014"
+  },
+  {
+    "path": "src/bosses/boss-controller.js",
+    "section": "0015"
+  },
+  {
+    "path": "src/core/game-state.js",
+    "section": "0016"
+  },
+  {
+    "path": "src/core/multiplayer.js",
+    "section": "0017"
+  },
+  {
+    "path": "src/core/game-state.js",
+    "section": "0018"
+  },
+  {
+    "path": "src/bosses/boss-controller.js",
+    "section": "0019"
+  },
+  {
+    "path": "src/core/constants.js",
+    "section": "0020"
+  },
+  {
+    "path": "src/progression/challenges.js",
+    "section": "0021"
+  },
+  {
+    "path": "src/progression/modifiers.js",
+    "section": "0022"
+  },
+  {
+    "path": "src/progression/skins.js",
+    "section": "0023"
+  },
+  {
+    "path": "src/core/input.js",
+    "section": "0024"
+  },
+  {
+    "path": "src/core/camera.js",
+    "section": "0025"
+  },
+  {
+    "path": "src/core/game-state.js",
+    "section": "0026"
+  },
+  {
+    "path": "src/progression/skins.js",
+    "section": "0027"
+  },
+  {
+    "path": "src/progression/mutations.js",
+    "section": "0028"
+  },
+  {
+    "path": "src/combat/status-effects.js",
+    "section": "0029"
+  },
+  {
+    "path": "src/entities/player.js",
+    "section": "0030"
+  },
+  {
+    "path": "src/entities/bot.js",
+    "section": "0031"
+  },
+  {
+    "path": "src/bosses/boss-controller.js",
+    "section": "0032"
+  },
+  {
+    "path": "src/entities/mote.js",
+    "section": "0033"
+  },
+  {
+    "path": "src/core/game-state.js",
+    "section": "0034"
+  },
+  {
+    "path": "src/audio/audio-engine.js",
+    "section": "0035"
+  },
+  {
+    "path": "src/audio/sfx.js",
+    "section": "0036"
+  },
+  {
+    "path": "src/audio/audio-engine.js",
+    "section": "0037"
+  },
+  {
+    "path": "src/audio/music.js",
+    "section": "0038"
+  },
+  {
+    "path": "src/audio/audio-engine.js",
+    "section": "0039"
+  },
+  {
+    "path": "src/core/game-state.js",
+    "section": "0040"
+  },
+  {
+    "path": "src/audio/audio-engine.js",
+    "section": "0041"
+  },
+  {
+    "path": "src/audio/music.js",
+    "section": "0042"
+  },
+  {
+    "path": "src/ui/accessibility.js",
+    "section": "0043"
+  },
+  {
+    "path": "src/ui/menus.js",
+    "section": "0044"
+  },
+  {
+    "path": "src/core/multiplayer.js",
+    "section": "0045"
+  },
+  {
+    "path": "src/progression/upgrades.js",
+    "section": "0046"
+  },
+  {
+    "path": "src/ui/menus.js",
+    "section": "0047"
+  },
+  {
+    "path": "src/core/multiplayer.js",
+    "section": "0048"
+  },
+  {
+    "path": "src/core/game-state.js",
+    "section": "0049"
+  },
+  {
+    "path": "src/core/multiplayer.js",
+    "section": "0050"
+  },
+  {
+    "path": "src/core/game-state.js",
+    "section": "0051"
+  },
+  {
+    "path": "src/ui/menus.js",
+    "section": "0052"
+  },
+  {
+    "path": "src/ui/hud.js",
+    "section": "0053"
+  },
+  {
+    "path": "src/combat/trail.js",
+    "section": "0054"
+  },
+  {
+    "path": "src/combat/damage.js",
+    "section": "0055"
+  },
+  {
+    "path": "src/bosses/boss-controller.js",
+    "section": "0056"
+  },
+  {
+    "path": "src/enemies/bulwark.js",
+    "section": "0057"
+  },
+  {
+    "path": "src/combat/trail.js",
+    "section": "0058"
+  },
+  {
+    "path": "src/combat/damage.js",
+    "section": "0059"
+  },
+  {
+    "path": "src/bosses/boss-controller.js",
+    "section": "0060"
+  },
+  {
+    "path": "src/bosses/mechanics/runtime.js",
+    "section": "0061"
+  },
+  {
+    "path": "src/bosses/boss-controller.js",
+    "section": "0062"
+  },
+  {
+    "path": "src/bosses/mechanics/runtime.js",
+    "section": "0063"
+  },
+  {
+    "path": "src/entities/bot.js",
+    "section": "0064"
+  },
+  {
+    "path": "src/entities/effects.js",
+    "section": "0065"
+  },
+  {
+    "path": "src/core/camera.js",
+    "section": "0066"
+  },
+  {
+    "path": "src/entities/player.js",
+    "section": "0067"
+  },
+  {
+    "path": "src/entities/mote.js",
+    "section": "0068"
+  },
+  {
+    "path": "src/progression/mutations.js",
+    "section": "0069"
+  },
+  {
+    "path": "src/progression/synergies.js",
+    "section": "0070"
+  },
+  {
+    "path": "src/progression/mutations.js",
+    "section": "0071"
+  },
+  {
+    "path": "src/enemies/enemy-ai.js",
+    "section": "0072"
+  },
+  {
+    "path": "src/bosses/mechanics/runtime.js",
+    "section": "0073"
+  },
+  {
+    "path": "src/enemies/enemy-ai.js",
+    "section": "0074"
+  },
+  {
+    "path": "src/enemies/sniper.js",
+    "section": "0075"
+  },
+  {
+    "path": "src/entities/bot.js",
+    "section": "0076"
+  },
+  {
+    "path": "src/enemies/enemy-ai.js",
+    "section": "0077"
+  },
+  {
+    "path": "src/combat/collision.js",
+    "section": "0078"
+  },
+  {
+    "path": "src/entities/effects.js",
+    "section": "0079"
+  },
+  {
+    "path": "src/core/camera.js",
+    "section": "0080"
+  },
+  {
+    "path": "src/ui/hud.js",
+    "section": "0081"
+  },
+  {
+    "path": "src/core/game-state.js",
+    "section": "0082"
+  },
+  {
+    "path": "src/bosses/boss-controller.js",
+    "section": "0083"
+  },
+  {
+    "path": "src/core/game-state.js",
+    "section": "0084"
+  },
+  {
+    "path": "src/core/multiplayer.js",
+    "section": "0085"
+  },
+  {
+    "path": "src/core/game-loop.js",
+    "section": "0086"
+  },
+  {
+    "path": "src/rendering/renderer.js",
+    "section": "0087"
+  },
+  {
+    "path": "src/core/game-state.js",
+    "section": "0088"
+  },
+  {
+    "path": "src/rendering/effects.js",
+    "section": "0089"
+  },
+  {
+    "path": "src/rendering/entities.js",
+    "section": "0090"
+  },
+  {
+    "path": "src/rendering/effects.js",
+    "section": "0091"
+  },
+  {
+    "path": "src/rendering/entities.js",
+    "section": "0092"
+  },
+  {
+    "path": "src/rendering/entities.js",
+    "section": "0093"
+  },
+  {
+    "path": "src/rendering/effects.js",
+    "section": "0094"
+  },
+  {
+    "path": "src/core/game-state.js",
+    "section": "0095"
+  },
+  {
+    "path": "src/ui/hud.js",
+    "section": "0096"
+  },
+  {
+    "path": "src/rendering/telegraphs.js",
+    "section": "0097"
+  },
+  {
+    "path": "src/rendering/renderer.js",
+    "section": "0098"
+  },
+  {
+    "path": "src/core/game-loop.js",
+    "section": "0099"
+  },
+  {
+    "path": "src/core/camera.js",
+    "section": "0100"
+  },
+  {
+    "path": "src/ui/menus.js",
+    "section": "0101"
+  },
+  {
+    "path": "src/core/input.js",
+    "section": "0102"
+  },
+  {
+    "path": "src/core/multiplayer.js",
+    "section": "0103"
+  },
+  {
+    "path": "src/core/input.js",
+    "section": "0104"
+  },
+  {
+    "path": "src/core/game-state.js",
+    "section": "0105"
+  },
+  {
+    "path": "src/core/input.js",
+    "section": "0106"
+  },
+  {
+    "path": "src/core/game-state.js",
+    "section": "0107"
+  },
+  {
+    "path": "src/core/input.js",
+    "section": "0108"
+  },
+  {
+    "path": "src/core/multiplayer.js",
+    "section": "0109"
+  },
+  {
+    "path": "src/core/game-state.js",
+    "section": "0110"
+  },
+  {
+    "path": "src/progression/challenges.js",
+    "section": "0111"
+  },
+  {
+    "path": "src/core/game-state.js",
+    "section": "0112"
+  },
+  {
+    "path": "src/core/input.js",
+    "section": "0113"
+  }
 ]
