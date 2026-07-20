@@ -28,10 +28,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate modular source
+      - name: Generate canonical modular source
         run: |
           node scripts/refactor-game-source.js --write --force
           node scripts/group-game-source.js
+          node scripts/consolidate-game-source.js
 
       - name: Verify byte-equivalent bundle
         run: node scripts/build-game.js --check
@@ -53,5 +54,5 @@ jobs:
             echo "No generated changes."
             exit 0
           fi
-          git commit -m "Compact game source modules"
+          git commit -m "Consolidate game source into canonical modules"
           git push origin main
