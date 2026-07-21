@@ -5832,7 +5832,7 @@
       scheduleMusicTone({
         note: bassNote,
         start,
-        duration: track.id === "deep-quake" ? 0.3 : 0.22,
+        duration: musicLayers.trackId === "deep-quake" ? 0.3 : 0.22,
         type: track.context.startsWith("boss") ? "sawtooth" : "triangle",
         volume: 0.036 + intensity * 0.018,
         attack: 0.008,
