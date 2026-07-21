@@ -14,6 +14,10 @@ const PUBLIC_PATHS = new Set([
   "/index.html",
   "/styles.css",
   "/game.js",
+  "/core/events.js",
+  "/core/random.js",
+  "/core/runtime.js",
+  "/core/qa-panel.js",
   "/shared/simulation.js"
 ]);
 const MIME_TYPES = new Map([
