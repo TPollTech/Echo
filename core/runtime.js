@@ -72,7 +72,7 @@
     ensureHeadElement('link[rel="apple-touch-icon"]', () => {
       const link = root.document.createElement("link");
       link.rel = "apple-touch-icon";
-      link.href = "./assets/icons/icon-192.png";
+      link.href = "./assets/icons/icon-192.svg";
       return link;
     });
 
