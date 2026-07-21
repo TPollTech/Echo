@@ -464,10 +464,6 @@
     "section": "0112"
   },
   {
-    "path": "src/core/input.js",
-    "section": "0113"
-  },
-  {
     "path": "src/progression/levels.js",
     "section": "0118"
   },
@@ -478,5 +474,9 @@
   {
     "path": "src/ui/level-presentation.js",
     "section": "0120"
+  },
+  {
+    "path": "src/core/input.js",
+    "section": "0113"
   }
 ]
