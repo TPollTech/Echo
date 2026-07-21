@@ -1,4 +1,4 @@
-name: Repair ECHO evolution runtime order
+name: Validate ECHO 0.6 evolution package
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 jobs:
-  repair-and-validate:
+  validate-package:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,7 +24,7 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Move evolution modules inside runtime
+      - name: Normalize runtime order and soundtrack
         run: |
           node <<'NODE'
           const fs = require('node:fs');
@@ -41,27 +41,47 @@ jobs:
             { path: 'src/ui/level-presentation.js', section: '0120' }
           ];
           const bySection = new Map(entries.map((entry) => [entry.section, entry]));
-          const ordered = expected.map((entry) => bySection.get(entry.section) || entry);
-          remaining.splice(closingIndex, 0, ...ordered);
+          remaining.splice(closingIndex, 0, ...expected.map((entry) => bySection.get(entry.section) || entry));
           fs.writeFileSync(orderPath, `${JSON.stringify(remaining, null, 2)}\n`);
+
+          const soundtrackPath = 'src/audio/soundtrack.js';
+          let soundtrack = fs.readFileSync(soundtrackPath, 'utf8');
+          soundtrack = soundtrack.replace('track.id === "deep-quake"', 'musicLayers.trackId === "deep-quake"');
+          fs.writeFileSync(soundtrackPath, soundtrack);
           NODE
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Rebuild generated runtime
+      - name: Build generated runtime
         run: npm run build
 
       - name: Validate architecture and syntax
         run: npm run check
 
-      - name: Run regression tests
+      - name: Run complete test suite
         run: npm test
 
-      - name: Commit repaired runtime
+      - name: Record successful validation
         run: |
+          SOURCE_COMMIT="$(git rev-parse HEAD)"
+          VALIDATED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          cat > docs/VALIDATION.md <<EOF
+          # ECHO 0.6 — Validation record
+
+          The ECHO 0.6 evolution package was generated and validated by GitHub Actions.
+
+          - Source commit: \`${SOURCE_COMMIT}\`
+          - Validated at: \`${VALIDATED_AT}\`
+          - Runtime build: passed
+          - Source architecture and JavaScript syntax: passed
+          - Complete Node test suite: passed
+          - Real HTTP requests for core/events.js, core/random.js, core/runtime.js and core/qa-panel.js: passed
+          - Evolution modules inside the main runtime closure: passed
+          EOF
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/build-order.json game.js
-          git commit -m "Keep ECHO evolution modules inside runtime closure"
+          git add src/build-order.json src/audio/soundtrack.js game.js docs/VALIDATION.md
+          git commit -m "Validate ECHO 0.6 evolution package"
           git push
