@@ -22,13 +22,14 @@
 - [x] Drops de experiência após derrotas
 - [x] Bosses ampliados e escalados pelo nível da arena
 - [x] HUD e identificação visual de nível
-- [x] Soundtrack procedural com sete temas e rotação dinâmica
+- [x] Nível visual no multiplayer derivado do score autoritativo
+- [x] Soundtrack procedural com dez temas e estados completos
 - [x] Correção e teste HTTP dos módulos `core/*.js`
 - [ ] Telegraphs visuais completos para todos os inimigos
 - [ ] Revisão mecânica individual das nove lutas de boss
 - [ ] Códice e progressão horizontal permanente
 - [ ] Arenas e eventos
-- [ ] Cooperativo com progressão sincronizada
+- [ ] Cooperativo com crescimento de atributos sincronizado
 - [ ] Otimização espacial
 - [ ] Balanceamento por simulação
 - [ ] Preparação da versão 1.0
@@ -83,7 +84,7 @@ Entregas:
 
 ### Soundtrack
 
-Sete temas procedurais:
+Dez temas procedurais:
 
 1. Signal Drift;
 2. Glass Current;
@@ -91,17 +92,23 @@ Sete temas procedurais:
 4. Fracture Run;
 5. Crownfall;
 6. Deep Quake;
-7. Terminal Light.
+7. Terminal Light;
+8. Menu Echo;
+9. Victory Rise;
+10. Defeat Fall.
 
-A rotação evita repetição imediata, reage ao estágio da run, troca para temas de boss e utiliza uma variação final nas últimas fases.
+A rotação evita repetição imediata, reage ao estágio da run, troca para temas de boss, utiliza uma variação final nas últimas fases e possui estados próprios para menu, vitória e derrota. O multiplayer inicia a soundtrack normal após receber o primeiro snapshot e também usa os temas de resultado.
 
-### Interface e diagnóstico
+### Interface, multiplayer e diagnóstico
 
 - barra de experiência e nível no HUD;
 - indicação `LV` sobre jogador e bots;
 - nível no placar;
-- APIs de diagnóstico `EchoRunProgression` e `EchoSoundtrack`;
+- no multiplayer, o nível visual é derivado do score enviado pelo servidor, mantendo o servidor como fonte de verdade;
+- APIs de diagnóstico `EchoRunProgression`, `EchoSoundtrack` e `EchoMultiplayerLevels`;
 - eventos de progressão e mudança de faixa disponíveis no barramento.
+
+O crescimento completo de vida, dano e alcance está ativo no solo. No multiplayer 0.6, a escala e o nível são visuais; a sincronização autoritativa desses atributos permanece planejada para a etapa cooperativa.
 
 ### Servidor e validação
 
@@ -109,6 +116,7 @@ A rotação evita repetição imediata, reage ao estágio da run, troca para tem
 - validação dos arquivos obrigatórios antes de abrir a porta;
 - teste HTTP real para `core/events.js`, `core/random.js`, `core/runtime.js` e `core/qa-panel.js`;
 - teste que impede módulos de serem montados fora do fechamento do runtime;
+- testes para estados musicais e níveis visuais do multiplayer;
 - `npm run build`, `npm run check` e `npm test` obrigatórios antes da publicação do bundle.
 
 ## Próximas versões
@@ -131,7 +139,7 @@ Arenas, eventos, novas variações musicais, identidade sonora por arena e acess
 
 ### 0.9 — Rede e desempenho
 
-Cooperativo, progressão sincronizada, reconexão, spatial hash, pooling e qualidade adaptativa.
+Cooperativo, progressão de atributos sincronizada, reconexão, spatial hash, pooling e qualidade adaptativa.
 
 ### 1.0 — Lançamento
 
