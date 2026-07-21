@@ -363,12 +363,11 @@ body:not(.is-playing) .game-ui {
 }
 
 .ability-dock {
-  left: 50%;
-  bottom: max(12px, env(safe-area-inset-bottom));
+  left: max(24px, calc(50% - 210px));
+  bottom: max(20px, env(safe-area-inset-bottom));
   display: flex;
   align-items: center;
   gap: 13px;
-  transform: translateX(-50%);
   pointer-events: none;
 }
 
@@ -2238,7 +2237,7 @@ body {
   .leaderboard, .challenge-panel { display: none; }
   .score-panel { left: 16px; gap: 18px; }
   .score-panel strong { font-size: 18px; }
-  .ability-dock { left: 16px; right: 116px; transform: none; }
+  .ability-dock { left: 16px; transform: none; }
   .ability-ring { width: 64px; height: 64px; flex: 0 0 auto; }
   .ability-copy { max-width: 230px; }
   .ability-copy strong, .ability-copy span { font-size: 11px; }

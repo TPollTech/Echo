@@ -58,6 +58,7 @@
     finalKills: document.querySelector("#final-kills"),
     finalTime: document.querySelector("#final-time"),
     resonanceEarned: document.querySelector("#resonance-earned"),
+    skillPointsEarned: document.querySelector("#skillpoints-earned"),
     workshop: document.querySelector("#workshop-screen"),
     workshopResonance: document.querySelector("#workshop-resonance"),
     upgradeCards: document.querySelector("#upgrade-cards"),

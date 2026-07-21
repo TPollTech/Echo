@@ -170,6 +170,7 @@
     const bossBonus = bossDefeatedThisRun ? 10 : 0;
     pendingResonance = Math.floor(player.score / 10) + player.kills * 2 + bossBonus;
     if (runModifiers.length > 0) pendingResonance += runModifiers[0].bonusResonance;
+    pendingSkillPoints = Math.floor(player.score / 8) + Math.floor(player.kills * 1.5) + (bossDefeatedThisRun ? 15 : 0);
     ui.gameoverKicker.innerHTML = `<span></span> ${victory ? "PROTOCOLO CONCLUÍDO" : "SINAL INTERROMPIDO"}`;
     ui.gameoverKicker.classList.toggle("danger", !victory);
     const modifierLabel = runModifiers.length > 0 ? ` [${runModifiers[0].name}]` : "";
@@ -181,6 +182,7 @@
     ui.finalKills.textContent = player.kills.toString();
     ui.finalTime.textContent = formatTime(runTime);
     if (ui.resonanceEarned) ui.resonanceEarned.textContent = `+${pendingResonance}`;
+    if (ui.skillPointsEarned) ui.skillPointsEarned.textContent = `+${pendingSkillPoints}`;
     ui.gameover.classList.remove("is-hidden");
     updateSkinProgress(player.score, bossDefeatedThisRun);
     sound(victory ? 392 : 132, 0.8, victory ? "triangle" : "sawtooth", 0.045);
