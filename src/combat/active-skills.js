@@ -194,7 +194,7 @@
     const gap = 6;
     const totalW = activeSkills.length * slotW + (activeSkills.length - 1) * gap;
     const startX = width / 2 - totalW / 2;
-    const y = height - 145;
+    const y = height - 82;
     ctx.save();
     ctx.textAlign = "center";
     const panelPad = 10;
