@@ -61,12 +61,27 @@ test("soundtrack possui sete temas e evita repetição imediata", () => {
   assert.match(source, /rotateAt/);
 });
 
-test("ordem de build registra os novos módulos antes de gerar game.js", () => {
+test("novos módulos são montados antes do fechamento do runtime", () => {
   const order = JSON.parse(read("src/build-order.json"));
-  const paths = order.map((entry) => entry.path);
+  const closingIndex = order.findIndex((entry) => entry.section === "0113");
+  assert.ok(closingIndex >= 0, "seção de fechamento 0113 não encontrada");
   for (const required of [
     "src/progression/levels.js",
     "src/audio/soundtrack.js",
     "src/ui/level-presentation.js"
-  ]) assert.ok(paths.includes(required), `${required} não está no build-order`);
+  ]) {
+    const index = order.findIndex((entry) => entry.path === required);
+    assert.ok(index >= 0, `${required} não está no build-order`);
+    assert.ok(index < closingIndex, `${required} foi montado fora do runtime principal`);
+  }
+
+  const bundle = read("game.js");
+  const closingPosition = bundle.lastIndexOf("}());");
+  assert.ok(closingPosition > 0, "fechamento do runtime ausente no bundle");
+  for (const token of ["const LEVEL_CONFIG", "const SOUNDTRACK_LIBRARY", "EchoRunProgression"]) {
+    const position = bundle.indexOf(token);
+    assert.ok(position >= 0, `${token} ausente do bundle`);
+    assert.ok(position < closingPosition, `${token} está fora do runtime principal`);
+  }
+  assert.equal(bundle.slice(closingPosition + 5).trim(), "", "há código executável após o fechamento do runtime");
 });
