@@ -7,8 +7,6 @@
     mutation: document.querySelector("#mutation-screen"),
     mutationCards: document.querySelector("#mutation-cards"),
     mutationSlots: document.querySelector("#mutation-slots"),
-    skin: document.querySelector("#skin-screen"),
-    skinCards: document.querySelector("#skin-cards"),
     gameover: document.querySelector("#gameover-screen"),
     restart: document.querySelector("#restart-button"),
     score: document.querySelector("#score-value"),
@@ -69,10 +67,43 @@
     skillShopCards: document.querySelector("#skillshop-cards"),
     skillShopClose: document.querySelector("#skillshop-close"),
     skillShopButton: document.querySelector("#skillshop-button"),
+    mutationLoadoutButton: document.querySelector("#mutation-loadout-button"),
     loadoutScreen: document.querySelector("#loadout-screen"),
     loadoutSlots: document.querySelector("#loadout-slots"),
     loadoutAvailable: document.querySelector("#loadout-available"),
-    loadoutConfirm: document.querySelector("#loadout-confirm")
+    loadoutConfirm: document.querySelector("#loadout-confirm"),
+    trainingMode: document.querySelector("#training-mode"),
+    classGrid: document.querySelector("#class-grid"),
+    classDetail: document.querySelector("#class-detail"),
+    randomClass: document.querySelector("#random-class"),
+    prepSkinGrid: document.querySelector("#prep-skin-grid"),
+    prepAbilityGrid: document.querySelector("#prep-ability-grid"),
+    abilityCount: document.querySelector("#ability-count"),
+    difficulty: document.querySelector("#difficulty-select"),
+    modifier: document.querySelector("#modifier-select"),
+    classProgressGrid: document.querySelector("#class-progress-grid"),
+    challengeProgressGrid: document.querySelector("#challenge-progress-grid"),
+    preview: document.querySelector("#character-preview"),
+    summaryClass: document.querySelector("#summary-class"),
+    summarySkin: document.querySelector("#summary-skin"),
+    summaryAbilities: document.querySelector("#summary-abilities"),
+    summaryMode: document.querySelector("#summary-mode"),
+    summaryDifficulty: document.querySelector("#summary-difficulty"),
+    classSpecialButton: document.querySelector("#class-special-button"),
+    fullscreenButton: document.querySelector("#fullscreen-button"),
+    hudClassName: document.querySelector("#hud-class-name"),
+    hudClassLevel: document.querySelector("#hud-class-level"),
+    hudResourceName: document.querySelector("#hud-resource-name"),
+    hudResourceValue: document.querySelector("#hud-resource-value"),
+    hudResourceFill: document.querySelector("#hud-resource-fill"),
+    hudClassSpecial: document.querySelector("#hud-class-special"),
+    joystickZone: document.querySelector("#joystick-zone"),
+    joystickBase: document.querySelector("#joystick-base"),
+    joystickKnob: document.querySelector("#joystick-knob"),
+    mobileSkillButtons: document.querySelector("#mobile-skill-buttons"),
+    mobileScoreValue: document.querySelector("#mobile-score-value"),
+    mobileKillsValue: document.querySelector("#mobile-kills-value"),
+    mobileTimeValue: document.querySelector("#mobile-time-value")
   };
 
 /*__ECHO_SECTION_END:0002__*/
@@ -116,9 +147,11 @@
     setTextIfChanged(ui.charge, `${energy}%`);
     setStyleIfChanged(ui.chargeFill, "width", energyPercent);
     setCustomPropertyIfChanged(ui.abilityRing, "--charge", energyPercent);
+    updateClassHud();
 
     if (activeMode === "multiplayer") {
-      setTextIfChanged(ui.sector, `SALA ${multiplayerRoomCode} // ${formatTime(multiplayerRemaining)}`);
+      const pingLabel = networkPingMs > 0 ? ` // PING ${Math.round(networkPingMs)} ms` : "";
+      setTextIfChanged(ui.sector, `SALA ${multiplayerRoomCode} // ${formatTime(multiplayerRemaining)}${pingLabel}`);
     } else {
       const sectorX = clamp(Math.floor(player.x / (WORLD_SIZE / 3)), 0, 2);
       const sectorY = clamp(Math.floor(player.y / (WORLD_SIZE / 3)), 0, 2);
@@ -127,6 +160,23 @@
     const combo = player.combo || 0;
     setTextIfChanged(ui.comboValue, Math.max(2, combo));
     toggleClassIfChanged(ui.combo, "is-visible", activeMode === "solo" && combo >= 5 && player.comboTimer > 0);
+
+    if (MOBILE_QUALITY) {
+      setTextIfChanged(ui.mobileScoreValue, Math.floor(player.score || 0));
+      setTextIfChanged(ui.mobileKillsValue, player.kills || 0);
+      setTextIfChanged(ui.mobileTimeValue, formatTime(runTime));
+      if (ui.mobileSkillButtons) {
+        const btns = ui.mobileSkillButtons.querySelectorAll(".mobile-skill-btn");
+        btns.forEach((btn, i) => {
+          const skill = activeSkills[i];
+          const cd = skillCooldowns[i];
+          const ready = skill && cd <= 0 && player.energy >= skill.energyCost;
+          btn.classList.toggle("is-ready", ready);
+          btn.classList.toggle("is-cooldown", cd > 0);
+          if (skill) btn.style.setProperty("--skill-color", skill.color);
+        });
+      }
+    }
 
     if (leaderboardTimer <= 0) updateChallengePanel();
 
@@ -145,6 +195,22 @@
       }
     } else {
       toggleClassIfChanged(ui.bossBar, "is-hidden", true);
+    }
+  }
+
+  function updateClassHud() {
+    if (!player?.classDefinition) return;
+    const resourceMax = Math.max(1, player.classResourceMax || 1);
+    const resource = clamp(player.classResource || 0, 0, resourceMax);
+    setTextIfChanged(ui.hudClassName, player.className);
+    setTextIfChanged(ui.hudClassLevel, preparation?.settings?.showLevel === false ? "" : `LV ${player.classLevel || 1}`);
+    setTextIfChanged(ui.hudResourceName, player.classResourceName);
+    setTextIfChanged(ui.hudResourceValue, `${Math.round(resource)}/${Math.round(resourceMax)}`);
+    setStyleIfChanged(ui.hudResourceFill, "width", `${resource / resourceMax * 100}%`);
+    setTextIfChanged(ui.hudClassSpecial, player.classDefinition.activeAbility);
+    if (ui.classSpecialButton) {
+      ui.classSpecialButton.disabled = classSpecialCooldown > 0;
+      ui.classSpecialButton.style.setProperty("--class-color", player.classDefinition.resource.color);
     }
   }
 

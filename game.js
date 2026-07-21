@@ -114,7 +114,14 @@
     hudResourceName: document.querySelector("#hud-resource-name"),
     hudResourceValue: document.querySelector("#hud-resource-value"),
     hudResourceFill: document.querySelector("#hud-resource-fill"),
-    hudClassSpecial: document.querySelector("#hud-class-special")
+    hudClassSpecial: document.querySelector("#hud-class-special"),
+    joystickZone: document.querySelector("#joystick-zone"),
+    joystickBase: document.querySelector("#joystick-base"),
+    joystickKnob: document.querySelector("#joystick-knob"),
+    mobileSkillButtons: document.querySelector("#mobile-skill-buttons"),
+    mobileScoreValue: document.querySelector("#mobile-score-value"),
+    mobileKillsValue: document.querySelector("#mobile-kills-value"),
+    mobileTimeValue: document.querySelector("#mobile-time-value")
   };
 
   const MOTE_COUNT = 330;
@@ -3875,6 +3882,7 @@
 
   function drawSkillHud() {
     if (state !== "playing" || !["solo", "training"].includes(activeMode)) return;
+    if (MOBILE_QUALITY) return;
     const slotW = 50;
     const gap = 6;
     const panelPad = 10;
@@ -3892,7 +3900,7 @@
     const panelWidth = totalW + panelPad * 2;
     const panelHeight = slotW + 36 + panelPad * 2;
     if (!base) {
-      const scale = 2;
+      const scale = Math.max(2, Math.ceil(dpr));
       base = document.createElement("canvas");
       base.width = panelWidth * scale; base.height = panelHeight * scale;
       const baseContext = base.getContext("2d");
@@ -4650,10 +4658,14 @@
 
   function worldTarget() {
     const sensitivity = clamp(Number(preparation?.settings?.sensitivity ?? 100) / 100, 0.5, 1.5);
-    return {
-      x: camera.x + (pointer.x - width / 2) * sensitivity / camera.zoom,
-      y: camera.y + (pointer.y - height / 2) * sensitivity / camera.zoom
-    };
+    let tx = camera.x + (pointer.x - width / 2) * sensitivity / camera.zoom;
+    let ty = camera.y + (pointer.y - height / 2) * sensitivity / camera.zoom;
+    if (joystick && joystick.active && (joystick.dx !== 0 || joystick.dy !== 0)) {
+      const joyScale = 180;
+      tx = player.x + joystick.dx * joyScale;
+      ty = player.y + joystick.dy * joyScale;
+    }
+    return { x: tx, y: ty };
   }
 
   function updatePlayer(dt) {
@@ -5421,6 +5433,23 @@
     const combo = player.combo || 0;
     setTextIfChanged(ui.comboValue, Math.max(2, combo));
     toggleClassIfChanged(ui.combo, "is-visible", activeMode === "solo" && combo >= 5 && player.comboTimer > 0);
+
+    if (MOBILE_QUALITY) {
+      setTextIfChanged(ui.mobileScoreValue, Math.floor(player.score || 0));
+      setTextIfChanged(ui.mobileKillsValue, player.kills || 0);
+      setTextIfChanged(ui.mobileTimeValue, formatTime(runTime));
+      if (ui.mobileSkillButtons) {
+        const btns = ui.mobileSkillButtons.querySelectorAll(".mobile-skill-btn");
+        btns.forEach((btn, i) => {
+          const skill = activeSkills[i];
+          const cd = skillCooldowns[i];
+          const ready = skill && cd <= 0 && player.energy >= skill.energyCost;
+          btn.classList.toggle("is-ready", ready);
+          btn.classList.toggle("is-cooldown", cd > 0);
+          if (skill) btn.style.setProperty("--skill-color", skill.color);
+        });
+      }
+    }
 
     if (leaderboardTimer <= 0) updateChallengePanel();
 
@@ -6856,6 +6885,73 @@
   });
   ui.mobilePhase.addEventListener("pointerup", (event) => { event.preventDefault(); endPhase(); });
   ui.mobilePhase.addEventListener("pointercancel", endPhase);
+
+  const joystick = {
+    active: false,
+    pointerId: null,
+    originX: 0,
+    originY: 0,
+    dx: 0,
+    dy: 0
+  };
+
+  if (ui.joystickZone) {
+    ui.joystickZone.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      ui.joystickZone.setPointerCapture?.(event.pointerId);
+      joystick.active = true;
+      joystick.pointerId = event.pointerId;
+      const rect = ui.joystickZone.getBoundingClientRect();
+      joystick.originX = event.clientX;
+      joystick.originY = event.clientY;
+      ui.joystickBase.style.left = `${event.clientX - rect.left}px`;
+      ui.joystickBase.style.top = `${event.clientY - rect.top}px`;
+      ui.joystickKnob.style.left = `${event.clientX - rect.left}px`;
+      ui.joystickKnob.style.top = `${event.clientY - rect.top}px`;
+      ui.joystickBase.classList.add("is-active");
+    });
+
+    ui.joystickZone.addEventListener("pointermove", (event) => {
+      if (!joystick.active || event.pointerId !== joystick.pointerId) return;
+      event.preventDefault();
+      const rect = ui.joystickZone.getBoundingClientRect();
+      const kx = event.clientX - rect.left;
+      const ky = event.clientY - rect.top;
+      const bx = joystick.originX - rect.left;
+      const by = joystick.originY - rect.top;
+      let ddx = kx - bx;
+      let ddy = ky - by;
+      const dist = Math.hypot(ddx, ddy);
+      const maxDist = 44;
+      if (dist > maxDist) { ddx = ddx / dist * maxDist; ddy = ddy / dist * maxDist; }
+      joystick.dx = ddx / maxDist;
+      joystick.dy = ddy / maxDist;
+      ui.joystickKnob.style.left = `${bx + ddx}px`;
+      ui.joystickKnob.style.top = `${by + ddy}px`;
+    });
+
+    const endJoystick = (event) => {
+      if (event.pointerId !== joystick.pointerId) return;
+      joystick.active = false;
+      joystick.pointerId = null;
+      joystick.dx = 0;
+      joystick.dy = 0;
+      ui.joystickBase.classList.remove("is-active");
+    };
+    ui.joystickZone.addEventListener("pointerup", endJoystick);
+    ui.joystickZone.addEventListener("pointercancel", endJoystick);
+  }
+
+  if (ui.mobileSkillButtons) {
+    ui.mobileSkillButtons.querySelectorAll(".mobile-skill-btn").forEach((btn) => {
+      btn.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const index = Number(btn.dataset.skill);
+        if (!Number.isNaN(index)) useSkill(index);
+      });
+    });
+  }
 
   window.addEventListener("keydown", (event) => {
     if (event.code === "Escape") {

@@ -4,10 +4,15 @@
 /*__ECHO_SECTION_END:0025__*/
 /*__ECHO_SECTION:0066__*/
   function worldTarget() {
-    return {
-      x: camera.x + (pointer.x - width / 2) / camera.zoom,
-      y: camera.y + (pointer.y - height / 2) / camera.zoom
-    };
+    const sensitivity = clamp(Number(preparation?.settings?.sensitivity ?? 100) / 100, 0.5, 1.5);
+    let tx = camera.x + (pointer.x - width / 2) * sensitivity / camera.zoom;
+    let ty = camera.y + (pointer.y - height / 2) * sensitivity / camera.zoom;
+    if (joystick && joystick.active && (joystick.dx !== 0 || joystick.dy !== 0)) {
+      const joyScale = 180;
+      tx = player.x + joystick.dx * joyScale;
+      ty = player.y + joystick.dy * joyScale;
+    }
+    return { x: tx, y: ty };
   }
 
 /*__ECHO_SECTION_END:0066__*/

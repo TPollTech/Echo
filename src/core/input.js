@@ -13,7 +13,8 @@
   ui.startForm.addEventListener("submit", (event) => {
     event.preventDefault();
     if (selectedMode === "multiplayer") connectMultiplayer(ui.roomCode.value);
-    else showLoadoutScreen();
+    else if (selectedMode === "training") startTrainingGame();
+    else startSoloGame();
   });
 
   ui.restart.addEventListener("click", () => {
@@ -29,11 +30,13 @@
   if (ui.workshopButton) ui.workshopButton.addEventListener("click", openWorkshop);
   if (ui.workshopClose) ui.workshopClose.addEventListener("click", closeWorkshop);
   if (ui.skillShopButton) ui.skillShopButton.addEventListener("click", openSkillShop);
+  if (ui.mutationLoadoutButton) ui.mutationLoadoutButton.addEventListener("click", showLoadoutScreen);
   if (ui.skillShopClose) ui.skillShopClose.addEventListener("click", closeSkillShop);
   if (ui.loadoutConfirm) ui.loadoutConfirm.addEventListener("click", () => {
     ui.loadoutScreen.classList.add("is-hidden");
     saveLoadoutToServer();
-    showSkinScreen();
+    state = "intro";
+    ui.start.classList.remove("is-hidden");
   });
 
 /*__ECHO_SECTION_END:0104__*/
@@ -99,6 +102,73 @@
   ui.mobilePhase.addEventListener("pointerup", (event) => { event.preventDefault(); endPhase(); });
   ui.mobilePhase.addEventListener("pointercancel", endPhase);
 
+  const joystick = {
+    active: false,
+    pointerId: null,
+    originX: 0,
+    originY: 0,
+    dx: 0,
+    dy: 0
+  };
+
+  if (ui.joystickZone) {
+    ui.joystickZone.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      ui.joystickZone.setPointerCapture?.(event.pointerId);
+      joystick.active = true;
+      joystick.pointerId = event.pointerId;
+      const rect = ui.joystickZone.getBoundingClientRect();
+      joystick.originX = event.clientX;
+      joystick.originY = event.clientY;
+      ui.joystickBase.style.left = `${event.clientX - rect.left}px`;
+      ui.joystickBase.style.top = `${event.clientY - rect.top}px`;
+      ui.joystickKnob.style.left = `${event.clientX - rect.left}px`;
+      ui.joystickKnob.style.top = `${event.clientY - rect.top}px`;
+      ui.joystickBase.classList.add("is-active");
+    });
+
+    ui.joystickZone.addEventListener("pointermove", (event) => {
+      if (!joystick.active || event.pointerId !== joystick.pointerId) return;
+      event.preventDefault();
+      const rect = ui.joystickZone.getBoundingClientRect();
+      const kx = event.clientX - rect.left;
+      const ky = event.clientY - rect.top;
+      const bx = joystick.originX - rect.left;
+      const by = joystick.originY - rect.top;
+      let ddx = kx - bx;
+      let ddy = ky - by;
+      const dist = Math.hypot(ddx, ddy);
+      const maxDist = 44;
+      if (dist > maxDist) { ddx = ddx / dist * maxDist; ddy = ddy / dist * maxDist; }
+      joystick.dx = ddx / maxDist;
+      joystick.dy = ddy / maxDist;
+      ui.joystickKnob.style.left = `${bx + ddx}px`;
+      ui.joystickKnob.style.top = `${by + ddy}px`;
+    });
+
+    const endJoystick = (event) => {
+      if (event.pointerId !== joystick.pointerId) return;
+      joystick.active = false;
+      joystick.pointerId = null;
+      joystick.dx = 0;
+      joystick.dy = 0;
+      ui.joystickBase.classList.remove("is-active");
+    };
+    ui.joystickZone.addEventListener("pointerup", endJoystick);
+    ui.joystickZone.addEventListener("pointercancel", endJoystick);
+  }
+
+  if (ui.mobileSkillButtons) {
+    ui.mobileSkillButtons.querySelectorAll(".mobile-skill-btn").forEach((btn) => {
+      btn.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const index = Number(btn.dataset.skill);
+        if (!Number.isNaN(index)) useSkill(index);
+      });
+    });
+  }
+
   window.addEventListener("keydown", (event) => {
     if (event.code === "Escape") {
       event.preventDefault();
@@ -111,6 +181,7 @@
       beginPhase();
     }
     if (event.code === "KeyM") ui.sound.click();
+    if (event.code === "KeyQ") useClassSpecial();
     if (event.code === "Digit1") useSkill(0);
     if (event.code === "Digit2") useSkill(1);
     if (event.code === "Digit3") useSkill(2);
@@ -140,6 +211,12 @@
     startSoloGame,
     beginPhase,
     endPhase,
+    useClassSpecial,
+    setClass(classId) {
+      selectedClassId = normalizeClassId(classId);
+      classSpecialCooldown = 0;
+      if (player) applyEntityClass(player, selectedClassId);
+    },
     forceMutation() {
       if (state === "playing") {
         player.score = Math.max(player.score, MUTATION_THRESHOLDS[player.nextMutationIndex] || player.score);
@@ -160,7 +237,11 @@
           score: Math.floor(player.score),
           kills: player.kills,
           phasing: player.phasing,
-          mutations: [...(player.mutations || [])]
+          mutations: [...(player.mutations || [])],
+          classId: player.classId,
+          classLevel: player.classLevel,
+          classResource: player.classResource,
+          classEffects: { projectiles: classProjectiles.length, traps: classTraps.length, fields: classFields.length, minions: classMinions.length }
         },
         mode: activeMode,
         roomCode: multiplayerRoomCode,

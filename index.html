@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#05040c">
-  <meta name="description" content="ECHO — arena espectral com runs reproduzíveis, precisão e risco.">
+  <meta name="description" content="ECHO — jogo de arena com partidas solo, treino e multiplayer local.">
   <title>ECHO // Arena Espectral</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%2305040c'/%3E%3Ccircle cx='32' cy='32' r='21' fill='none' stroke='%238b5cf6' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='11' fill='none' stroke='%2345e6ff' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='4' fill='%23ff4fd8'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="./styles.css">
@@ -18,13 +18,13 @@
         <span class="brand-mark" aria-hidden="true"></span>
         <div>
           <strong>ECHO</strong>
-          <span>SIMULAÇÃO 01</span>
+          <span>ARENA 01</span>
         </div>
       </div>
 
       <div class="sector-pill">
         <span class="live-dot" aria-hidden="true"></span>
-        <span id="sector-label">SETOR VAZIO</span>
+        <span id="sector-label">ARENA CENTRAL</span>
       </div>
 
       <div class="topbar-actions">
@@ -35,22 +35,29 @@
       </div>
     </section>
 
-    <section class="vitals game-ui" aria-label="Integridade e carga">
+    <section class="class-hud game-ui" aria-label="Classe e recurso">
+      <div class="class-hud-title"><strong id="hud-class-name">CORTADOR</strong><span id="hud-class-level">LV 1</span></div>
+      <div class="class-hud-resource"><span id="hud-resource-name">RECURSO</span><strong id="hud-resource-value">100/100</strong></div>
+      <div class="class-resource-meter"><i id="hud-resource-fill"></i></div>
+      <button id="class-special-button" type="button"><kbd>Q</kbd><span>ESPECIAL</span><strong id="hud-class-special">LÂMINA DE RETORNO</strong></button>
+    </section>
+
+    <section class="vitals game-ui" aria-label="Vida e energia">
       <div class="metric-row">
-        <span>INTEGRIDADE</span>
+        <span>VIDA</span>
         <strong id="integrity-value">100</strong>
       </div>
       <div class="meter integrity-meter"><i id="integrity-fill"></i></div>
 
       <div class="metric-row charge-row">
-        <span>CARGA ESPECTRAL</span>
+        <span>ENERGIA</span>
         <strong id="charge-value">100%</strong>
       </div>
       <div class="meter charge-meter"><i id="charge-fill"></i></div>
 
-      <div id="mutation-slots" class="mutation-slots" aria-label="Mutações ativas"></div>
+      <div id="mutation-slots" class="mutation-slots" aria-label="Bônus ativos"></div>
 
-      <div id="boss-bar" class="boss-bar is-hidden" aria-label="Barra de vida do boss">
+      <div id="boss-bar" class="boss-bar is-hidden" aria-label="Barra de vida do chefe">
         <div class="boss-bar-header">
           <span id="boss-role" class="boss-role">GUARDIÃO</span>
           <span id="boss-name" class="boss-name">COROA VAZIA</span>
@@ -59,8 +66,8 @@
       </div>
     </section>
 
-    <aside class="leaderboard game-ui" aria-label="Ressonâncias mais fortes">
-      <div class="panel-kicker">RESSONÂNCIAS</div>
+    <aside class="leaderboard game-ui" aria-label="Ranking da partida">
+      <div class="panel-kicker">RANKING</div>
       <ol id="leaderboard-list"></ol>
     </aside>
 
@@ -72,7 +79,7 @@
         <strong id="score-value">000</strong>
       </div>
       <div>
-        <span>RUPTURAS</span>
+        <span>ELIMINAÇÕES</span>
         <strong id="kill-value">0</strong>
       </div>
       <div>
@@ -81,7 +88,7 @@
       </div>
     </section>
 
-    <section class="ability-dock game-ui" aria-label="Habilidade de projeção espectral">
+    <section class="ability-dock game-ui" aria-label="Ataque principal">
       <div id="ability-ring" class="ability-ring">
         <div class="ability-core">
           <span class="key-hint">ESPAÇO</span>
@@ -90,10 +97,28 @@
       </div>
     </section>
 
-    <button id="mobile-phase" class="mobile-phase game-ui" type="button" aria-label="Segure para projetar o eco espectral">
+    <button id="mobile-phase" class="mobile-phase game-ui" type="button" aria-label="Segure para usar o ataque principal">
       <span>SEGURE</span>
       <strong>ECO</strong>
     </button>
+
+    <div id="joystick-zone" class="joystick-zone" aria-label="Controle de movimento">
+      <div id="joystick-base" class="joystick-base"></div>
+      <div id="joystick-knob" class="joystick-knob"></div>
+    </div>
+
+    <div id="mobile-skill-buttons" class="mobile-skill-buttons">
+      <button class="mobile-skill-btn" data-skill="0" aria-label="Habilidade 1">1</button>
+      <button class="mobile-skill-btn" data-skill="1" aria-label="Habilidade 2">2</button>
+      <button class="mobile-skill-btn" data-skill="2" aria-label="Habilidade 3">3</button>
+      <button class="mobile-skill-btn" data-skill="3" aria-label="Habilidade 4">4</button>
+    </div>
+
+    <div id="mobile-score" class="mobile-score game-ui">
+      <div><span>FRAG</span> <strong id="mobile-score-value">0</strong></div>
+      <div><span>MORTES</span> <strong id="mobile-kills-value">0</strong></div>
+      <div class="ms-time"><span id="mobile-time-value">00:00</span></div>
+    </div>
 
     <div id="combo" class="combo game-ui" aria-live="polite">
       <strong>×<span id="combo-value">2</span></strong>
@@ -104,105 +129,111 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <section id="modifier-screen" class="overlay modifier-screen is-hidden">
-      <div class="modifier-content">
-        <div class="eyebrow"><span></span> MODIFICADORES DE RUN</div>
-        <h2>ESCOLHA SEU CAMINHO</h2>
-        <p class="modifier-subtitle">Um modificador será aplicado durante toda a run. Bônus de ressonância por escolha.</p>
-        <div id="modifier-cards" class="modifier-cards"></div>
-      </div>
-    </section>
-
-    <section id="skin-screen" class="overlay skin-screen is-hidden" aria-labelledby="skin-title">
-      <div class="skin-content">
-        <div class="eyebrow"><span></span> FREQUÊNCIA VISUAL</div>
-        <h2 id="skin-title">ESCOLHA SEU ECO</h2>
-        <p class="skin-subtitle">A forma que seu sinal assume na arena.</p>
-        <div id="skin-cards" class="skin-cards"></div>
-      </div>
-    </section>
-
-    <section id="start-screen" class="overlay start-screen">
+    <section id="start-screen" class="overlay start-screen prep-screen">
       <div class="start-grid" aria-hidden="true"></div>
-      <div class="start-content">
-        <div class="eyebrow"><span></span> ARENA ESPECTRAL // BUILD 0.4</div>
-        <h1>ECHO</h1>
-        <p class="manifesto">Seu corpo fica. Sua intenção atravessa.</p>
-        <p class="intro">Colete ressonâncias, projete uma presença espectral e transforme o caminho de volta em uma lâmina. Aqui, tamanho não decide combate — leitura, coragem e trajetória decidem.</p>
+      <form id="start-form" class="prep-shell">
+        <header class="prep-header">
+          <div><small>JOGO DE ARENA // 0.6</small><h1>ECHO</h1><p>Escolha como jogar e entre na arena.</p></div>
+          <label>NOME DO JOGADOR<input id="player-name" name="name" maxlength="14" autocomplete="off" value="Jogador"></label>
+        </header>
 
-        <div class="mode-selector" role="group" aria-label="Modo de jogo">
-          <button id="solo-mode" class="is-selected" type="button" aria-pressed="true">
-            <small>PROTOCOLO</small><strong>SOLO</strong><span>Run, mutações e chefe</span>
-          </button>
-          <button id="multiplayer-mode" type="button" aria-pressed="false">
-            <small>REDE LOCAL</small><strong>MULTIPLAYER</strong><span>Salas autoritativas locais</span>
-          </button>
+        <nav class="prep-nav" aria-label="Preparação">
+          <button type="button" class="is-selected" data-prep-tab="mode">MODO</button>
+          <button type="button" data-prep-tab="class">CLASSE</button>
+          <button type="button" data-prep-tab="skin">SKIN</button>
+          <button type="button" data-prep-tab="abilities">HABILIDADES</button>
+          <button type="button" data-prep-tab="settings">CONFIGURAÇÕES</button>
+          <button type="button" data-prep-tab="progress">PROGRESSO</button>
+        </nav>
+
+        <div class="prep-layout">
+          <main class="prep-panels">
+            <section class="prep-panel" data-prep-panel="class">
+              <div class="panel-heading"><div><small>ARQUÉTIPO DE COMBATE</small><h2>ESCOLHA SUA CLASSE</h2></div><button id="random-class" type="button">ALEATÓRIA +5%</button></div>
+              <div class="class-selector-layout"><div id="class-grid" class="class-grid"></div><article id="class-detail" class="class-detail"></article></div>
+            </section>
+
+            <section class="prep-panel" data-prep-panel="skin">
+              <div class="panel-heading"><div><small>IDENTIDADE VISUAL</small><h2>SKINS</h2></div></div>
+              <div id="prep-skin-grid" class="prep-option-grid"></div>
+            </section>
+
+            <section class="prep-panel" data-prep-panel="abilities">
+              <div class="panel-heading"><div><small>ATÉ QUATRO SLOTS · SOLO E TREINO</small><h2>HABILIDADES EQUIPÁVEIS</h2></div><strong id="ability-count">0/4</strong></div>
+              <p class="panel-note">No Solo e no Treino, use as teclas 1 a 4. No Multiplayer, todos usam apenas o ataque principal e o especial da classe para manter a partida equilibrada.</p>
+              <div id="prep-ability-grid" class="prep-option-grid"></div>
+            </section>
+
+            <section class="prep-panel is-active" data-prep-panel="mode">
+              <div class="panel-heading"><div><small>CONFIGURAÇÃO DA PARTIDA</small><h2>MODO DE JOGO</h2></div></div>
+              <div class="mode-selector prep-modes" role="group" aria-label="Modo de jogo">
+                <button id="solo-mode" class="is-selected" type="button" aria-pressed="true"><small>CAMPANHA</small><strong>SOLO</strong><span>Progresso, bônus e chefes.</span></button>
+                <button id="multiplayer-mode" type="button" aria-pressed="false"><small>REDE LOCAL</small><strong>MULTIPLAYER</strong><span>Sala autoritativa com banco local.</span></button>
+                <button id="training-mode" type="button" aria-pressed="false"><small>SEM RECOMPENSAS</small><strong>TREINO</strong><span>Teste classes e habilidades livremente.</span></button>
+              </div>
+              <label class="difficulty-label">DIFICULDADE<select id="difficulty-select"><option value="easy">ACESSÍVEL</option><option value="normal" selected>NORMAL</option><option value="hard">INTENSA</option></select></label>
+              <label class="difficulty-label">REGRA EXTRA DA PARTIDA<select id="modifier-select"><option value="">NENHUMA</option><option value="glass-cannon">MAIS DANO, MENOS VIDA</option><option value="vampiric">RECUPERAR VIDA AO ELIMINAR</option><option value="glass-boot">MAIS VELOCIDADE</option><option value="magnetic">MAIOR COLETA</option><option value="fortified">MAIS VIDA, MENOS DANO</option><option value="overclocked">ATAQUES MAIS RÁPIDOS</option><option value="risk-reward">MAIOR RISCO E RECOMPENSA</option><option value="glass-trail">RASTRO MAIS FORTE</option><option value="berserker">MAIS DANO COM POUCA VIDA</option></select></label>
+              <div id="multiplayer-fields" class="multiplayer-fields is-hidden">
+                <label for="room-code">CÓDIGO DA SALA<input id="room-code" name="room" maxlength="6" autocomplete="off" placeholder="EX.: A7K9Q2"></label>
+                <button id="create-room-button" class="secondary-button" type="button">CRIAR NOVA SALA</button>
+                <button id="refresh-rooms-button" class="text-button" type="button">ATUALIZAR SALAS</button>
+                <div id="room-list" class="room-list" aria-live="polite"></div>
+              </div>
+            </section>
+
+            <section class="prep-panel" data-prep-panel="settings">
+              <div class="panel-heading"><div><small>VÍDEO · ÁUDIO · JOGABILIDADE</small><h2>CONFIGURAÇÕES</h2></div><button id="fullscreen-button" type="button">TELA CHEIA</button></div>
+              <div class="settings-grid">
+                <fieldset><legend>VÍDEO</legend><label>ESCALA DE RENDERIZAÇÃO<input data-setting="renderScale" type="range" min="55" max="100"></label><label>PARTÍCULAS<input data-setting="particles" type="range" min="20" max="100"></label><label>BRILHO<input data-setting="brightness" type="range" min="70" max="130"></label><label>FPS<select data-setting="fps"><option>30</option><option>60</option><option>120</option></select></label></fieldset>
+                <fieldset><legend>ÁUDIO</legend><label>VOLUME GERAL<input data-setting="masterVolume" type="range" min="0" max="100"></label><label>MÚSICA<input data-setting="musicVolume" type="range" min="0" max="100"></label><label>EFEITOS<input data-setting="sfxVolume" type="range" min="0" max="100"></label><label><input data-setting="muteUnfocused" type="checkbox"> SILENCIAR FORA DE FOCO</label></fieldset>
+                <fieldset><legend>CONTROLES</legend><label>SENSIBILIDADE<input data-setting="sensitivity" type="range" min="50" max="150"></label><label>ASSISTÊNCIA DE MIRA<input data-setting="aimAssist" type="range" min="0" max="100"></label><label>TAMANHO DOS CONTROLES<input data-setting="controlSize" type="range" min="75" max="140"></label><label>POSIÇÃO<select data-setting="controlPosition"><option value="right">DIREITA</option><option value="left">ESQUERDA</option></select></label></fieldset>
+                <fieldset><legend>ACESSIBILIDADE</legend><label><input data-setting="reduceFlashes" type="checkbox"> REDUZIR FLASHES</label><label><input data-setting="reduceShake" type="checkbox"> REDUZIR TREMOR</label><label><input data-setting="highContrast" type="checkbox"> ALTO CONTRASTE</label><label><input data-setting="showDamage" type="checkbox"> NÚMEROS DE DANO</label><label><input data-setting="showLevel" type="checkbox"> EXIBIR NÍVEL</label><label><input data-setting="vibration" type="checkbox"> VIBRAÇÃO</label></fieldset>
+              </div>
+            </section>
+
+            <section class="prep-panel" data-prep-panel="progress">
+              <div class="panel-heading"><div><small>RESULTADOS E DESBLOQUEIOS</small><h2>SEU PROGRESSO</h2></div></div>
+              <div id="profile-summary" class="profile-summary" aria-live="polite"></div>
+              <section class="progress-section"><header><h3>NÍVEL DAS CLASSES</h3><p>Veja partidas, eliminações, vitórias e o avanço de cada classe.</p></header><div id="class-progress-grid" class="class-progress-grid"></div></section>
+              <section class="progress-section"><header><h3>CONQUISTAS DE CLASSE</h3><p>Cada meta paga a recompensa automaticamente uma única vez.</p></header><div id="challenge-progress-grid" class="challenge-progress-grid"></div></section>
+              <section class="progress-section progress-management"><header><h3>DESBLOQUEIOS</h3><p>Melhore atributos permanentes ou escolha bônus para a próxima partida.</p></header><div class="progress-actions"><button id="workshop-button" type="button">MELHORIAS PERMANENTES</button><button id="skillshop-button" type="button">DESBLOQUEAR BÔNUS</button><button id="mutation-loadout-button" type="button">EQUIPAR BÔNUS</button></div></section>
+            </section>
+          </main>
+
+          <aside class="prep-summary">
+            <canvas id="character-preview" width="340" height="260" aria-label="Prévia animada"></canvas>
+            <dl><div><dt>CLASSE</dt><dd id="summary-class">CORTADOR</dd></div><div><dt>SKIN</dt><dd id="summary-skin">AZUL NEON</dd></div><div><dt>HABILIDADES</dt><dd id="summary-abilities">—</dd></div><div><dt>MODO</dt><dd id="summary-mode">SOLO</dd></div><div><dt>DIFICULDADE</dt><dd id="summary-difficulty">NORMAL</dd></div></dl>
+            <button id="start-submit" type="submit"><span>JOGAR</span><b aria-hidden="true">↗</b></button>
+            <small>Preferências e progresso salvos no banco local.</small>
+            <div id="start-status" class="start-status" role="status" aria-live="polite"></div>
+          </aside>
         </div>
-
-        <div class="mechanic-strip">
-          <article>
-            <span class="step-index">01</span>
-            <div><strong>MOVA</strong><p>Guie o núcleo com o cursor ou toque.</p></div>
-          </article>
-          <i aria-hidden="true"></i>
-          <article>
-            <span class="step-index">02</span>
-            <div><strong>PROJETE</strong><p>Segure clique, espaço ou ECO.</p></div>
-          </article>
-          <i aria-hidden="true"></i>
-          <article>
-            <span class="step-index">03</span>
-            <div><strong>ROMPA</strong><p>Solte e corte inimigos com seu rastro.</p></div>
-          </article>
-        </div>
-
-        <form id="start-form" class="start-form">
-          <label for="player-name">IDENTIDADE DO SINAL</label>
-          <div class="name-row">
-            <input id="player-name" name="name" maxlength="14" autocomplete="off" value="Viajante" aria-describedby="name-help">
-            <button id="start-submit" type="submit"><span>INICIAR RUN SOLO</span><b aria-hidden="true">↗</b></button>
-          </div>
-          <button id="workshop-button" class="workshop-button" type="button">OFICINA DE FREQUÊNCIAS <span class="resonance-hint">♦</span></button>
-          <button id="skillshop-button" class="workshop-button" type="button" style="border-color:#45e6ff">LOJA DE HABILIDADES <span class="resonance-hint" style="color:#45e6ff">◈</span></button>
-          <div id="multiplayer-fields" class="multiplayer-fields is-hidden">
-            <div class="room-entry">
-              <label for="room-code">CÓDIGO DA SALA</label>
-              <input id="room-code" name="room" maxlength="6" autocomplete="off" placeholder="EX.: A7K9Q2">
-            </div>
-            <button id="create-room-button" class="secondary-button" type="button">CRIAR NOVA SALA</button>
-            <button id="refresh-rooms-button" class="text-button" type="button">ATUALIZAR SALAS</button>
-            <div id="room-list" class="room-list" aria-live="polite"></div>
-          </div>
-          <small id="name-help">Progresso e partidas são salvos no banco local — sem cadastro externo.</small>
-          <div id="profile-summary" class="profile-summary" aria-live="polite"></div>
-          <div id="start-status" class="start-status" role="status" aria-live="polite"></div>
-        </form>
-      </div>
-      <footer class="start-footer"><span>BUILD 0.4</span><span>BANCO LOCAL</span><span>MOUSE + TECLADO / TOQUE</span></footer>
+      </form>
+      <footer class="start-footer"><span>BUILD 0.6</span><span>BANCO LOCAL</span><span>MOUSE + TECLADO / TOQUE</span></footer>
     </section>
 
     <section id="mutation-screen" class="overlay mutation-screen is-hidden" aria-labelledby="mutation-title">
       <div class="mutation-content">
-        <div class="eyebrow"><span></span> O SINAL ESTÁ MUDANDO</div>
-        <h2 id="mutation-title">ESCOLHA UMA MUTAÇÃO</h2>
-        <p>Uma escolha permanente para esta existência.</p>
+        <div class="eyebrow"><span></span> NOVO BÔNUS DISPONÍVEL</div>
+        <h2 id="mutation-title">ESCOLHA UM BÔNUS</h2>
+        <p>O bônus escolhido vale até o fim desta partida.</p>
         <div id="mutation-cards" class="mutation-cards"></div>
       </div>
     </section>
 
     <section id="gameover-screen" class="overlay gameover-screen is-hidden" aria-labelledby="gameover-title">
       <div class="gameover-content">
-        <div id="gameover-kicker" class="eyebrow danger"><span></span> SINAL INTERROMPIDO</div>
-        <h2 id="gameover-title">VOCÊ DEIXOU UM ECO.</h2>
-        <p id="gameover-copy">Todo fim altera o campo. Toda volta encontra um mundo diferente.</p>
+        <div id="gameover-kicker" class="eyebrow danger"><span></span> PARTIDA ENCERRADA</div>
+        <h2 id="gameover-title">FIM DE JOGO.</h2>
+        <p id="gameover-copy">Confira seu resultado e tente melhorar na próxima partida.</p>
         <div class="run-summary">
           <div><span>FRAGMENTOS</span><strong id="final-score">0</strong></div>
-          <div><span>RUPTURAS</span><strong id="final-kills">0</strong></div>
+          <div><span>ELIMINAÇÕES</span><strong id="final-kills">0</strong></div>
           <div><span id="final-time-label">SOBREVIVÊNCIA</span><strong id="final-time">00:00</strong></div>
         </div>
-        <button id="restart-button" type="button"><span>RESSOAR NOVAMENTE</span> <b aria-hidden="true">↗</b></button>
+        <button id="restart-button" type="button"><span>JOGAR NOVAMENTE</span> <b aria-hidden="true">↗</b></button>
         <div class="resonance-earned">
-          <span>RESSONÂNCIA GANHA</span>
+          <span>CRÉDITOS GANHOS</span>
           <strong id="resonance-earned">+0</strong>
         </div>
         <div class="resonance-earned" style="border-color:rgba(69,230,255,0.18)">
@@ -214,7 +245,7 @@
 
     <section id="pause-screen" class="overlay pause-screen is-hidden" aria-labelledby="pause-title">
       <div class="pause-content">
-        <div class="eyebrow"><span></span> TRANSMISSÃO SUSPENSA</div>
+        <div class="eyebrow"><span></span> JOGO PAUSADO</div>
         <h2 id="pause-title">PAUSA</h2>
         <p id="pause-copy">A simulação solo está congelada.</p>
         <div class="settings-panel">
@@ -232,11 +263,11 @@
 
     <section id="workshop-screen" class="overlay workshop-screen is-hidden" aria-labelledby="workshop-title">
       <div class="workshop-content">
-        <div class="eyebrow"><span></span> OFICINA DE FREQUÊNCIAS</div>
-        <h2 id="workshop-title">OFICINA</h2>
-        <p>Invista ressonância para fortalecer seu sinal permanentemente.</p>
+        <div class="eyebrow"><span></span> PROGRESSO PERMANENTE</div>
+        <h2 id="workshop-title">MELHORIAS PERMANENTES</h2>
+        <p>Use créditos para melhorar vida, energia, recarga e coleta em todas as partidas.</p>
         <div class="resonance-display">
-          <span>RESSONÂNCIA DISPONÍVEL</span>
+          <span>CRÉDITOS DISPONÍVEIS</span>
           <strong id="workshop-resonance">0</strong>
         </div>
         <div id="upgrade-cards" class="upgrade-cards"></div>
@@ -246,9 +277,9 @@
 
     <section id="skillshop-screen" class="overlay workshop-screen is-hidden" aria-labelledby="skillshop-title">
       <div class="workshop-content">
-        <div class="eyebrow"><span></span> LOJA DE HABILIDADES</div>
-        <h2 id="skillshop-title">HABILIDADES</h2>
-        <p>Desbloqueie e melhore mutações. Equipe antes de cada run.</p>
+        <div class="eyebrow"><span></span> BÔNUS PASSIVOS</div>
+        <h2 id="skillshop-title">DESBLOQUEAR E MELHORAR</h2>
+        <p>Use pontos de habilidade para liberar bônus automáticos e aumentar seus efeitos.</p>
         <div class="resonance-display">
           <span>PONTOS DE HABILIDADE</span>
           <strong id="skillshop-points" style="color:#45e6ff">0</strong>
@@ -260,12 +291,12 @@
 
     <section id="loadout-screen" class="overlay skin-screen is-hidden" aria-labelledby="loadout-title">
       <div class="skin-content">
-        <div class="eyebrow"><span></span> PREPARAÇÃO TÁTICA</div>
-        <h2 id="loadout-title">EQUIPE SUAS HABILIDADES</h2>
-        <p class="skin-subtitle">4 slots — as mutações ativam nos thresholds de score (45, 160, 360, 650).</p>
+        <div class="eyebrow"><span></span> BÔNUS DA PARTIDA</div>
+        <h2 id="loadout-title">EQUIPAR BÔNUS</h2>
+        <p class="skin-subtitle">Escolha até 4 bônus. Eles entram em ação automaticamente ao alcançar 45, 160, 360 e 650 pontos.</p>
         <div id="loadout-slots" class="loadout-slots"></div>
         <div id="loadout-available" class="skin-cards"></div>
-        <button id="loadout-confirm" type="button" class="secondary-button" style="margin-top:16px">CONFIRMAR LOADOUT</button>
+        <button id="loadout-confirm" type="button" class="secondary-button" style="margin-top:16px">SALVAR BÔNUS</button>
       </div>
     </section>
   </main>
@@ -274,6 +305,7 @@
   <script src="./core/random.js"></script>
   <script src="./core/runtime.js"></script>
   <script src="./shared/simulation.js"></script>
+  <script src="./shared/skin-definitions.js"></script>
   <script src="./game.js"></script>
   <script src="./core/qa-panel.js"></script>
 </body>
