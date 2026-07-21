@@ -2150,6 +2150,86 @@ body {
 .settings-panel output,
 .resonance-earned strong { font-size: var(--type-title); }
 
+.loadout-slots {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 16px 0;
+}
+.loadout-slot {
+  background: rgba(11, 9, 24, 0.7);
+  border: 1px solid rgba(132, 105, 202, 0.25);
+  border-radius: 8px;
+  padding: 14px 10px;
+  text-align: center;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-height: 100px;
+  justify-content: center;
+}
+.loadout-slot .mutation-symbol {
+  font-size: 24px;
+  color: var(--slot-color, rgba(205, 197, 220, 0.7));
+}
+.loadout-slot strong {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.85);
+}
+.loadout-slot small {
+  font-size: 9px;
+  color: rgba(205, 197, 220, 0.5);
+}
+.loadout-slot .slot-empty {
+  font-size: 13px;
+  color: rgba(205, 197, 220, 0.3);
+}
+.loadout-remove {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  background: none;
+  border: none;
+  color: rgba(255, 90, 90, 0.6);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+.loadout-remove:hover { color: #ff5a5a; }
+
+.skill-card .level-bar {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0;
+}
+.level-pip {
+  width: 12px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(132, 105, 202, 0.2);
+}
+.level-pip.is-filled {
+  background: var(--pip-color, #8b5cf6);
+}
+.skill-card.is-locked {
+  opacity: 0.55;
+}
+.skill-card.is-maxed {
+  opacity: 0.85;
+}
+
+.skill-hud {
+  position: fixed;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
 @media (max-width: 760px) {
   .topbar { left: 16px; right: 16px; top: max(12px, env(safe-area-inset-top)); }
   .brand-lockup span:not(.brand-mark) { display: none; }

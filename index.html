@@ -167,6 +167,7 @@
             <button id="start-submit" type="submit"><span>INICIAR RUN SOLO</span><b aria-hidden="true">↗</b></button>
           </div>
           <button id="workshop-button" class="workshop-button" type="button">OFICINA DE FREQUÊNCIAS <span class="resonance-hint">♦</span></button>
+          <button id="skillshop-button" class="workshop-button" type="button" style="border-color:#45e6ff">LOJA DE HABILIDADES <span class="resonance-hint" style="color:#45e6ff">◈</span></button>
           <div id="multiplayer-fields" class="multiplayer-fields is-hidden">
             <div class="room-entry">
               <label for="room-code">CÓDIGO DA SALA</label>
@@ -240,6 +241,31 @@
         </div>
         <div id="upgrade-cards" class="upgrade-cards"></div>
         <button id="workshop-close" type="button" class="secondary-button">VOLTAR AO MENU</button>
+      </div>
+    </section>
+
+    <section id="skillshop-screen" class="overlay workshop-screen is-hidden" aria-labelledby="skillshop-title">
+      <div class="workshop-content">
+        <div class="eyebrow"><span></span> LOJA DE HABILIDADES</div>
+        <h2 id="skillshop-title">HABILIDADES</h2>
+        <p>Desbloqueie e melhore mutações. Equipe antes de cada run.</p>
+        <div class="resonance-display">
+          <span>PONTOS DE HABILIDADE</span>
+          <strong id="skillshop-points" style="color:#45e6ff">0</strong>
+        </div>
+        <div id="skillshop-cards" class="upgrade-cards"></div>
+        <button id="skillshop-close" type="button" class="secondary-button">VOLTAR AO MENU</button>
+      </div>
+    </section>
+
+    <section id="loadout-screen" class="overlay skin-screen is-hidden" aria-labelledby="loadout-title">
+      <div class="skin-content">
+        <div class="eyebrow"><span></span> PREPARAÇÃO TÁTICA</div>
+        <h2 id="loadout-title">EQUIPE SUAS HABILIDADES</h2>
+        <p class="skin-subtitle">4 slots — as mutações ativam nos thresholds de score (45, 160, 360, 650).</p>
+        <div id="loadout-slots" class="loadout-slots"></div>
+        <div id="loadout-available" class="skin-cards"></div>
+        <button id="loadout-confirm" type="button" class="secondary-button" style="margin-top:16px">CONFIRMAR LOADOUT</button>
       </div>
     </section>
   </main>

@@ -51,6 +51,13 @@
   let playerResonance = 0;
   let pendingResonance = 0;
 /*__ECHO_SECTION_END:0018__*/
+/*__ECHO_SECTION:0115__*/
+  let playerSkillPoints = 0;
+  let playerOwnedMutations = {};
+  let playerLoadout = [null, null, null, null];
+  let pendingSkillPoints = 0;
+
+/*__ECHO_SECTION_END:0115__*/
 /*__ECHO_SECTION:0026__*/
   let player = createPlayer();
   let bots = [];
@@ -100,6 +107,7 @@
     flash = 0;
     mutationPending = false;
     updateMutationSlots();
+    initSkills();
     updateLeaderboard();
     updateHud();
   }

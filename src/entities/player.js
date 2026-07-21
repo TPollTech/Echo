@@ -73,7 +73,11 @@
       mutationBaseline: null,
       damageDebuff: 1,
       mutations: [],
-      nextMutationIndex: 0
+      nextMutationIndex: 0,
+      barrierActive: false,
+      barrierTimer: 0,
+      overloadActive: false,
+      overloadTimer: 0
     };
   }
 

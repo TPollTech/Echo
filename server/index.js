@@ -139,6 +139,29 @@ function createEchoServer(options = {}) {
         sendJson(response, 200, result);
         return;
       }
+      if (request.method === "GET" && url.pathname === "/api/shop") {
+        const name = url.searchParams.get("name");
+        sendJson(response, 200, database.getSkillShop(name));
+        return;
+      }
+      if (request.method === "POST" && url.pathname === "/api/shop/purchase") {
+        const body = await readJson(request);
+        const result = database.purchaseMutation(body.name, body.mutationId);
+        sendJson(response, 200, result);
+        return;
+      }
+      if (request.method === "POST" && url.pathname === "/api/shop/upgrade") {
+        const body = await readJson(request);
+        const result = database.upgradeMutation(body.name, body.mutationId);
+        sendJson(response, 200, result);
+        return;
+      }
+      if (request.method === "POST" && url.pathname === "/api/shop/loadout") {
+        const body = await readJson(request);
+        const result = database.saveLoadout(body.name, body.slots);
+        sendJson(response, 200, { loadout: result });
+        return;
+      }
       if (url.pathname.startsWith("/api/")) {
         sendJson(response, 404, { error: "Endpoint não encontrado." });
         return;

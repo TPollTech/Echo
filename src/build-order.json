@@ -72,6 +72,10 @@
     "section": "0018"
   },
   {
+    "path": "src/core/game-state.js",
+    "section": "0115"
+  },
+  {
     "path": "src/bosses/boss-controller.js",
     "section": "0019"
   },
@@ -188,6 +192,10 @@
     "section": "0047"
   },
   {
+    "path": "src/ui/menus.js",
+    "section": "0116"
+  },
+  {
     "path": "src/core/multiplayer.js",
     "section": "0048"
   },
@@ -234,6 +242,10 @@
   {
     "path": "src/combat/damage.js",
     "section": "0059"
+  },
+  {
+    "path": "src/combat/active-skills.js",
+    "section": "0117"
   },
   {
     "path": "src/bosses/boss-controller.js",
@@ -386,6 +398,10 @@
   {
     "path": "src/rendering/telegraphs.js",
     "section": "0097"
+  },
+  {
+    "path": "src/rendering/telegraphs.js",
+    "section": "0114"
   },
   {
     "path": "src/rendering/renderer.js",

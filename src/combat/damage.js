@@ -26,6 +26,15 @@
 /*__ECHO_SECTION:0059__*/
   function damagePlayer(amount, x, y) {
     if (activeMode !== "solo" || state !== "playing" || player.hitTimer > 0) return;
+    if (player.barrierActive) {
+      player.barrierActive = false;
+      player.barrierTimer = 0;
+      spawnWave(player.x, player.y, 270, 120, 0.6);
+      burst(player.x, player.y, 270, 16);
+      sound(440, 0.25, "triangle", 0.05);
+      showToast("BARRERA ABSORVEU O DANO", 1200);
+      return;
+    }
     const multiplier = player.phasing ? player.shellDefense : 1;
     let applied = amount * multiplier;
 

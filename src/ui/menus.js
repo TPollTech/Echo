@@ -33,6 +33,83 @@
   }
 
 /*__ECHO_SECTION_END:0047__*/
+/*__ECHO_SECTION:0116__*/
+  function showLoadoutScreen() {
+    state = "loadout";
+    renderLoadoutScreen();
+    ui.loadoutScreen.classList.remove("is-hidden");
+    sound(262, 0.35, "sine", 0.03);
+  }
+
+  function renderLoadoutScreen() {
+    if (!ui.loadoutSlots || !ui.loadoutAvailable) return;
+    ui.loadoutSlots.replaceChildren();
+    for (let i = 0; i < 4; i++) {
+      const slot = document.createElement("div");
+      slot.className = "loadout-slot";
+      const mutationId = playerLoadout[i];
+      if (mutationId) {
+        const mutation = mutations.find((m) => m.id === mutationId);
+        if (mutation) {
+          const level = playerOwnedMutations[mutationId] || 1;
+          slot.style.setProperty("--slot-color", mutation.color);
+          slot.innerHTML = `
+            <span class="mutation-symbol" aria-hidden="true">${mutation.symbol}</span>
+            <strong>${mutation.name}</strong>
+            <small>NÍVEL ${["I", "II", "III"][level - 1]} — ATIVA NO ${MUTATION_THRESHOLDS[i]}</small>
+            <button class="loadout-remove" data-slot="${i}" type="button">✕</button>
+          `;
+        }
+      } else {
+        slot.innerHTML = `<span class="slot-empty">SLOT ${i + 1}</span><small>SCORE ${MUTATION_THRESHOLDS[i]}</small>`;
+      }
+      ui.loadoutSlots.append(slot);
+    }
+    ui.loadoutSlots.querySelectorAll(".loadout-remove").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const slotIndex = Number(btn.dataset.slot);
+        playerLoadout[slotIndex] = null;
+        renderLoadoutScreen();
+      });
+    });
+
+    ui.loadoutAvailable.replaceChildren();
+    const ownedIds = Object.keys(playerOwnedMutations);
+    const equippedSet = new Set(playerLoadout.filter(Boolean));
+    for (const mutationId of ownedIds) {
+      if (equippedSet.has(mutationId)) continue;
+      const mutation = mutations.find((m) => m.id === mutationId);
+      if (!mutation) continue;
+      const level = playerOwnedMutations[mutationId] || 1;
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "mutation-card";
+      card.style.setProperty("--card-color", mutation.color);
+      card.innerHTML = `
+        <span class="mutation-symbol" aria-hidden="true">${mutation.symbol}</span>
+        <small>${mutation.tag} — NÍVEL ${["I", "II", "III"][level - 1]}</small>
+        <h3>${mutation.name}</h3>
+        <p>${mutation.tiers[level - 1]?.desc || mutation.description}</p>
+      `;
+      card.addEventListener("click", () => {
+        const emptySlot = playerLoadout.indexOf(null);
+        if (emptySlot === -1) {
+          showToast("TODOS OS SLOTS PREENCHIDOS", 1500);
+          return;
+        }
+        playerLoadout[emptySlot] = mutationId;
+        renderLoadoutScreen();
+        sound(330, 0.2, "triangle", 0.03);
+      });
+      ui.loadoutAvailable.append(card);
+    }
+    if (ownedIds.length === 0) {
+      ui.loadoutAvailable.innerHTML = `<p style="color:rgba(205,197,220,0.5);text-align:center;grid-column:1/-1;padding:20px">NENHUMA HABILIDADE DESBLOQUEADA. VISITE A LOJA DE HABILIDADES.</p>`;
+    }
+  }
+
+/*__ECHO_SECTION_END:0116__*/
 /*__ECHO_SECTION:0052__*/
   function returnToMenu(message = "", isError = false) {
     if (multiplayerSocket) {
@@ -48,6 +125,7 @@
     ui.gameover.classList.add("is-hidden");
     ui.mutation.classList.add("is-hidden");
     ui.skin?.classList.add("is-hidden");
+    ui.loadoutScreen?.classList.add("is-hidden");
     document.getElementById("modifier-screen")?.classList.add("is-hidden");
     ui.start.classList.remove("is-hidden");
     document.body.classList.remove("is-playing");

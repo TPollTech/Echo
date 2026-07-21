@@ -241,6 +241,7 @@
   function drawBots(time) {
     for (const bot of bots) {
       if (bot.dead) continue;
+      drawBossTelegraph(bot);
       if (!MOBILE_QUALITY && bot.boss && bot.bossPhaseTransitioning) {
         const point = toScreen(bot.x, bot.y);
         const radius = bot.radius * camera.zoom;

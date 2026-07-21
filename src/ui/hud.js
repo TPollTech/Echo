@@ -64,7 +64,16 @@
     workshopResonance: document.querySelector("#workshop-resonance"),
     upgradeCards: document.querySelector("#upgrade-cards"),
     workshopClose: document.querySelector("#workshop-close"),
-    workshopButton: document.querySelector("#workshop-button")
+    workshopButton: document.querySelector("#workshop-button"),
+    skillShop: document.querySelector("#skillshop-screen"),
+    skillShopPoints: document.querySelector("#skillshop-points"),
+    skillShopCards: document.querySelector("#skillshop-cards"),
+    skillShopClose: document.querySelector("#skillshop-close"),
+    skillShopButton: document.querySelector("#skillshop-button"),
+    loadoutScreen: document.querySelector("#loadout-screen"),
+    loadoutSlots: document.querySelector("#loadout-slots"),
+    loadoutAvailable: document.querySelector("#loadout-available"),
+    loadoutConfirm: document.querySelector("#loadout-confirm")
   };
 
 /*__ECHO_SECTION_END:0002__*/

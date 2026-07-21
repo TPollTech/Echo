@@ -110,6 +110,11 @@
       }
     }
 
+    if (player.overloadActive && hasAttack) {
+      player.overloadActive = false;
+      player.overloadTimer = 0;
+      player.trailDamage /= 3;
+    }
     if (player.arrivalNova && hasAttack) {
       arrivalNova(player.x, player.y);
     }

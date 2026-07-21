@@ -3,7 +3,10 @@
   async function loadProfile() {
     try {
       const profile = await requestJson(`/api/profile?name=${encodeURIComponent(sanitizeName(ui.name.value))}`);
-      ui.profileSummary.innerHTML = `<strong>RECORDE SOLO ${profile.solo.best_score}</strong> · ${profile.solo.runs} RUNS · <strong>${profile.multiplayer.total_kills} RUPTURAS ONLINE</strong> · <strong style="color:#ffd86b">${profile.resonance} ♦</strong>`;
+      ui.profileSummary.innerHTML = `<strong>RECORDE SOLO ${profile.solo.best_score}</strong> · ${profile.solo.runs} RUNS · <strong>${profile.multiplayer.total_kills} RUPTURAS ONLINE</strong> · <strong style="color:#ffd86b">${profile.resonance} ♦</strong> · <strong style="color:#45e6ff">${profile.skillPoints} ◈</strong>`;
+      playerSkillPoints = profile.skillPoints || 0;
+      playerOwnedMutations = profile.ownedMutations || {};
+      playerLoadout = profile.loadout || [null, null, null, null];
     } catch {
       ui.profileSummary.textContent = "Inicie com npm start para ativar banco local e multiplayer.";
     }
@@ -69,6 +72,91 @@
         card.addEventListener("click", () => purchaseUpgrade(type));
       }
       ui.upgradeCards.append(card);
+    }
+  }
+
+  const SKILL_MUTATION_COSTS = [8, 12, 12, 10, 14, 10, 8, 10, 14, 12, 14, 12, 10, 16, 14, 14, 16];
+  const SKILL_UPGRADE_COSTS = [[20, 35], [28, 48], [28, 48], [22, 38], [32, 55], [22, 38], [18, 30], [22, 38], [32, 55], [28, 48], [32, 55], [28, 48], [22, 38], [36, 62], [32, 55], [32, 55], [36, 62]];
+
+  function openSkillShop() {
+    updateSkillShopUI();
+    ui.skillShop.classList.remove("is-hidden");
+    sound(262, 0.3, "sine", 0.03);
+  }
+
+  function closeSkillShop() {
+    ui.skillShop.classList.add("is-hidden");
+    loadProfile();
+  }
+
+  function updateSkillShopUI() {
+    if (ui.skillShopPoints) ui.skillShopPoints.textContent = playerSkillPoints;
+    if (!ui.skillShopCards) return;
+    ui.skillShopCards.replaceChildren();
+    for (let i = 0; i < mutations.length; i++) {
+      const mutation = mutations[i];
+      const owned = playerOwnedMutations[mutation.id];
+      const isOwned = !!owned;
+      const level = owned || 0;
+      const isMaxed = level >= 3;
+      let cost = 0;
+      let canAfford = false;
+      let action = "";
+      if (!isOwned) {
+        cost = SKILL_MUTATION_COSTS[i];
+        canAfford = playerSkillPoints >= cost;
+        action = "DESBLOQUEAR";
+      } else if (!isMaxed) {
+        cost = SKILL_UPGRADE_COSTS[i][level - 1];
+        canAfford = playerSkillPoints >= cost;
+        action = `UPGRADE NÍVEL ${["I", "II", "III"][level]}`;
+      }
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = `skill-card${isMaxed ? " is-maxed" : ""}${!isOwned ? " is-locked" : ""}`;
+      card.style.setProperty("--card-color", mutation.color);
+      card.innerHTML = `
+        <span class="mutation-symbol" aria-hidden="true">${mutation.symbol}</span>
+        <small>${mutation.tag}</small>
+        <h3>${mutation.name}</h3>
+        <p>${isOwned ? mutation.tiers[level - 1]?.desc || mutation.description : mutation.description}</p>
+        <div class="level-bar">${Array.from({ length: 3 }, (_, i) => `<div class="level-pip${i < level ? " is-filled" : ""}" style="--pip-color:${mutation.color}"></div>`).join("")}</div>
+        <span class="cost">${isMaxed ? "MÁXIMO" : `${cost} ◈`}</span>
+      `;
+      if (!isMaxed && canAfford) {
+        card.addEventListener("click", () => purchaseSkillMutation(mutation.id));
+      }
+      ui.skillShopCards.append(card);
+    }
+  }
+
+  async function purchaseSkillMutation(mutationId) {
+    try {
+      const endpoint = playerOwnedMutations[mutationId] ? "/api/shop/upgrade" : "/api/shop/purchase";
+      const data = await requestJson(endpoint, {
+        method: "POST",
+        body: JSON.stringify({ name: sanitizeName(ui.name.value), mutationId })
+      });
+      playerSkillPoints = data.skillPoints;
+      playerOwnedMutations = data.mutations;
+      updateSkillShopUI();
+      sound(520, 0.25, "triangle", 0.04);
+      loadProfile();
+    } catch (e) {
+      showToast(e.message, 2000);
+    }
+  }
+
+  async function saveLoadoutToServer() {
+    try {
+      const data = await requestJson("/api/shop/loadout", {
+        method: "POST",
+        body: JSON.stringify({ name: sanitizeName(ui.name.value), slots: playerLoadout })
+      });
+      playerLoadout = data.loadout;
+      showToast("LOADOUT SALVA", 1200);
+    } catch (e) {
+      showToast(e.message, 2000);
     }
   }
 

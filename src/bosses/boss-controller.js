@@ -34,7 +34,12 @@
       speed: phase0.speed,
       attackDamage: phase0.attackDamage,
       cooldown: 1.2,
-      respawnTimer: 0
+      respawnTimer: 0,
+      telegraphType: null,
+      telegraphTimer: 0,
+      telegraphMaxTimer: 0,
+      telegraphRadius: 0,
+      telegraphProjectiles: 0
     });
   }
 
@@ -110,6 +115,8 @@
     bot.dead = true;
     bot.phasing = false;
     bot.phase = null;
+    bot.telegraphType = null;
+    bot.telegraphTimer = 0;
     bot.respawnTimer = bot.boss || bot.bossClone || bot.noRespawn ? Number.POSITIVE_INFINITY : random(4.5, 7.5);
     scars.push({ x: bot.x, y: bot.y, hue: bot.hue, life: 18, maxLife: 18, radius: bot.radius * 2.5 });
     burst(bot.x, bot.y, bot.hue, bot.prismaIllusion ? 8 : 28);
@@ -171,6 +178,30 @@
       activeBoss = null;
       runStats.bossDefeated = 1;
       if (runTime < 90) runStats.bossSpeedKill = 1;
+      const bossRewards = {
+        "coroa-vazia": { motes: 20, bonusScore: 150, toast: "A COROA VAZIA FOI ROMPIDA // RECOMPENSA COLETADA" },
+        "espectro-decisivo": { motes: 22, bonusScore: 180, toast: "O ESPECTRO DECISIVO SE DISSOLVE // RECOMPENSA COLETADA" },
+        "tremor-deep": { motes: 24, bonusScore: 200, toast: "O TREMOR DEEP CESOU // RECOMPENSA COLETADA" },
+        "necrostro": { motes: 18, bonusScore: 160, toast: "O NECRÓSTRO RETORNA AO SILÊNCIO // RECOMPENSA COLETADA" },
+        "vortice": { motes: 20, bonusScore: 190, toast: "O VÓRVICE COLAPSOU // RECOMPENSA COLETADA" },
+        "cicatriz": { motes: 18, bonusScore: 170, toast: "A CICATRIZ SAROU // RECOMPENSA COLETADA" },
+        "mimico": { motes: 16, bonusScore: 155, toast: "O ESPELHO QUEBROU // RECOMPENSA COLETADA" },
+        "prisma": { motes: 22, bonusScore: 210, toast: "OS FRAGMENTOS SE DISPERSARAM // RECOMPENSA COLETADA" },
+        "silenciador": { motes: 20, bonusScore: 175, toast: "O SILÊNCIO FOI ROMPIDO // RECOMPENSA COLETADA" }
+      };
+      const reward = bossRewards[bot.archetype];
+      if (reward) {
+        player.score += reward.bonusScore;
+        runStats.score = Math.floor(player.score);
+        for (let i = 0; i < reward.motes; i++) {
+          const mote = createMote();
+          mote.x = clamp(bot.x + random(-65, 65), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+          mote.y = clamp(bot.y + random(-65, 65), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+          mote.type = i < 4 ? "gold" : i < 6 ? "red" : Math.random() > 0.4 ? "violet" : "cyan";
+          motes.push(mote);
+        }
+        showToast(reward.toast, 2800);
+      }
       window.setTimeout(() => finishSolo("victory"), 900);
     }
   }
@@ -192,6 +223,8 @@
       bot.bossPhaseIndex = nextPhaseIndex;
       bot.bossPhaseTransitioning = true;
       bot.bossPhaseTimer = 1.5;
+      bot.telegraphType = null;
+      bot.telegraphTimer = 0;
       const phase = phases[nextPhaseIndex];
       bot.roleLabel = phase.label;
       bot.speed = phase.speed;

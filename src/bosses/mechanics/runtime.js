@@ -171,30 +171,150 @@
     (prismaAspectHandlers[bot.prismaAspect] || prismaAspectHandlers.red)();
   }
 
+  function fireRadialBurst(bot) {
+    const phaseIndex = bot.bossPhaseIndex;
+    const count = phaseIndex >= 2 ? 16 : phaseIndex >= 1 ? 12 : 8;
+    const speed = 210 + phaseIndex * 35;
+    const damage = Math.floor(bot.attackDamage * (0.45 + phaseIndex * 0.1));
+    const radius = 12 + phaseIndex * 3;
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * TAU;
+      projectiles.push({
+        x: bot.x,
+        y: bot.y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        hue: bot.hue,
+        life: 1.8,
+        maxLife: 1.8,
+        radius,
+        damage,
+        owner: bot,
+        boss: true
+      });
+    }
+    spawnWave(bot.x, bot.y, bot.hue, 180 + phaseIndex * 40, 0.7);
+    burst(bot.x, bot.y, bot.hue, 22 + phaseIndex * 6);
+    sound(55, 0.35, "sawtooth", 0.065);
+  }
+
+  function fireDashAttack(bot) {
+    const angle = Math.atan2(player.y - bot.y, player.x - bot.x);
+    const dist = Math.hypot(player.x - bot.x, player.y - bot.y) || 1;
+    const travel = Math.min(dist + 80, 400);
+    const phaseVelocity = 480;
+    bot.phasing = true;
+    bot.phase = {
+      x: bot.x,
+      y: bot.y,
+      vx: (Math.cos(angle)) * phaseVelocity,
+      vy: (Math.sin(angle)) * phaseVelocity,
+      targetX: bot.x + Math.cos(angle) * travel,
+      targetY: bot.y + Math.sin(angle) * travel,
+      life: clamp(travel / phaseVelocity, 0.3, 0.9),
+      points: [{ x: bot.x, y: bot.y }],
+      attackTarget: null
+    };
+    bot.energy -= 35;
+    spawnWave(bot.x, bot.y, bot.hue, 40, 0.4);
+    sound(110, 0.2, "triangle", 0.045);
+  }
+
   const bossMechanicRegistry = Object.freeze({
+    "coroa-vazia": Object.freeze({
+      update(bot, dt) {
+        if (bot.cooldown > 0 || bot.energy <= 30) return;
+        if (!bot.telegraphType) {
+          const useDash = bot.bossPhaseIndex >= 1 && Math.random() < 0.3;
+          bot.telegraphType = useDash ? "dash" : "radial-burst";
+          bot.telegraphTimer = 1.2;
+          bot.telegraphMaxTimer = 1.2;
+          bot.telegraphRadius = useDash ? 350 : 160;
+          bot.telegraphProjectiles = bot.bossPhaseIndex >= 2 ? 16 : bot.bossPhaseIndex >= 1 ? 12 : 8;
+          sound(82, 0.25, "triangle", 0.04);
+          return;
+        }
+        bot.telegraphTimer -= dt;
+        if (bot.telegraphTimer <= 0) {
+          const type = bot.telegraphType;
+          bot.telegraphType = null;
+          bot.telegraphTimer = 0;
+          if (type === "radial-burst") {
+            fireRadialBurst(bot);
+          } else if (type === "dash") {
+            fireDashAttack(bot);
+          }
+          bot.cooldown = bot.bossPhaseIndex >= 2 ? random(3, 4.5) : bot.bossPhaseIndex >= 1 ? random(4, 6) : random(5.5, 8);
+          bot.energy -= 30;
+        }
+      }
+    }),
     "tremor-deep": Object.freeze({
       update(bot, _dt, context) {
-        if (bot.bossPhaseIndex < 1 || bot.cooldown > 0 || context.distToPlayer >= 200 || bot.energy <= 30) return;
-        spawnWave(bot.x, bot.y, bot.hue, 160, 0.6);
-        burst(bot.x, bot.y, bot.hue, 18);
-        sound(40, 0.3, "sawtooth", 0.05);
-        const dx = player.x - bot.x;
-        const dy = player.y - bot.y;
-        const distance = Math.hypot(dx, dy) || 1;
-        if (distance < 160) damagePlayer(Math.floor(bot.attackDamage * 0.6), bot.x, bot.y);
-        bot.cooldown = bot.bossPhaseIndex >= 2 ? random(2.5, 4) : random(4, 6);
-        bot.energy -= 30;
+        if (bot.bossPhaseIndex < 1 || bot.energy <= 30) return;
+        if (!bot.telegraphType && context.distToPlayer < 220 && bot.cooldown <= 0) {
+          bot.telegraphType = "area-slam";
+          bot.telegraphTimer = 0.9;
+          bot.telegraphMaxTimer = 0.9;
+          bot.telegraphRadius = 200;
+          sound(40, 0.2, "sawtooth", 0.04);
+          return;
+        }
+        if (bot.telegraphType) {
+          bot.telegraphTimer -= _dt;
+          if (bot.telegraphTimer <= 0) {
+            bot.telegraphType = null;
+            bot.telegraphTimer = 0;
+            spawnWave(bot.x, bot.y, bot.hue, 160, 0.6);
+            burst(bot.x, bot.y, bot.hue, 18);
+            sound(40, 0.3, "sawtooth", 0.05);
+            const dx = player.x - bot.x;
+            const dy = player.y - bot.y;
+            const distance = Math.hypot(dx, dy) || 1;
+            if (distance < 200) damagePlayer(Math.floor(bot.attackDamage * 0.6), bot.x, bot.y);
+            for (const otherBot of bots) {
+              if (otherBot === bot || otherBot.dead) continue;
+              const dxb = otherBot.x - bot.x;
+              const dyb = otherBot.y - bot.y;
+              const distB = Math.hypot(dxb, dyb) || 1;
+              if (distB < 200) {
+                otherBot.health -= 12;
+                otherBot.vx += (dxb / distB) * 200;
+                otherBot.vy += (dyb / distB) * 200;
+                otherBot.hitTimer = 0.15;
+                if (otherBot.health <= 0) killBot(otherBot, bot);
+              }
+            }
+            bot.cooldown = bot.bossPhaseIndex >= 2 ? random(2.5, 4) : random(4, 6);
+            bot.energy -= 30;
+          }
+        }
       }
     }),
     "espectro-decisivo": Object.freeze({
       update(bot) {
-        if (bot.bossClone || Math.random() >= 0.02 * (bot.bossPhaseIndex + 1)) return;
-        for (const clone of bots) {
-          if (clone === bot || !clone.bossClone || clone.dead) continue;
-          clone.x = clamp(player.x + random(-80, 80), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-          clone.y = clamp(player.y + random(-80, 80), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-          burst(clone.x, clone.y, clone.hue, 12);
-          sound(330, 0.2, "triangle", 0.04);
+        if (bot.bossClone) return;
+        if (!bot.telegraphType && Math.random() < 0.025 * (bot.bossPhaseIndex + 1)) {
+          bot.telegraphType = "area-slam";
+          bot.telegraphTimer = 0.8;
+          bot.telegraphMaxTimer = 0.8;
+          bot.telegraphRadius = 90;
+          sound(330, 0.15, "triangle", 0.03);
+          return;
+        }
+        if (bot.telegraphType) {
+          bot.telegraphTimer -= 1 / 60;
+          if (bot.telegraphTimer <= 0) {
+            bot.telegraphType = null;
+            bot.telegraphTimer = 0;
+            for (const clone of bots) {
+              if (clone === bot || !clone.bossClone || clone.dead) continue;
+              clone.x = clamp(player.x + random(-80, 80), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+              clone.y = clamp(player.y + random(-80, 80), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+              burst(clone.x, clone.y, clone.hue, 12);
+              sound(330, 0.2, "triangle", 0.04);
+            }
+          }
         }
       }
     }),

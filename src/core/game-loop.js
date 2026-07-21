@@ -10,6 +10,7 @@
     runStats.runTime = runTime;
     updatePlayer(dt);
     updateBots(dt);
+    updateSkills(dt);
     updateSoloDirector();
     updateEffects(dt);
     updateCamera(dt);

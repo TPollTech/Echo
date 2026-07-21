@@ -82,7 +82,16 @@
     workshopResonance: document.querySelector("#workshop-resonance"),
     upgradeCards: document.querySelector("#upgrade-cards"),
     workshopClose: document.querySelector("#workshop-close"),
-    workshopButton: document.querySelector("#workshop-button")
+    workshopButton: document.querySelector("#workshop-button"),
+    skillShop: document.querySelector("#skillshop-screen"),
+    skillShopPoints: document.querySelector("#skillshop-points"),
+    skillShopCards: document.querySelector("#skillshop-cards"),
+    skillShopClose: document.querySelector("#skillshop-close"),
+    skillShopButton: document.querySelector("#skillshop-button"),
+    loadoutScreen: document.querySelector("#loadout-screen"),
+    loadoutSlots: document.querySelector("#loadout-slots"),
+    loadoutAvailable: document.querySelector("#loadout-available"),
+    loadoutConfirm: document.querySelector("#loadout-confirm")
   };
 
   const MOTE_COUNT = 330;
@@ -133,11 +142,18 @@
       tag: "OFENSIVA",
       symbol: "⟋",
       color: "#ff4fd8",
-      description: "O rastro rompido causa 40% mais dano e permanece perigoso por um instante.",
-      apply(player) {
-        player.trailDamage *= 1.4;
-        player.ribbonLife += 0.28;
-        player.trailLinger = 0.38;
+      description: "O rastro rompido causa mais dano e permanece perigoso por um instante.",
+      tiers: [
+        { label: "I", desc: "+40% dano de rastro, +0.28 ribbonLife" },
+        { label: "II", desc: "+60% dano de rastro, +0.42 ribbonLife" },
+        { label: "III", desc: "+85% dano de rastro, +0.55 ribbonLife, rastro persistente" }
+      ],
+      apply(player, level = 1) {
+        const m = [1.4, 1.6, 1.85][level - 1];
+        const r = [0.28, 0.42, 0.55][level - 1];
+        player.trailDamage *= m;
+        player.ribbonLife += r;
+        player.trailLinger = [0.38, 0.48, 0.6][level - 1];
       }
     },
     {
@@ -146,8 +162,13 @@
       tag: "DEFESA",
       symbol: "◇",
       color: "#a88cff",
-      description: "Seu núcleo abandonado recebe 55% menos dano enquanto você está projetado.",
-      apply(player) { player.shellDefense = 0.45; }
+      description: "Seu núcleo abandonado recebe menos dano enquanto você está projetado.",
+      tiers: [
+        { label: "I", desc: "55% menos dano ao núcleo" },
+        { label: "II", desc: "65% menos dano ao núcleo" },
+        { label: "III", desc: "78% menos dano ao núcleo" }
+      ],
+      apply(player, level = 1) { player.shellDefense = [0.45, 0.35, 0.22][level - 1]; }
     },
     {
       id: "siphon",
@@ -155,8 +176,16 @@
       tag: "SUSTENTAÇÃO",
       symbol: "⌁",
       color: "#45e6ff",
-      description: "Cada inimigo atravessado devolve carga e restaura uma parte da integridade.",
-      apply(player) { player.siphon = true; }
+      description: "Cada inimigo atravessado devolve carga e restaura integridade.",
+      tiers: [
+        { label: "I", desc: "Restaura carga e vida ao atravessar" },
+        { label: "II", desc: "Restaura +40% mais carga e vida" },
+        { label: "III", desc: "Restaura +80% mais carga e vida" }
+      ],
+      apply(player, level = 1) {
+        player.siphon = true;
+        player.siphonBonus = [1, 1.4, 1.8][level - 1];
+      }
     },
     {
       id: "drift",
@@ -164,8 +193,16 @@
       tag: "MOBILIDADE",
       symbol: "≫",
       color: "#78ffba",
-      description: "A projeção se move 18% mais rápido e consome 25% menos carga.",
-      apply(player) { player.phaseSpeed *= 1.18; player.phaseDrain *= 0.75; }
+      description: "A projeção se move mais rápido e consome menos carga.",
+      tiers: [
+        { label: "I", desc: "+18% velocidade, -25% carga" },
+        { label: "II", desc: "+28% velocidade, -35% carga" },
+        { label: "III", desc: "+40% velocidade, -48% carga" }
+      ],
+      apply(player, level = 1) {
+        player.phaseSpeed *= [1.18, 1.28, 1.4][level - 1];
+        player.phaseDrain *= [0.75, 0.65, 0.52][level - 1];
+      }
     },
     {
       id: "nova",
@@ -173,8 +210,16 @@
       tag: "CONTROLE",
       symbol: "✦",
       color: "#ffd86b",
-      description: "Ao materializar, uma onda empurra e fere sinais próximos ao ponto de chegada.",
-      apply(player) { player.arrivalNova = true; }
+      description: "Ao materializar, uma onda empurra e fere sinais próximos.",
+      tiers: [
+        { label: "I", desc: "Onda de dano ao materializar" },
+        { label: "II", desc: "+50% raio da nova" },
+        { label: "III", desc: "+100% raio da nova, +30% dano" }
+      ],
+      apply(player, level = 1) {
+        player.arrivalNova = true;
+        player.novaRadiusBonus = [1, 1.5, 2][level - 1];
+      }
     },
     {
       id: "reweave",
@@ -183,7 +228,15 @@
       symbol: "∞",
       color: "#ff8cb7",
       description: "Fragmentos restauram integridade. Combos longos aceleram a regeneração.",
-      apply(player) { player.moteHealing = true; }
+      tiers: [
+        { label: "I", desc: "Fragmentos curam ao coletar" },
+        { label: "II", desc: "+50% cura por fragmento" },
+        { label: "III", desc: "+100% cura por fragmento" }
+      ],
+      apply(player, level = 1) {
+        player.moteHealing = true;
+        player.healScale = [1, 1.5, 2][level - 1];
+      }
     },
     {
       id: "focus",
@@ -191,8 +244,13 @@
       tag: "PRECISÃO",
       symbol: "◎",
       color: "#72f1ff",
-      description: "Rupturas recalibram 35% mais rápido, favorecendo ataques precisos em sequência.",
-      apply(player) { player.cooldownScale *= 0.65; }
+      description: "Rupturas recalibram mais rápido, favorecendo ataques precisos em sequência.",
+      tiers: [
+        { label: "I", desc: "-35% cooldown" },
+        { label: "II", desc: "-48% cooldown" },
+        { label: "III", desc: "-60% cooldown" }
+      ],
+      apply(player, level = 1) { player.cooldownScale *= [0.65, 0.52, 0.4][level - 1]; }
     },
     {
       id: "gravity",
@@ -201,7 +259,12 @@
       symbol: "◉",
       color: "#b792ff",
       description: "Fragmentos próximos são atraídos pelo núcleo e pelo eco projetado.",
-      apply(player) { player.pickupRadius += 34; }
+      tiers: [
+        { label: "I", desc: "+34px raio de coleta" },
+        { label: "II", desc: "+52px raio de coleta" },
+        { label: "III", desc: "+72px raio de coleta" }
+      ],
+      apply(player, level = 1) { player.pickupRadius += [34, 52, 72][level - 1]; }
     },
     {
       id: "resonance",
@@ -210,7 +273,15 @@
       symbol: "⌾",
       color: "#ff6f91",
       description: "Cada ruptura restaura integridade e preenche uma grande parte da carga.",
-      apply(player) { player.killRestore = true; }
+      tiers: [
+        { label: "I", desc: "Rupturas restauram vida e carga" },
+        { label: "II", desc: "+50% restauração por ruptura" },
+        { label: "III", desc: "+100% restauração por ruptura" }
+      ],
+      apply(player, level = 1) {
+        player.killRestore = true;
+        player.killRestoreHealBonus = [1, 1.5, 2][level - 1];
+      }
     },
     {
       id: "afterimage",
@@ -219,7 +290,15 @@
       symbol: "≋",
       color: "#ef74ff",
       description: "O rastro permanece no campo por mais tempo e conserva sua zona de perigo.",
-      apply(player) { player.ribbonLife += 0.45; player.trailLinger += 0.22; }
+      tiers: [
+        { label: "I", desc: "+0.45 ribbonLife, +0.22 linger" },
+        { label: "II", desc: "+0.65 ribbonLife, +0.35 linger" },
+        { label: "III", desc: "+0.9 ribbonLife, +0.5 linger" }
+      ],
+      apply(player, level = 1) {
+        player.ribbonLife += [0.45, 0.65, 0.9][level - 1];
+        player.trailLinger += [0.22, 0.35, 0.5][level - 1];
+      }
     },
     {
       id: "overclock",
@@ -228,7 +307,16 @@
       symbol: "ϟ",
       color: "#ff725e",
       description: "Projeções ficam mais velozes e causam mais dano, mas consomem carga adicional.",
-      apply(player) { player.phaseSpeed *= 1.12; player.trailDamage *= 1.25; player.phaseDrain *= 1.15; }
+      tiers: [
+        { label: "I", desc: "+12% vel, +25% dano, +15% carga" },
+        { label: "II", desc: "+20% vel, +40% dano, +12% carga" },
+        { label: "III", desc: "+30% vel, +60% dano, +8% carga" }
+      ],
+      apply(player, level = 1) {
+        player.phaseSpeed *= [1.12, 1.2, 1.3][level - 1];
+        player.trailDamage *= [1.25, 1.4, 1.6][level - 1];
+        player.phaseDrain *= [1.15, 1.12, 1.08][level - 1];
+      }
     },
     {
       id: "prism",
@@ -237,7 +325,12 @@
       symbol: "⬡",
       color: "#7fffc8",
       description: "Ao materializar após um ataque, você recebe uma breve janela de proteção.",
-      apply(player) { player.arrivalGuard = 0.7; }
+      tiers: [
+        { label: "I", desc: "0.7s de proteção ao materializar" },
+        { label: "II", desc: "1.0s de proteção ao materializar" },
+        { label: "III", desc: "1.4s de proteção ao materializar" }
+      ],
+      apply(player, level = 1) { player.arrivalGuard = [0.7, 1.0, 1.4][level - 1]; }
     },
     {
       id: "chain",
@@ -245,8 +338,17 @@
       tag: "EXECUÇÃO",
       symbol: "⚡",
       color: "#ffe066",
-      description: "Rupturas em sequência (2s) causam +30% de dano cumulativo por combo.",
-      apply(player) { player.chainDamage = true; }
+      description: "Rupturas em sequência causam dano cumulativo por combo.",
+      tiers: [
+        { label: "I", desc: "+30% dano por combo (2s)" },
+        { label: "II", desc: "+45% dano por combo (2.5s)" },
+        { label: "III", desc: "+65% dano por combo (3s)" }
+      ],
+      apply(player, level = 1) {
+        player.chainDamage = true;
+        player.chainWindow = [2, 2.5, 3][level - 1];
+        player.chainMaxStacks = [5, 7, 10][level - 1];
+      }
     },
     {
       id: "ghostwall",
@@ -255,7 +357,16 @@
       symbol: "◈",
       color: "#c8b8ff",
       description: "Ao receber dano fatal, sobrevive com 1 HP. Ativa-se apenas uma vez por run.",
-      apply(player) { player.ghostWall = true; player.ghostWallUsed = false; }
+      tiers: [
+        { label: "I", desc: "Sobrevive com 1 HP uma vez" },
+        { label: "II", desc: "Sobrevive + onda de dano ao redor" },
+        { label: "III", desc: "Sobrevive + nova explosiva + 2s de invulnerabilidade" }
+      ],
+      apply(player, level = 1) {
+        player.ghostWall = true;
+        player.ghostWallUsed = false;
+        player.ghostwallNova = level >= 2;
+      }
     },
     {
       id: "vortex",
@@ -263,8 +374,16 @@
       tag: "CONTROLE",
       symbol: "⊛",
       color: "#5ce0d2",
-      description: "O eco projetado atrai inimigos próximos durante a projeção, puxando-os para o rastro.",
-      apply(player) { player.vortexPull = true; }
+      description: "O eco projetado atrai inimigos próximos durante a projeção.",
+      tiers: [
+        { label: "I", desc: "Atrai inimigos durante projeção" },
+        { label: "II", desc: "+50% força de atração" },
+        { label: "III", desc: "+100% força de atração, +30% raio" }
+      ],
+      apply(player, level = 1) {
+        player.vortexPull = true;
+        player.vortexPullBonus = [1, 1.5, 2][level - 1];
+      }
     },
     {
       id: "reversal",
@@ -272,8 +391,16 @@
       tag: "RISCO",
       symbol: "⊘",
       color: "#ff5a5a",
-      description: "Dano recebido é parcialmente devolvido ao atacante, mas cura é reduzida em 40%.",
-      apply(player) { player.reversal = true; player.healScale *= 0.6; }
+      description: "Dano recebido é parcialmente devolvido ao atacante, mas cura é reduzida.",
+      tiers: [
+        { label: "I", desc: "30% reflexão, -40% cura" },
+        { label: "II", desc: "45% reflexão, -30% cura" },
+        { label: "III", desc: "60% reflexão, -20% cura" }
+      ],
+      apply(player, level = 1) {
+        player.reversal = true;
+        player.healScale *= [0.6, 0.7, 0.8][level - 1];
+      }
     },
     {
       id: "dualphase",
@@ -281,8 +408,17 @@
       tag: "MOBILIDADE",
       symbol: "⟐",
       color: "#88ddff",
-      description: "Pode projetar o eco duas vezes antes de recalibrar. O cooldown só aplica no 2º uso.",
-      apply(player) { player.dualPhase = true; player.dualPhaseCharges = 2; player.dualPhaseUsed = 0; }
+      description: "Pode projetar o eco duas vezes antes de recalibrar.",
+      tiers: [
+        { label: "I", desc: "2 projeções antes de cooldown" },
+        { label: "II", desc: "3 projeções antes de cooldown" },
+        { label: "III", desc: "3 projeções, -20% cooldown no 2º uso" }
+      ],
+      apply(player, level = 1) {
+        player.dualPhase = true;
+        player.dualPhaseCharges = [2, 3, 3][level - 1];
+        player.dualPhaseUsed = 0;
+      }
     }
   ];
 
@@ -547,6 +683,11 @@
   let playerUpgrades = { core: 0, charge: 0, calibration: 0, collection: 0, regeneration: 0 };
   let playerResonance = 0;
   let pendingResonance = 0;
+  let playerSkillPoints = 0;
+  let playerOwnedMutations = {};
+  let playerLoadout = [null, null, null, null];
+  let pendingSkillPoints = 0;
+
   let bossDefeatedThisRun = false;
   let activeBoss = null;
 
@@ -928,7 +1069,11 @@
       mutationBaseline: null,
       damageDebuff: 1,
       mutations: [],
-      nextMutationIndex: 0
+      nextMutationIndex: 0,
+      barrierActive: false,
+      barrierTimer: 0,
+      overloadActive: false,
+      overloadTimer: 0
     };
   }
 
@@ -1015,7 +1160,12 @@
       speed: phase0.speed,
       attackDamage: phase0.attackDamage,
       cooldown: 1.2,
-      respawnTimer: 0
+      respawnTimer: 0,
+      telegraphType: null,
+      telegraphTimer: 0,
+      telegraphMaxTimer: 0,
+      telegraphRadius: 0,
+      telegraphProjectiles: 0
     });
   }
 
@@ -1065,6 +1215,7 @@
     flash = 0;
     mutationPending = false;
     updateMutationSlots();
+    initSkills();
     updateLeaderboard();
     updateHud();
   }
@@ -1506,7 +1657,10 @@
   async function loadProfile() {
     try {
       const profile = await requestJson(`/api/profile?name=${encodeURIComponent(sanitizeName(ui.name.value))}`);
-      ui.profileSummary.innerHTML = `<strong>RECORDE SOLO ${profile.solo.best_score}</strong> · ${profile.solo.runs} RUNS · <strong>${profile.multiplayer.total_kills} RUPTURAS ONLINE</strong> · <strong style="color:#ffd86b">${profile.resonance} ♦</strong>`;
+      ui.profileSummary.innerHTML = `<strong>RECORDE SOLO ${profile.solo.best_score}</strong> · ${profile.solo.runs} RUNS · <strong>${profile.multiplayer.total_kills} RUPTURAS ONLINE</strong> · <strong style="color:#ffd86b">${profile.resonance} ♦</strong> · <strong style="color:#45e6ff">${profile.skillPoints} ◈</strong>`;
+      playerSkillPoints = profile.skillPoints || 0;
+      playerOwnedMutations = profile.ownedMutations || {};
+      playerLoadout = profile.loadout || [null, null, null, null];
     } catch {
       ui.profileSummary.textContent = "Inicie com npm start para ativar banco local e multiplayer.";
     }
@@ -1575,6 +1729,91 @@
     }
   }
 
+  const SKILL_MUTATION_COSTS = [8, 12, 12, 10, 14, 10, 8, 10, 14, 12, 14, 12, 10, 16, 14, 14, 16];
+  const SKILL_UPGRADE_COSTS = [[20, 35], [28, 48], [28, 48], [22, 38], [32, 55], [22, 38], [18, 30], [22, 38], [32, 55], [28, 48], [32, 55], [28, 48], [22, 38], [36, 62], [32, 55], [32, 55], [36, 62]];
+
+  function openSkillShop() {
+    updateSkillShopUI();
+    ui.skillShop.classList.remove("is-hidden");
+    sound(262, 0.3, "sine", 0.03);
+  }
+
+  function closeSkillShop() {
+    ui.skillShop.classList.add("is-hidden");
+    loadProfile();
+  }
+
+  function updateSkillShopUI() {
+    if (ui.skillShopPoints) ui.skillShopPoints.textContent = playerSkillPoints;
+    if (!ui.skillShopCards) return;
+    ui.skillShopCards.replaceChildren();
+    for (let i = 0; i < mutations.length; i++) {
+      const mutation = mutations[i];
+      const owned = playerOwnedMutations[mutation.id];
+      const isOwned = !!owned;
+      const level = owned || 0;
+      const isMaxed = level >= 3;
+      let cost = 0;
+      let canAfford = false;
+      let action = "";
+      if (!isOwned) {
+        cost = SKILL_MUTATION_COSTS[i];
+        canAfford = playerSkillPoints >= cost;
+        action = "DESBLOQUEAR";
+      } else if (!isMaxed) {
+        cost = SKILL_UPGRADE_COSTS[i][level - 1];
+        canAfford = playerSkillPoints >= cost;
+        action = `UPGRADE NÍVEL ${["I", "II", "III"][level]}`;
+      }
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = `skill-card${isMaxed ? " is-maxed" : ""}${!isOwned ? " is-locked" : ""}`;
+      card.style.setProperty("--card-color", mutation.color);
+      card.innerHTML = `
+        <span class="mutation-symbol" aria-hidden="true">${mutation.symbol}</span>
+        <small>${mutation.tag}</small>
+        <h3>${mutation.name}</h3>
+        <p>${isOwned ? mutation.tiers[level - 1]?.desc || mutation.description : mutation.description}</p>
+        <div class="level-bar">${Array.from({ length: 3 }, (_, i) => `<div class="level-pip${i < level ? " is-filled" : ""}" style="--pip-color:${mutation.color}"></div>`).join("")}</div>
+        <span class="cost">${isMaxed ? "MÁXIMO" : `${cost} ◈`}</span>
+      `;
+      if (!isMaxed && canAfford) {
+        card.addEventListener("click", () => purchaseSkillMutation(mutation.id));
+      }
+      ui.skillShopCards.append(card);
+    }
+  }
+
+  async function purchaseSkillMutation(mutationId) {
+    try {
+      const endpoint = playerOwnedMutations[mutationId] ? "/api/shop/upgrade" : "/api/shop/purchase";
+      const data = await requestJson(endpoint, {
+        method: "POST",
+        body: JSON.stringify({ name: sanitizeName(ui.name.value), mutationId })
+      });
+      playerSkillPoints = data.skillPoints;
+      playerOwnedMutations = data.mutations;
+      updateSkillShopUI();
+      sound(520, 0.25, "triangle", 0.04);
+      loadProfile();
+    } catch (e) {
+      showToast(e.message, 2000);
+    }
+  }
+
+  async function saveLoadoutToServer() {
+    try {
+      const data = await requestJson("/api/shop/loadout", {
+        method: "POST",
+        body: JSON.stringify({ name: sanitizeName(ui.name.value), slots: playerLoadout })
+      });
+      playerLoadout = data.loadout;
+      showToast("LOADOUT SALVA", 1200);
+    } catch (e) {
+      showToast(e.message, 2000);
+    }
+  }
+
   function openWorkshop() {
     updateWorkshopUI();
     ui.workshop.classList.remove("is-hidden");
@@ -1584,6 +1823,81 @@
   function closeWorkshop() {
     ui.workshop.classList.add("is-hidden");
     loadProfile();
+  }
+
+  function showLoadoutScreen() {
+    state = "loadout";
+    renderLoadoutScreen();
+    ui.loadoutScreen.classList.remove("is-hidden");
+    sound(262, 0.35, "sine", 0.03);
+  }
+
+  function renderLoadoutScreen() {
+    if (!ui.loadoutSlots || !ui.loadoutAvailable) return;
+    ui.loadoutSlots.replaceChildren();
+    for (let i = 0; i < 4; i++) {
+      const slot = document.createElement("div");
+      slot.className = "loadout-slot";
+      const mutationId = playerLoadout[i];
+      if (mutationId) {
+        const mutation = mutations.find((m) => m.id === mutationId);
+        if (mutation) {
+          const level = playerOwnedMutations[mutationId] || 1;
+          slot.style.setProperty("--slot-color", mutation.color);
+          slot.innerHTML = `
+            <span class="mutation-symbol" aria-hidden="true">${mutation.symbol}</span>
+            <strong>${mutation.name}</strong>
+            <small>NÍVEL ${["I", "II", "III"][level - 1]} — ATIVA NO ${MUTATION_THRESHOLDS[i]}</small>
+            <button class="loadout-remove" data-slot="${i}" type="button">✕</button>
+          `;
+        }
+      } else {
+        slot.innerHTML = `<span class="slot-empty">SLOT ${i + 1}</span><small>SCORE ${MUTATION_THRESHOLDS[i]}</small>`;
+      }
+      ui.loadoutSlots.append(slot);
+    }
+    ui.loadoutSlots.querySelectorAll(".loadout-remove").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const slotIndex = Number(btn.dataset.slot);
+        playerLoadout[slotIndex] = null;
+        renderLoadoutScreen();
+      });
+    });
+
+    ui.loadoutAvailable.replaceChildren();
+    const ownedIds = Object.keys(playerOwnedMutations);
+    const equippedSet = new Set(playerLoadout.filter(Boolean));
+    for (const mutationId of ownedIds) {
+      if (equippedSet.has(mutationId)) continue;
+      const mutation = mutations.find((m) => m.id === mutationId);
+      if (!mutation) continue;
+      const level = playerOwnedMutations[mutationId] || 1;
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "mutation-card";
+      card.style.setProperty("--card-color", mutation.color);
+      card.innerHTML = `
+        <span class="mutation-symbol" aria-hidden="true">${mutation.symbol}</span>
+        <small>${mutation.tag} — NÍVEL ${["I", "II", "III"][level - 1]}</small>
+        <h3>${mutation.name}</h3>
+        <p>${mutation.tiers[level - 1]?.desc || mutation.description}</p>
+      `;
+      card.addEventListener("click", () => {
+        const emptySlot = playerLoadout.indexOf(null);
+        if (emptySlot === -1) {
+          showToast("TODOS OS SLOTS PREENCHIDOS", 1500);
+          return;
+        }
+        playerLoadout[emptySlot] = mutationId;
+        renderLoadoutScreen();
+        sound(330, 0.2, "triangle", 0.03);
+      });
+      ui.loadoutAvailable.append(card);
+    }
+    if (ownedIds.length === 0) {
+      ui.loadoutAvailable.innerHTML = `<p style="color:rgba(205,197,220,0.5);text-align:center;grid-column:1/-1;padding:20px">NENHUMA HABILIDADE DESBLOQUEADA. VISITE A LOJA DE HABILIDADES.</p>`;
+    }
   }
 
   async function refreshRooms() {
@@ -1806,6 +2120,7 @@
     ui.gameover.classList.add("is-hidden");
     ui.mutation.classList.add("is-hidden");
     ui.skin?.classList.add("is-hidden");
+    ui.loadoutScreen?.classList.add("is-hidden");
     document.getElementById("modifier-screen")?.classList.add("is-hidden");
     ui.start.classList.remove("is-hidden");
     document.body.classList.remove("is-playing");
@@ -1931,6 +2246,11 @@
       }
     }
 
+    if (player.overloadActive && hasAttack) {
+      player.overloadActive = false;
+      player.overloadTimer = 0;
+      player.trailDamage /= 3;
+    }
     if (player.arrivalNova && hasAttack) {
       arrivalNova(player.x, player.y);
     }
@@ -2015,6 +2335,15 @@
 
   function damagePlayer(amount, x, y) {
     if (activeMode !== "solo" || state !== "playing" || player.hitTimer > 0) return;
+    if (player.barrierActive) {
+      player.barrierActive = false;
+      player.barrierTimer = 0;
+      spawnWave(player.x, player.y, 270, 120, 0.6);
+      burst(player.x, player.y, 270, 16);
+      sound(440, 0.25, "triangle", 0.05);
+      showToast("BARRERA ABSORVEU O DANO", 1200);
+      return;
+    }
     const multiplier = player.phasing ? player.shellDefense : 1;
     let applied = amount * multiplier;
 
@@ -2106,6 +2435,239 @@
     if (bot.health <= 0) killBot(bot, attacker);
   }
 
+  const SKILL_DEFS = [
+    {
+      id: "pulse",
+      name: "PULSO",
+      symbol: "◉",
+      color: "#ff4fd8",
+      description: "Explosão radial ao redor do núcleo. Afasta e fere inimigos.",
+      cooldown: 5,
+      energyCost: 25,
+      execute(player) {
+        const radius = 130;
+        let hit = false;
+        for (const bot of bots) {
+          if (bot.dead) continue;
+          const dx = bot.x - player.x;
+          const dy = bot.y - player.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          if (dist < radius + bot.radius) {
+            const dmg = 18 + player.score * 0.02;
+            bot.health -= dmg;
+            bot.vx += (dx / dist) * 280;
+            bot.vy += (dy / dist) * 280;
+            bot.hitTimer = 0.2;
+            hit = true;
+            if (bot.boss) checkBossPhase(bot);
+            if (bot.health <= 0) killBot(bot, player);
+          }
+        }
+        spawnWave(player.x, player.y, player.hue, radius, 0.6);
+        burst(player.x, player.y, player.hue, 20);
+        sound(82, 0.3, "triangle", 0.06);
+        if (hit) sound(110, 0.2, "sawtooth", 0.04);
+        return true;
+      }
+    },
+    {
+      id: "blink",
+      name: "BLINK",
+      symbol: "⟿",
+      color: "#45e6ff",
+      description: "Teleporta curta distância na direção do cursor.",
+      cooldown: 4,
+      energyCost: 20,
+      execute(player) {
+        const angle = Math.atan2(pointer.y - height / 2, pointer.x - width / 2);
+        const dist = 160;
+        const nx = clamp(player.x + Math.cos(angle) * dist, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+        const ny = clamp(player.y + Math.sin(angle) * dist, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+        burst(player.x, player.y, player.hue, 12);
+        player.x = nx;
+        player.y = ny;
+        burst(player.x, player.y, player.hue, 14);
+        spawnWave(player.x, player.y, player.hue, 80, 0.45);
+        sound(520, 0.18, "sine", 0.04);
+        camera.x = player.x;
+        camera.y = player.y;
+        return true;
+      }
+    },
+    {
+      id: "barrier",
+      name: "BARRERA",
+      symbol: "◇",
+      color: "#a88cff",
+      description: "Escudo que bloqueia o próximo dano recebido por3s.",
+      cooldown: 8,
+      energyCost: 30,
+      execute(player) {
+        player.barrierActive = true;
+        player.barrierTimer = 3;
+        spawnWave(player.x, player.y, 270, 100, 0.7);
+        burst(player.x, player.y, 270, 10);
+        sound(330, 0.35, "triangle", 0.04);
+        showToast("BARRERA ATIVA // 3s", 1500);
+        return true;
+      }
+    },
+    {
+      id: "overload",
+      name: "SOBRECARGA",
+      symbol: "ϟ",
+      color: "#ff725e",
+      description: "Próximo ataque causa3x de dano. Dura5s ou até atacar.",
+      cooldown: 10,
+      energyCost: 35,
+      execute(player) {
+        player.overloadActive = true;
+        player.overloadTimer = 5;
+        player.trailDamage *= 3;
+        burst(player.x, player.y, 0, 16);
+        sound(146, 0.4, "sawtooth", 0.05);
+        showToast("SOBRECARGA // PRÓXIMO GOLPE x3", 1800);
+        return true;
+      }
+    },
+    {
+      id: "magnet",
+      name: "IMÃ",
+      symbol: "⊛",
+      color: "#b792ff",
+      description: "Atrai todos os fragmentos próximos (raio 350).",
+      cooldown: 6,
+      energyCost: 15,
+      execute(player) {
+        const magnetRadius = 350;
+        let pulled = 0;
+        for (const mote of motes) {
+          const dx = mote.x - player.x;
+          const dy = mote.y - player.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < magnetRadius && dist > 5) {
+            mote.x -= (dx / dist) * 200;
+            mote.y -= (dy / dist) * 200;
+            pulled += 1;
+          }
+        }
+        spawnWave(player.x, player.y, 268, magnetRadius * 0.6, 0.5);
+        burst(player.x, player.y, 268, 8);
+        sound(440, 0.2, "sine", 0.035);
+        if (pulled > 0) showToast(`${pulled} FRAGMENTOS ATRAÍDOS`, 1200);
+        return true;
+      }
+    },
+    {
+      id: "phase-walk",
+      name: "CAMINHO ETÉREO",
+      symbol: "⟿",
+      color: "#78ffba",
+      description: "2s de invulnerabilidade + 40% mais velocidade.",
+      cooldown: 12,
+      energyCost: 40,
+      execute(player) {
+        player.hitTimer = Math.max(player.hitTimer, 2);
+        player.phaseSpeed *= 1.4;
+        player.ghostWallUsed = false;
+        spawnWave(player.x, player.y, 150, 110, 0.8);
+        burst(player.x, player.y, 150, 14);
+        sound(660, 0.3, "sine", 0.04);
+        showToast("CAMINHO ETÉREO // 2s INVULNERÁVEL", 1500);
+        setTimeout(() => { player.phaseSpeed /= 1.4; }, 2000);
+        return true;
+      }
+    }
+  ];
+
+  let activeSkills = [];
+  let skillCooldowns = [];
+  let skillSlots = 4;
+
+  function initSkills() {
+    const pool = [...SKILL_DEFS].sort(() => Math.random() - 0.5);
+    activeSkills = pool.slice(0, skillSlots);
+    skillCooldowns = activeSkills.map(() => 0);
+  }
+
+  function useSkill(index) {
+    if (index < 0 || index >= activeSkills.length) return;
+    if (state !== "playing" || activeMode !== "solo") return;
+    const skill = activeSkills[index];
+    if (!skill || skillCooldowns[index] > 0) return;
+    if (player.energy < skill.energyCost) {
+      showToast("CARGA INSUFICIENTE", 1000);
+      return;
+    }
+    player.energy -= skill.energyCost;
+    skillCooldowns[index] = skill.cooldown;
+    skill.execute(player);
+  }
+
+  function updateSkills(dt) {
+    for (let i = 0; i < skillCooldowns.length; i++) {
+      if (skillCooldowns[i] > 0) skillCooldowns[i] = Math.max(0, skillCooldowns[i] - dt);
+    }
+    if (player.barrierActive && player.barrierTimer > 0) {
+      player.barrierTimer -= dt;
+      if (player.barrierTimer <= 0) {
+        player.barrierActive = false;
+      }
+    }
+    if (player.overloadActive && player.overloadTimer > 0) {
+      player.overloadTimer -= dt;
+      if (player.overloadTimer <= 0) {
+        player.overloadActive = false;
+        player.trailDamage /= 3;
+      }
+    }
+  }
+
+  function drawSkillHud() {
+    if (state !== "playing" || activeMode !== "solo") return;
+    const slotW = 52;
+    const gap = 8;
+    const totalW = activeSkills.length * slotW + (activeSkills.length - 1) * gap;
+    const startX = width / 2 - totalW / 2;
+    const y = height - 70;
+    ctx.save();
+    ctx.textAlign = "center";
+    for (let i = 0; i < activeSkills.length; i++) {
+      const skill = activeSkills[i];
+      if (!skill) continue;
+      const x = startX + i * (slotW + gap);
+      const cd = skillCooldowns[i];
+      const ready = cd <= 0 && player.energy >= skill.energyCost;
+      const alpha = ready ? 0.85 : 0.35;
+      ctx.fillStyle = `rgba(11,9,24,0.75)`;
+      ctx.beginPath();
+      ctx.roundRect(x, y, slotW, slotW, 6);
+      ctx.fill();
+      ctx.strokeStyle = ready ? skill.color : "rgba(132,105,202,0.3)";
+      ctx.lineWidth = ready ? 2 : 1;
+      ctx.beginPath();
+      ctx.roundRect(x, y, slotW, slotW, 6);
+      ctx.stroke();
+      ctx.fillStyle = ready ? skill.color : "rgba(205,197,220,0.3)";
+      ctx.font = "600 18px Inter, sans-serif";
+      ctx.fillText(skill.symbol, x + slotW / 2, y + slotW / 2 + 2);
+      ctx.fillStyle = ready ? "rgba(255,255,255,0.8)" : "rgba(205,197,220,0.3)";
+      ctx.font = "700 10px Inter, sans-serif";
+      ctx.fillText(String(i + 1), x + slotW / 2, y + slotW - 5);
+      if (cd > 0) {
+        const cdRatio = cd / skill.cooldown;
+        ctx.fillStyle = `rgba(255,79,216,${0.25 * cdRatio})`;
+        ctx.beginPath();
+        ctx.roundRect(x, y + slotW * (1 - cdRatio), slotW, slotW * cdRatio, [0, 0, 6, 6]);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.6)";
+        ctx.font = "600 11px Inter, sans-serif";
+        ctx.fillText(`${cd.toFixed(1)}`, x + slotW / 2, y + slotW / 2 + 12);
+      }
+    }
+    ctx.restore();
+  }
+
   function killBot(bot, owner = null) {
     if (bot.dead) return;
 
@@ -2166,6 +2728,8 @@
     bot.dead = true;
     bot.phasing = false;
     bot.phase = null;
+    bot.telegraphType = null;
+    bot.telegraphTimer = 0;
     bot.respawnTimer = bot.boss || bot.bossClone || bot.noRespawn ? Number.POSITIVE_INFINITY : random(4.5, 7.5);
     scars.push({ x: bot.x, y: bot.y, hue: bot.hue, life: 18, maxLife: 18, radius: bot.radius * 2.5 });
     burst(bot.x, bot.y, bot.hue, bot.prismaIllusion ? 8 : 28);
@@ -2227,6 +2791,30 @@
       activeBoss = null;
       runStats.bossDefeated = 1;
       if (runTime < 90) runStats.bossSpeedKill = 1;
+      const bossRewards = {
+        "coroa-vazia": { motes: 20, bonusScore: 150, toast: "A COROA VAZIA FOI ROMPIDA // RECOMPENSA COLETADA" },
+        "espectro-decisivo": { motes: 22, bonusScore: 180, toast: "O ESPECTRO DECISIVO SE DISSOLVE // RECOMPENSA COLETADA" },
+        "tremor-deep": { motes: 24, bonusScore: 200, toast: "O TREMOR DEEP CESOU // RECOMPENSA COLETADA" },
+        "necrostro": { motes: 18, bonusScore: 160, toast: "O NECRÓSTRO RETORNA AO SILÊNCIO // RECOMPENSA COLETADA" },
+        "vortice": { motes: 20, bonusScore: 190, toast: "O VÓRVICE COLAPSOU // RECOMPENSA COLETADA" },
+        "cicatriz": { motes: 18, bonusScore: 170, toast: "A CICATRIZ SAROU // RECOMPENSA COLETADA" },
+        "mimico": { motes: 16, bonusScore: 155, toast: "O ESPELHO QUEBROU // RECOMPENSA COLETADA" },
+        "prisma": { motes: 22, bonusScore: 210, toast: "OS FRAGMENTOS SE DISPERSARAM // RECOMPENSA COLETADA" },
+        "silenciador": { motes: 20, bonusScore: 175, toast: "O SILÊNCIO FOI ROMPIDO // RECOMPENSA COLETADA" }
+      };
+      const reward = bossRewards[bot.archetype];
+      if (reward) {
+        player.score += reward.bonusScore;
+        runStats.score = Math.floor(player.score);
+        for (let i = 0; i < reward.motes; i++) {
+          const mote = createMote();
+          mote.x = clamp(bot.x + random(-65, 65), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+          mote.y = clamp(bot.y + random(-65, 65), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+          mote.type = i < 4 ? "gold" : i < 6 ? "red" : Math.random() > 0.4 ? "violet" : "cyan";
+          motes.push(mote);
+        }
+        showToast(reward.toast, 2800);
+      }
       window.setTimeout(() => finishSolo("victory"), 900);
     }
   }
@@ -2333,6 +2921,8 @@
       bot.bossPhaseIndex = nextPhaseIndex;
       bot.bossPhaseTransitioning = true;
       bot.bossPhaseTimer = 1.5;
+      bot.telegraphType = null;
+      bot.telegraphTimer = 0;
       const phase = phases[nextPhaseIndex];
       bot.roleLabel = phase.label;
       bot.speed = phase.speed;
@@ -2469,30 +3059,150 @@
     (prismaAspectHandlers[bot.prismaAspect] || prismaAspectHandlers.red)();
   }
 
+  function fireRadialBurst(bot) {
+    const phaseIndex = bot.bossPhaseIndex;
+    const count = phaseIndex >= 2 ? 16 : phaseIndex >= 1 ? 12 : 8;
+    const speed = 210 + phaseIndex * 35;
+    const damage = Math.floor(bot.attackDamage * (0.45 + phaseIndex * 0.1));
+    const radius = 12 + phaseIndex * 3;
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * TAU;
+      projectiles.push({
+        x: bot.x,
+        y: bot.y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        hue: bot.hue,
+        life: 1.8,
+        maxLife: 1.8,
+        radius,
+        damage,
+        owner: bot,
+        boss: true
+      });
+    }
+    spawnWave(bot.x, bot.y, bot.hue, 180 + phaseIndex * 40, 0.7);
+    burst(bot.x, bot.y, bot.hue, 22 + phaseIndex * 6);
+    sound(55, 0.35, "sawtooth", 0.065);
+  }
+
+  function fireDashAttack(bot) {
+    const angle = Math.atan2(player.y - bot.y, player.x - bot.x);
+    const dist = Math.hypot(player.x - bot.x, player.y - bot.y) || 1;
+    const travel = Math.min(dist + 80, 400);
+    const phaseVelocity = 480;
+    bot.phasing = true;
+    bot.phase = {
+      x: bot.x,
+      y: bot.y,
+      vx: (Math.cos(angle)) * phaseVelocity,
+      vy: (Math.sin(angle)) * phaseVelocity,
+      targetX: bot.x + Math.cos(angle) * travel,
+      targetY: bot.y + Math.sin(angle) * travel,
+      life: clamp(travel / phaseVelocity, 0.3, 0.9),
+      points: [{ x: bot.x, y: bot.y }],
+      attackTarget: null
+    };
+    bot.energy -= 35;
+    spawnWave(bot.x, bot.y, bot.hue, 40, 0.4);
+    sound(110, 0.2, "triangle", 0.045);
+  }
+
   const bossMechanicRegistry = Object.freeze({
+    "coroa-vazia": Object.freeze({
+      update(bot, dt) {
+        if (bot.cooldown > 0 || bot.energy <= 30) return;
+        if (!bot.telegraphType) {
+          const useDash = bot.bossPhaseIndex >= 1 && Math.random() < 0.3;
+          bot.telegraphType = useDash ? "dash" : "radial-burst";
+          bot.telegraphTimer = 1.2;
+          bot.telegraphMaxTimer = 1.2;
+          bot.telegraphRadius = useDash ? 350 : 160;
+          bot.telegraphProjectiles = bot.bossPhaseIndex >= 2 ? 16 : bot.bossPhaseIndex >= 1 ? 12 : 8;
+          sound(82, 0.25, "triangle", 0.04);
+          return;
+        }
+        bot.telegraphTimer -= dt;
+        if (bot.telegraphTimer <= 0) {
+          const type = bot.telegraphType;
+          bot.telegraphType = null;
+          bot.telegraphTimer = 0;
+          if (type === "radial-burst") {
+            fireRadialBurst(bot);
+          } else if (type === "dash") {
+            fireDashAttack(bot);
+          }
+          bot.cooldown = bot.bossPhaseIndex >= 2 ? random(3, 4.5) : bot.bossPhaseIndex >= 1 ? random(4, 6) : random(5.5, 8);
+          bot.energy -= 30;
+        }
+      }
+    }),
     "tremor-deep": Object.freeze({
       update(bot, _dt, context) {
-        if (bot.bossPhaseIndex < 1 || bot.cooldown > 0 || context.distToPlayer >= 200 || bot.energy <= 30) return;
-        spawnWave(bot.x, bot.y, bot.hue, 160, 0.6);
-        burst(bot.x, bot.y, bot.hue, 18);
-        sound(40, 0.3, "sawtooth", 0.05);
-        const dx = player.x - bot.x;
-        const dy = player.y - bot.y;
-        const distance = Math.hypot(dx, dy) || 1;
-        if (distance < 160) damagePlayer(Math.floor(bot.attackDamage * 0.6), bot.x, bot.y);
-        bot.cooldown = bot.bossPhaseIndex >= 2 ? random(2.5, 4) : random(4, 6);
-        bot.energy -= 30;
+        if (bot.bossPhaseIndex < 1 || bot.energy <= 30) return;
+        if (!bot.telegraphType && context.distToPlayer < 220 && bot.cooldown <= 0) {
+          bot.telegraphType = "area-slam";
+          bot.telegraphTimer = 0.9;
+          bot.telegraphMaxTimer = 0.9;
+          bot.telegraphRadius = 200;
+          sound(40, 0.2, "sawtooth", 0.04);
+          return;
+        }
+        if (bot.telegraphType) {
+          bot.telegraphTimer -= _dt;
+          if (bot.telegraphTimer <= 0) {
+            bot.telegraphType = null;
+            bot.telegraphTimer = 0;
+            spawnWave(bot.x, bot.y, bot.hue, 160, 0.6);
+            burst(bot.x, bot.y, bot.hue, 18);
+            sound(40, 0.3, "sawtooth", 0.05);
+            const dx = player.x - bot.x;
+            const dy = player.y - bot.y;
+            const distance = Math.hypot(dx, dy) || 1;
+            if (distance < 200) damagePlayer(Math.floor(bot.attackDamage * 0.6), bot.x, bot.y);
+            for (const otherBot of bots) {
+              if (otherBot === bot || otherBot.dead) continue;
+              const dxb = otherBot.x - bot.x;
+              const dyb = otherBot.y - bot.y;
+              const distB = Math.hypot(dxb, dyb) || 1;
+              if (distB < 200) {
+                otherBot.health -= 12;
+                otherBot.vx += (dxb / distB) * 200;
+                otherBot.vy += (dyb / distB) * 200;
+                otherBot.hitTimer = 0.15;
+                if (otherBot.health <= 0) killBot(otherBot, bot);
+              }
+            }
+            bot.cooldown = bot.bossPhaseIndex >= 2 ? random(2.5, 4) : random(4, 6);
+            bot.energy -= 30;
+          }
+        }
       }
     }),
     "espectro-decisivo": Object.freeze({
       update(bot) {
-        if (bot.bossClone || Math.random() >= 0.02 * (bot.bossPhaseIndex + 1)) return;
-        for (const clone of bots) {
-          if (clone === bot || !clone.bossClone || clone.dead) continue;
-          clone.x = clamp(player.x + random(-80, 80), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-          clone.y = clamp(player.y + random(-80, 80), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-          burst(clone.x, clone.y, clone.hue, 12);
-          sound(330, 0.2, "triangle", 0.04);
+        if (bot.bossClone) return;
+        if (!bot.telegraphType && Math.random() < 0.025 * (bot.bossPhaseIndex + 1)) {
+          bot.telegraphType = "area-slam";
+          bot.telegraphTimer = 0.8;
+          bot.telegraphMaxTimer = 0.8;
+          bot.telegraphRadius = 90;
+          sound(330, 0.15, "triangle", 0.03);
+          return;
+        }
+        if (bot.telegraphType) {
+          bot.telegraphTimer -= 1 / 60;
+          if (bot.telegraphTimer <= 0) {
+            bot.telegraphType = null;
+            bot.telegraphTimer = 0;
+            for (const clone of bots) {
+              if (clone === bot || !clone.bossClone || clone.dead) continue;
+              clone.x = clamp(player.x + random(-80, 80), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+              clone.y = clamp(player.y + random(-80, 80), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+              burst(clone.x, clone.y, clone.hue, 12);
+              sound(330, 0.2, "triangle", 0.04);
+            }
+          }
         }
       }
     }),
@@ -2786,8 +3496,18 @@
     if (activeMode !== "solo" || player.silenced) return;
     const threshold = MUTATION_THRESHOLDS[player.nextMutationIndex];
     if (threshold && player.score >= threshold && !mutationPending) {
-      mutationPending = true;
-      window.setTimeout(showMutationChoice, 180);
+      const loadout = playerLoadout || [];
+      const nextMutationId = loadout[player.nextMutationIndex];
+      if (nextMutationId) {
+        const ownedLevel = (playerOwnedMutations || {})[nextMutationId] || 1;
+        const mutation = mutations.find((m) => m.id === nextMutationId);
+        if (mutation) {
+          mutationPending = true;
+          window.setTimeout(() => chooseMutation(mutation, ownedLevel), 180);
+          return;
+        }
+      }
+      player.nextMutationIndex += 1;
     }
   }
 
@@ -2827,16 +3547,18 @@
     setTimeout(() => sound(524, 0.35, "sine", 0.025), 90);
   }
 
-  function chooseMutation(mutation) {
-    mutation.apply(player);
+  function chooseMutation(mutation, level = 1) {
+    mutation.apply(player, level);
     player.mutations.push(mutation.id);
+    player.mutationLevels = player.mutationLevels || {};
+    player.mutationLevels[mutation.id] = level;
     player.nextMutationIndex += 1;
     mutationPending = false;
     state = "playing";
     ui.mutation.classList.add("is-hidden");
     updateMutationSlots();
     checkSynergies();
-    showToast(`${mutation.name.toUpperCase()} INTEGRADA`, 1800);
+    showToast(`${mutation.name.toUpperCase()} NÍVEL ${["I", "II", "III"][level - 1]} INTEGRADA`, 1800);
     spawnWave(player.x, player.y, player.hue, 130, 0.9);
     burst(player.x, player.y, player.hue, 24);
     sound(330, 0.34, "triangle", 0.05);
@@ -3519,6 +4241,7 @@
     runStats.runTime = runTime;
     updatePlayer(dt);
     updateBots(dt);
+    updateSkills(dt);
     updateSoloDirector();
     updateEffects(dt);
     updateCamera(dt);
@@ -3906,6 +4629,7 @@
   function drawBots(time) {
     for (const bot of bots) {
       if (bot.dead) continue;
+      drawBossTelegraph(bot);
       if (!MOBILE_QUALITY && bot.boss && bot.bossPhaseTransitioning) {
         const point = toScreen(bot.x, bot.y);
         const radius = bot.radius * camera.zoom;
@@ -4249,6 +4973,72 @@
     ctx.restore();
   }
 
+  function drawBossTelegraph(bot) {
+    if (!bot.boss || !bot.telegraphType || bot.telegraphTimer <= 0 || bot.dead) return;
+    if (!visible(bot.x, bot.y, bot.telegraphRadius || 200)) return;
+    const point = toScreen(bot.x, bot.y);
+    const progress = 1 - (bot.telegraphTimer / bot.telegraphMaxTimer);
+    const alpha = 0.25 + progress * 0.5;
+    ctx.save();
+    if (bot.telegraphType === "radial-burst") {
+      const radius = (bot.telegraphRadius || 160) * (0.3 + progress * 0.7) * camera.zoom;
+      ctx.strokeStyle = hsl(bot.hue, 95, 65, alpha * 0.8);
+      ctx.lineWidth = 2.5 * camera.zoom;
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, radius, 0, TAU);
+      ctx.stroke();
+      ctx.strokeStyle = hsl(bot.hue, 90, 55, alpha * 0.3);
+      ctx.lineWidth = 8 * camera.zoom;
+      ctx.stroke();
+      const tickCount = bot.telegraphProjectiles || 8;
+      for (let i = 0; i < tickCount; i++) {
+        const angle = (i / tickCount) * TAU + runTime * 0.4;
+        const tickX = point.x + Math.cos(angle) * radius;
+        const tickY = point.y + Math.sin(angle) * radius;
+        ctx.fillStyle = hsl(bot.hue, 100, 75, alpha * 0.9);
+        ctx.beginPath();
+        ctx.arc(tickX, tickY, 3 * camera.zoom, 0, TAU);
+        ctx.fill();
+      }
+    } else if (bot.telegraphType === "dash") {
+      const angle = Math.atan2(player.y - bot.y, player.x - bot.x);
+      const dashDist = (bot.telegraphRadius || 200) * camera.zoom;
+      const endX = point.x + Math.cos(angle) * dashDist;
+      const endY = point.y + Math.sin(angle) * dashDist;
+      ctx.strokeStyle = hsl(bot.hue, 95, 65, alpha * 0.7);
+      ctx.lineWidth = 4 * camera.zoom;
+      ctx.setLineDash([8 * camera.zoom, 6 * camera.zoom]);
+      ctx.beginPath();
+      ctx.moveTo(point.x, point.y);
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const headSize = 12 * camera.zoom;
+      ctx.fillStyle = hsl(bot.hue, 100, 70, alpha * 0.85);
+      ctx.beginPath();
+      ctx.moveTo(endX + Math.cos(angle) * headSize, endY + Math.sin(angle) * headSize);
+      ctx.lineTo(endX + Math.cos(angle + 2.4) * headSize * 0.6, endY + Math.sin(angle + 2.4) * headSize * 0.6);
+      ctx.lineTo(endX + Math.cos(angle - 2.4) * headSize * 0.6, endY + Math.sin(angle - 2.4) * headSize * 0.6);
+      ctx.closePath();
+      ctx.fill();
+    } else if (bot.telegraphType === "area-slam") {
+      const radius = (bot.telegraphRadius || 120) * camera.zoom;
+      const pulse = 1 + Math.sin(progress * Math.PI * 4) * 0.08;
+      ctx.fillStyle = hsl(bot.hue, 85, 45, alpha * 0.15);
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, radius * pulse, 0, TAU);
+      ctx.fill();
+      ctx.strokeStyle = hsl(bot.hue, 95, 60, alpha * 0.75);
+      ctx.lineWidth = 2 * camera.zoom;
+      ctx.setLineDash([6 * camera.zoom, 4 * camera.zoom]);
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, radius * pulse, 0, TAU);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
+  }
+
   function render(time) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const shakeX = screenShake ? random(-screenShake, screenShake) : 0;
@@ -4268,6 +5058,7 @@
       ctx.fillRect(0, 0, width, height);
     }
     drawCursor();
+    drawSkillHud();
     drawMinimap(time);
   }
 
@@ -4316,7 +5107,7 @@
   ui.startForm.addEventListener("submit", (event) => {
     event.preventDefault();
     if (selectedMode === "multiplayer") connectMultiplayer(ui.roomCode.value);
-    else showSkinScreen();
+    else showLoadoutScreen();
   });
 
   ui.restart.addEventListener("click", () => {
@@ -4333,6 +5124,13 @@
 
   if (ui.workshopButton) ui.workshopButton.addEventListener("click", openWorkshop);
   if (ui.workshopClose) ui.workshopClose.addEventListener("click", closeWorkshop);
+  if (ui.skillShopButton) ui.skillShopButton.addEventListener("click", openSkillShop);
+  if (ui.skillShopClose) ui.skillShopClose.addEventListener("click", closeSkillShop);
+  if (ui.loadoutConfirm) ui.loadoutConfirm.addEventListener("click", () => {
+    ui.loadoutScreen.classList.add("is-hidden");
+    saveLoadoutToServer();
+    showSkinScreen();
+  });
 
   if (ui.minimap) {
     ui.minimap.addEventListener("click", (event) => {
@@ -4426,6 +5224,10 @@
       beginPhase();
     }
     if (event.code === "KeyM") ui.sound.click();
+    if (event.code === "Digit1") useSkill(0);
+    if (event.code === "Digit2") useSkill(1);
+    if (event.code === "Digit3") useSkill(2);
+    if (event.code === "Digit4") useSkill(3);
     if (qaMode && activeMode === "solo" && event.code === "KeyU" && state === "playing") {
       player.score = Math.max(player.score, MUTATION_THRESHOLDS[player.nextMutationIndex] || player.score);
       checkMutation();

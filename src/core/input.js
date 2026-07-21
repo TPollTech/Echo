@@ -13,7 +13,7 @@
   ui.startForm.addEventListener("submit", (event) => {
     event.preventDefault();
     if (selectedMode === "multiplayer") connectMultiplayer(ui.roomCode.value);
-    else showSkinScreen();
+    else showLoadoutScreen();
   });
 
   ui.restart.addEventListener("click", () => {
@@ -28,6 +28,13 @@
 
   if (ui.workshopButton) ui.workshopButton.addEventListener("click", openWorkshop);
   if (ui.workshopClose) ui.workshopClose.addEventListener("click", closeWorkshop);
+  if (ui.skillShopButton) ui.skillShopButton.addEventListener("click", openSkillShop);
+  if (ui.skillShopClose) ui.skillShopClose.addEventListener("click", closeSkillShop);
+  if (ui.loadoutConfirm) ui.loadoutConfirm.addEventListener("click", () => {
+    ui.loadoutScreen.classList.add("is-hidden");
+    saveLoadoutToServer();
+    showSkinScreen();
+  });
 
 /*__ECHO_SECTION_END:0104__*/
 /*__ECHO_SECTION:0106__*/
@@ -104,6 +111,10 @@
       beginPhase();
     }
     if (event.code === "KeyM") ui.sound.click();
+    if (event.code === "Digit1") useSkill(0);
+    if (event.code === "Digit2") useSkill(1);
+    if (event.code === "Digit3") useSkill(2);
+    if (event.code === "Digit4") useSkill(3);
     if (qaMode && activeMode === "solo" && event.code === "KeyU" && state === "playing") {
       player.score = Math.max(player.score, MUTATION_THRESHOLDS[player.nextMutationIndex] || player.score);
       checkMutation();
