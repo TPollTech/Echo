@@ -466,5 +466,17 @@
   {
     "path": "src/core/input.js",
     "section": "0113"
+  },
+  {
+    "path": "src/progression/levels.js",
+    "section": "0118"
+  },
+  {
+    "path": "src/audio/soundtrack.js",
+    "section": "0119"
+  },
+  {
+    "path": "src/ui/level-presentation.js",
+    "section": "0120"
   }
 ]

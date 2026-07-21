@@ -3396,6 +3396,7 @@
   }
 
   function updatePlayer(dt) {
+    updateLevelProgression(player, dt);
     player.cooldown = Math.max(0, player.cooldown - dt);
     player.hitTimer = Math.max(0, player.hitTimer - dt);
     if (!player.phasing && player.hitTimer <= 0 && player.health < player.maxHealth) {
@@ -3455,7 +3456,8 @@
       collectMotes(phase, true);
       if (player.energy <= 0) endPhase();
     } else {
-      steerVelocity(player, target.x, target.y, 205, dt, 6.1);
+      const growthSpeed = (player.levelSpeedScale || 1) * (player.rareBoostTimer > 0 ? 1.06 : 1);
+      steerVelocity(player, target.x, target.y, 205 * growthSpeed, dt, 6.1);
       player.x = clamp(player.x + player.vx * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
       player.y = clamp(player.y + player.vy * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
       player.energy = Math.min(player.maxEnergy, player.energy + 13 * dt);
@@ -3463,6 +3465,7 @@
     }
 
     resolveEntityOverlap();
+    updateLevelHud();
   }
 
   function collectMotes(entity, spectral) {
@@ -3475,6 +3478,11 @@
       const spectralMultiplier = spectral ? 0.72 : 1;
       player.score += baseValue * spectralMultiplier * (player.scoreMultiplier || 1);
       player.energy = clamp(player.energy + baseValue * (spectral ? 1.5 : 0.8), 0, player.maxEnergy);
+      if (mote.type === "violet") {
+        player.rareBoostTimer = LEVEL_CONFIG.rareBoostDuration;
+        player.rareBoostMultiplier = LEVEL_CONFIG.rareBoostMultiplier;
+      }
+      gainExperience(player, experienceValueForMote(mote.type, spectral), `mote:${mote.type}`);
       player.combo = player.comboTimer > 0 ? player.combo + 1 : 1;
       player.comboTimer = 1.45;
       if (player.combo > runStats.maxCombo) runStats.maxCombo = player.combo;
@@ -3619,11 +3627,11 @@
       beforeMovement(bot) {
         const definition = botArchetypes.find((entry) => entry.id === bot.archetype);
         if (bot.health < bot.maxHealth * 0.4) {
-          bot.speed = bot.baseSpeed * 1.4;
-          bot.attackDamage = Math.ceil(definition.attackDamage * 1.5);
+          bot.speed = bot.baseSpeed * 1.4 * (bot.levelSpeedScale || 1);
+          bot.attackDamage = Math.ceil((bot.baseAttackDamage || definition.attackDamage) * 1.5);
         } else {
-          bot.speed = bot.baseSpeed;
-          bot.attackDamage = definition.attackDamage;
+          bot.speed = bot.baseSpeed * (bot.levelSpeedScale || 1);
+          bot.attackDamage = bot.baseAttackDamage || definition.attackDamage;
         }
       }
     }),
@@ -3635,7 +3643,7 @@
           if (ally === bot || ally.dead || ally.faction !== bot.faction || ally.archetype !== bot.archetype) continue;
           if (distanceSq(bot.x, bot.y, ally.x, ally.y) < 190 * 190) nearbyPack += 1;
         }
-        bot.speed = bot.baseSpeed * (1 + Math.min(0.3, nearbyPack * 0.1));
+        bot.speed = bot.baseSpeed * (bot.levelSpeedScale || 1) * (1 + Math.min(0.3, nearbyPack * 0.1));
       }
     }),
     phantom: Object.freeze({
@@ -3921,8 +3929,14 @@
       const mote = motes[index];
       const range = bot.radius + mote.radius + 3;
       if (distanceSq(bot.x, bot.y, mote.x, mote.y) < range * range) {
-        bot.score += mote.type === "gold" ? 5 : mote.type === "violet" ? 2 : 1;
-        bot.energy = Math.min(100, bot.energy + 2);
+        const scoreValue = mote.type === "gold" ? 5 : mote.type === "red" ? 4 : mote.type === "violet" ? 2 : 1;
+        bot.score += scoreValue;
+        bot.energy = Math.min(100, bot.energy + (mote.type === "violet" ? 7 : 2));
+        if (mote.type === "violet") {
+          bot.rareBoostTimer = LEVEL_CONFIG.rareBoostDuration;
+          bot.rareBoostMultiplier = LEVEL_CONFIG.rareBoostMultiplier;
+        }
+        gainExperience(bot, experienceValueForMote(mote.type), `mote:${mote.type}`);
         motes.splice(index, 1);
         motes.push(createMote());
         break;
@@ -4234,6 +4248,7 @@
     runTime += dt;
     runStats.runTime = runTime;
     updatePlayer(dt);
+    updateBotProgression(dt);
     updateBots(dt);
     updateSkills(dt);
     updateSoloDirector();
@@ -5286,3 +5301,729 @@
     }
   };
 }());
+  const LEVEL_CONFIG = Object.freeze({
+    maxLevel: 25,
+    baseExperience: 28,
+    experienceGrowth: 1.24,
+    player: Object.freeze({
+      radiusPerLevel: 0.042,
+      maxRadiusScale: 1.82,
+      healthPerLevel: 0.055,
+      damagePerLevel: 0.062,
+      reachPerLevel: 0.018,
+      speedLossPerLevel: 0.006,
+      minimumSpeedScale: 0.84
+    }),
+    bot: Object.freeze({
+      radiusPerLevel: 0.038,
+      maxRadiusScale: 1.7,
+      healthPerLevel: 0.047,
+      damagePerLevel: 0.055,
+      speedLossPerLevel: 0.0045,
+      minimumSpeedScale: 0.87
+    }),
+    moteExperience: Object.freeze({ cyan: 4, violet: 13, gold: 20, red: 8 }),
+    rareBoostDuration: 6,
+    rareBoostMultiplier: 1.12,
+    dropFraction: 0.34,
+    maxDropMotes: 18,
+    botThinkInterval: 0.34,
+    botDangerRadius: 310,
+    botHuntRadius: 390
+  });
+
+  const BOSS_SIZE_SCALES = Object.freeze({
+    "coroa-vazia": 1.85,
+    "espectro-decisivo": 1.72,
+    "tremor-deep": 2.05,
+    necrostro: 1.76,
+    vortice: 1.82,
+    cicatriz: 1.68,
+    mimico: 1.62,
+    prisma: 1.7,
+    silenciador: 1.76
+  });
+
+  let levelHud = null;
+
+  function experienceForLevel(level) {
+    return Math.max(1, Math.round(LEVEL_CONFIG.baseExperience * LEVEL_CONFIG.experienceGrowth ** Math.max(0, level - 1)));
+  }
+
+  function experienceValueForMote(type, spectral = false) {
+    const base = LEVEL_CONFIG.moteExperience[type] || LEVEL_CONFIG.moteExperience.cyan;
+    return Math.max(1, Math.round(base * (spectral ? 0.78 : 1)));
+  }
+
+  function initializeLevelProgression(entity, kind = "bot") {
+    if (!entity || entity.levelInitialized) return entity;
+    const baseDamage = kind === "player"
+      ? Number(entity.trailDamage || 1)
+      : Number(entity.baseAttackDamage || entity.attackDamage || 1);
+    Object.assign(entity, {
+      levelInitialized: true,
+      levelKind: kind,
+      level: 1,
+      experience: 0,
+      experienceToNext: experienceForLevel(1),
+      levelBaseRadius: Number(entity.radius || 16),
+      levelBaseMaxHealth: Number(entity.maxHealth || entity.health || 1),
+      levelBaseDamage: Math.max(1, baseDamage),
+      levelBasePhaseSpeed: Number(entity.phaseSpeed || 0),
+      levelScale: 1,
+      levelSpeedScale: 1,
+      rareBoostTimer: 0,
+      rareBoostMultiplier: 1,
+      levelPulseTimer: 0,
+      resourceThinkTimer: 0,
+      resourceMode: null
+    });
+    applyLevelGrowth(entity, false);
+    return entity;
+  }
+
+  function applyLevelGrowth(entity, healDifference = true) {
+    if (!entity?.levelInitialized || entity.boss) return entity;
+    const config = entity.levelKind === "player" ? LEVEL_CONFIG.player : LEVEL_CONFIG.bot;
+    const steps = Math.max(0, entity.level - 1);
+    const oldMaxHealth = Math.max(1, Number(entity.maxHealth) || entity.levelBaseMaxHealth);
+    const scale = Math.min(config.maxRadiusScale, 1 + steps * config.radiusPerLevel);
+    const healthScale = 1 + steps * config.healthPerLevel;
+    const damageScale = 1 + steps * config.damagePerLevel;
+    const speedScale = Math.max(config.minimumSpeedScale, 1 - steps * config.speedLossPerLevel);
+    const nextMaxHealth = Math.max(1, Math.round(entity.levelBaseMaxHealth * healthScale));
+
+    entity.levelScale = scale;
+    entity.levelSpeedScale = speedScale;
+    entity.radius = entity.levelBaseRadius * scale;
+    entity.maxHealth = nextMaxHealth;
+    if (healDifference && nextMaxHealth > oldMaxHealth) entity.health += nextMaxHealth - oldMaxHealth;
+    entity.health = clamp(entity.health, 0, nextMaxHealth);
+
+    if (entity.levelKind === "player") {
+      entity.trailDamage = entity.levelBaseDamage * damageScale;
+      entity.phaseSpeed = entity.levelBasePhaseSpeed * (1 + steps * config.reachPerLevel);
+      entity.pickupRadius = Math.max(entity.pickupRadius || 0, steps * 1.2 + playerUpgrades.collection * 5);
+    } else {
+      entity.baseAttackDamage = Math.max(1, entity.levelBaseDamage * damageScale);
+      entity.attackDamage = entity.baseAttackDamage;
+    }
+    return entity;
+  }
+
+  function emitLevelEvent(name, entity, extra = {}) {
+    try {
+      window.EchoCore?.events?.emit(name, {
+        id: entity.id,
+        level: entity.level,
+        experience: entity.experience,
+        ...extra
+      });
+    } catch (_error) {}
+  }
+
+  function gainExperience(entity, amount, source = "mote") {
+    if (!entity || entity.boss || entity.dead) return 0;
+    initializeLevelProgression(entity, entity === player ? "player" : "bot");
+    if (entity.level >= LEVEL_CONFIG.maxLevel) {
+      entity.experience = 0;
+      return 0;
+    }
+    const boost = entity.rareBoostTimer > 0 ? entity.rareBoostMultiplier : 1;
+    const granted = Math.max(0, Math.round(Number(amount || 0) * boost));
+    entity.experience += granted;
+    emitLevelEvent("progression:experience", entity, { amount: granted, source });
+
+    let levelsGained = 0;
+    while (entity.level < LEVEL_CONFIG.maxLevel && entity.experience >= entity.experienceToNext) {
+      entity.experience -= entity.experienceToNext;
+      entity.level += 1;
+      entity.experienceToNext = experienceForLevel(entity.level);
+      levelsGained += 1;
+    }
+    if (entity.level >= LEVEL_CONFIG.maxLevel) entity.experience = 0;
+
+    if (levelsGained > 0) {
+      applyLevelGrowth(entity, true);
+      entity.levelPulseTimer = 1.1;
+      emitLevelEvent("progression:level-up", entity, { levelsGained, source });
+      if (entity === player) {
+        showToast(`NÍVEL ${entity.level} // SINAL AMPLIADO`, 1700);
+        spawnWave(entity.x, entity.y, entity.hue, 105 + entity.radius, 0.7);
+        burst(entity.x, entity.y, entity.hue, 18);
+        sound(330 + Math.min(220, entity.level * 8), 0.3, "triangle", 0.05);
+      } else {
+        spawnWave(entity.x, entity.y, entity.hue, 55 + entity.radius, 0.4);
+        burst(entity.x, entity.y, entity.hue, 7);
+      }
+    }
+    return granted;
+  }
+
+  function updateLevelProgression(entity, dt) {
+    if (!entity || entity.boss || entity.dead) return;
+    initializeLevelProgression(entity, entity === player ? "player" : "bot");
+    entity.rareBoostTimer = Math.max(0, entity.rareBoostTimer - dt);
+    entity.rareBoostMultiplier = entity.rareBoostTimer > 0 ? LEVEL_CONFIG.rareBoostMultiplier : 1;
+    entity.levelPulseTimer = Math.max(0, entity.levelPulseTimer - dt);
+  }
+
+  function entityPower(entity) {
+    const level = Number(entity?.level || 1);
+    const healthRatio = clamp(Number(entity?.health || 0) / Math.max(1, Number(entity?.maxHealth || 1)), 0, 1);
+    const damage = Number(entity?.attackDamage || entity?.trailDamage || 1);
+    return level * 16 + damage * 0.7 + healthRatio * 24 + (entity?.boss ? 300 : 0);
+  }
+
+  function hostileEntitiesFor(bot) {
+    return [player, ...bots].filter((entity) => (
+      entity
+      && entity !== bot
+      && !entity.dead
+      && (entity === player || entity.boss || entity.faction !== bot.faction)
+    ));
+  }
+
+  function nearestDanger(bot) {
+    let danger = null;
+    let bestDistance = Infinity;
+    const ownPower = entityPower(bot);
+    for (const entity of hostileEntitiesFor(bot)) {
+      const distance = Math.hypot(entity.x - bot.x, entity.y - bot.y);
+      if (distance > LEVEL_CONFIG.botDangerRadius || entityPower(entity) < ownPower * 1.22) continue;
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        danger = entity;
+      }
+    }
+    return danger ? { entity: danger, distance: bestDistance } : null;
+  }
+
+  function weakestHuntTarget(bot) {
+    if (bot.health < bot.maxHealth * 0.48) return null;
+    const ownPower = entityPower(bot);
+    let target = null;
+    let bestUtility = -Infinity;
+    for (const entity of hostileEntitiesFor(bot)) {
+      if (entity.boss) continue;
+      const distance = Math.hypot(entity.x - bot.x, entity.y - bot.y);
+      if (distance > LEVEL_CONFIG.botHuntRadius) continue;
+      const targetPower = entityPower(entity);
+      if (targetPower > ownPower * 0.78) continue;
+      const utility = (ownPower - targetPower) * 2.2 - distance * 0.14;
+      if (utility > bestUtility) {
+        bestUtility = utility;
+        target = entity;
+      }
+    }
+    return target ? { target, utility: bestUtility } : null;
+  }
+
+  function chooseBotResourceTarget(bot) {
+    if (!bot || bot.dead || bot.boss || bot.phasing) return null;
+    const healthRatio = bot.health / Math.max(1, bot.maxHealth);
+    const danger = nearestDanger(bot);
+    if ((healthRatio < 0.28 || danger?.distance < 175) && danger) {
+      const dx = bot.x - danger.entity.x;
+      const dy = bot.y - danger.entity.y;
+      const distance = Math.hypot(dx, dy) || 1;
+      return {
+        mode: "flee",
+        x: clamp(bot.x + dx / distance * 420, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN),
+        y: clamp(bot.y + dy / distance * 420, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN),
+        utility: 1000
+      };
+    }
+
+    const hunt = weakestHuntTarget(bot);
+    if (hunt && bot.aggression > 0.52) {
+      return {
+        mode: "hunt",
+        x: hunt.target.x + (hunt.target.vx || 0) * 0.55,
+        y: hunt.target.y + (hunt.target.vy || 0) * 0.55,
+        target: hunt.target,
+        utility: hunt.utility
+      };
+    }
+
+    if (motes.length === 0) return null;
+    let best = null;
+    let bestUtility = -Infinity;
+    const ownPower = entityPower(bot);
+    for (const mote of motes) {
+      const distance = Math.hypot(mote.x - bot.x, mote.y - bot.y);
+      if (distance > 900) continue;
+      const value = experienceValueForMote(mote.type);
+      let utility = value * 24 - distance * 0.12;
+      if (mote.type === "violet") utility += 125;
+      if (mote.type === "gold") utility += 82;
+      if (mote.type === "red" && healthRatio < 0.55) utility -= 160;
+      if (danger) {
+        const moteDangerDistance = Math.hypot(mote.x - danger.entity.x, mote.y - danger.entity.y);
+        if (moteDangerDistance < 230 && entityPower(danger.entity) > ownPower) utility -= 220;
+      }
+      if (utility > bestUtility) {
+        bestUtility = utility;
+        best = mote;
+      }
+    }
+    return best ? { mode: "forage", x: best.x, y: best.y, mote: best, utility: bestUtility } : null;
+  }
+
+  function updateBotProgression(dt) {
+    for (const bot of bots) {
+      if (bot.dead || bot.boss || bot.bossClone || bot.noRespawn) continue;
+      updateLevelProgression(bot, dt);
+      const speedBoost = bot.rareBoostTimer > 0 ? 1.06 : 1;
+      if (!bot.swarmer && bot.archetype !== "berserker") {
+        bot.speed = (bot.baseSpeed || bot.speed) * (bot.levelSpeedScale || 1) * speedBoost;
+      }
+      bot.resourceThinkTimer = Math.max(0, (bot.resourceThinkTimer || 0) - dt);
+      if (bot.resourceThinkTimer > 0 || bot.phasing) continue;
+      bot.resourceThinkTimer = LEVEL_CONFIG.botThinkInterval + Math.random() * 0.18;
+      const decision = chooseBotResourceTarget(bot);
+      if (!decision) continue;
+      bot.resourceMode = decision.mode;
+      bot.targetX = clamp(decision.x, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+      bot.targetY = clamp(decision.y, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+      bot.factionTarget = decision.mode === "hunt" && decision.target !== player ? decision.target : null;
+      bot.thinkTimer = Math.max(bot.thinkTimer, decision.mode === "flee" ? 0.48 : 0.28);
+      if (decision.mode === "flee") bot.cooldown = Math.max(bot.cooldown, 0.35);
+    }
+  }
+
+  function dropExperienceMotes(entity, multiplier = 1) {
+    if (!entity || entity.prismaIllusion) return 0;
+    const stored = Number(entity.experience || 0) + Math.max(0, Number(entity.level || 1) - 1) * 18;
+    const budget = Math.max(0, Math.round(stored * LEVEL_CONFIG.dropFraction * multiplier));
+    const minimum = entity.boss ? 10 : 2;
+    const count = Math.round(clamp(Math.ceil(budget / 7), minimum, LEVEL_CONFIG.maxDropMotes));
+    for (let index = 0; index < count; index += 1) {
+      const mote = createMote();
+      mote.x = clamp(entity.x + random(-58, 58), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+      mote.y = clamp(entity.y + random(-58, 58), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+      const ratio = index / Math.max(1, count - 1);
+      mote.type = ratio < 0.18 ? "gold" : ratio < 0.52 ? "violet" : "cyan";
+      mote.droppedExperience = true;
+      motes.push(mote);
+    }
+    return count;
+  }
+
+  function averageCombatLevel() {
+    const living = bots.filter((bot) => !bot.dead && !bot.boss && !bot.bossClone);
+    const levels = [Number(player.level || 1), ...living.map((bot) => Number(bot.level || 1))];
+    return levels.reduce((sum, level) => sum + level, 0) / Math.max(1, levels.length);
+  }
+
+  function scaleBossForRun(boss) {
+    const averageLevel = averageCombatLevel();
+    const livingLevels = bots.filter((bot) => !bot.dead).map((bot) => Number(bot.level || 1));
+    const highestLevel = Math.max(Number(player.level || 1), ...livingLevels);
+    const levelPressure = Math.max(0, averageLevel - 1) * 0.045 + Math.max(0, highestLevel - averageLevel) * 0.018;
+    const stagePressure = Math.max(0, Number(soloStage || 0)) * 0.08;
+    const healthScale = 1 + levelPressure + stagePressure;
+    const damageScale = 1 + levelPressure * 0.62 + stagePressure * 0.7;
+    boss.health = Math.round(boss.health * healthScale);
+    boss.maxHealth = boss.health;
+    boss.attackDamage = Math.max(1, Math.round(boss.attackDamage * damageScale));
+    boss.baseAttackDamage = boss.attackDamage;
+    boss.encounterLevel = Math.max(1, Math.round(averageLevel + Number(soloStage || 0)));
+    return boss;
+  }
+
+  function ensureLevelHud() {
+    if (levelHud?.root?.isConnected) return levelHud;
+    const vitals = document.querySelector(".vitals");
+    if (!vitals) return null;
+    const root = document.createElement("div");
+    root.className = "level-progress";
+    root.innerHTML = '<div class="metric-row"><span>NÍVEL</span><strong data-level>1</strong></div><div class="meter level-meter"><i data-level-fill></i></div><small data-level-copy>0 / 28 XP</small>';
+    const style = document.createElement("style");
+    style.textContent = ".level-progress{margin-top:10px}.level-progress small{display:block;margin-top:5px;font-size:10px;letter-spacing:.12em;color:rgba(222,250,255,.7)}.level-meter i{background:linear-gradient(90deg,#45e6ff,#8b5cf6,#ff4fd8)}";
+    document.head.append(style);
+    const chargeMeter = vitals.querySelector(".charge-meter");
+    if (chargeMeter) chargeMeter.insertAdjacentElement("afterend", root);
+    else vitals.prepend(root);
+    levelHud = {
+      root,
+      level: root.querySelector("[data-level]"),
+      fill: root.querySelector("[data-level-fill]"),
+      copy: root.querySelector("[data-level-copy]")
+    };
+    return levelHud;
+  }
+
+  function updateLevelHud() {
+    const hud = ensureLevelHud();
+    if (!hud || !player?.levelInitialized) return;
+    const ratio = player.level >= LEVEL_CONFIG.maxLevel ? 1 : clamp(player.experience / Math.max(1, player.experienceToNext), 0, 1);
+    hud.level.textContent = String(player.level);
+    hud.fill.style.width = `${ratio * 100}%`;
+    hud.copy.textContent = player.level >= LEVEL_CONFIG.maxLevel
+      ? "NÍVEL MÁXIMO"
+      : `${Math.floor(player.experience)} / ${player.experienceToNext} XP${player.rareBoostTimer > 0 ? " // IMPULSO ROXO" : ""}`;
+  }
+
+  for (const template of bossTemplates) {
+    if (template.levelSizeApplied) continue;
+    const scale = BOSS_SIZE_SCALES[template.id] || 1.7;
+    template.levelSizeApplied = true;
+    template.sizeScale = scale;
+    template.radius = Math.round((template.radius || template.phases[0].radius) * scale);
+    for (const phase of template.phases) phase.radius = Math.round(phase.radius * scale);
+  }
+
+  const spawnSoloBossWithoutLevelScaling = spawnSoloBoss;
+  spawnSoloBoss = function spawnSoloBossWithLevelScaling(templateId = null) {
+    const previousBoss = activeBoss;
+    const result = spawnSoloBossWithoutLevelScaling(templateId);
+    if (activeBoss && activeBoss !== previousBoss) scaleBossForRun(activeBoss);
+    return result;
+  };
+
+  const killBotWithoutExperienceDrops = killBot;
+  killBot = function killBotWithExperienceDrops(bot, owner = null) {
+    const wasDead = Boolean(bot?.dead);
+    const prismaShellSplit = Boolean(bot?.archetype === "prisma" && bot?.boss && !bot?.prismaFragment && !bot?.prismaSplit);
+    const result = killBotWithoutExperienceDrops(bot, owner);
+    if (!wasDead && bot?.dead && !bot.prismaIllusion && !prismaShellSplit) {
+      dropExperienceMotes(bot, bot.boss ? 1.45 : 1);
+      if (owner && owner !== bot && !owner.dead && !owner.boss) {
+        const killExperience = bot.boss ? 80 : Math.max(8, 8 + Number(bot.level || 1) * 3);
+        gainExperience(owner, killExperience, bot.boss ? "boss:defeated" : "enemy:defeated");
+      }
+    }
+    return result;
+  };
+
+  const SOUNDTRACK_LIBRARY = Object.freeze({
+    "signal-drift": Object.freeze({
+      title: "SIGNAL DRIFT",
+      context: "normal",
+      tempo: 84,
+      progressions: Object.freeze([
+        Object.freeze({ chord: [50, 53, 57], bass: 38 }),
+        Object.freeze({ chord: [46, 50, 53], bass: 34 }),
+        Object.freeze({ chord: [53, 57, 60], bass: 41 }),
+        Object.freeze({ chord: [48, 52, 55], bass: 36 })
+      ]),
+      melody: Object.freeze([69, null, 72, null, 74, null, 72, null, 67, null, 69, null, 65, null, null, null]),
+      wave: "sine",
+      brightness: 1,
+      density: 0.48
+    }),
+    "glass-current": Object.freeze({
+      title: "GLASS CURRENT",
+      context: "normal",
+      tempo: 92,
+      progressions: Object.freeze([
+        Object.freeze({ chord: [52, 55, 59], bass: 40 }),
+        Object.freeze({ chord: [48, 52, 55], bass: 36 }),
+        Object.freeze({ chord: [55, 59, 62], bass: 43 }),
+        Object.freeze({ chord: [50, 54, 57], bass: 38 })
+      ]),
+      melody: Object.freeze([71, null, 74, 76, null, 74, 71, null, 67, null, 69, 71, null, 67, null, null]),
+      wave: "triangle",
+      brightness: 1.18,
+      density: 0.58
+    }),
+    "violet-engine": Object.freeze({
+      title: "VIOLET ENGINE",
+      context: "normal",
+      tempo: 98,
+      progressions: Object.freeze([
+        Object.freeze({ chord: [45, 50, 52], bass: 33 }),
+        Object.freeze({ chord: [48, 52, 57], bass: 36 }),
+        Object.freeze({ chord: [43, 47, 50], bass: 31 }),
+        Object.freeze({ chord: [50, 53, 57], bass: 38 })
+      ]),
+      melody: Object.freeze([64, 67, null, 69, 72, null, 69, null, 62, 64, null, 67, 69, null, null, null]),
+      wave: "triangle",
+      brightness: 0.9,
+      density: 0.7
+    }),
+    "fracture-run": Object.freeze({
+      title: "FRACTURE RUN",
+      context: "danger",
+      tempo: 112,
+      progressions: Object.freeze([
+        Object.freeze({ chord: [43, 46, 50], bass: 31 }),
+        Object.freeze({ chord: [41, 45, 48], bass: 29 }),
+        Object.freeze({ chord: [46, 50, 53], bass: 34 }),
+        Object.freeze({ chord: [39, 43, 46], bass: 27 })
+      ]),
+      melody: Object.freeze([67, 70, 72, null, 67, 65, 63, null, 70, 72, 75, null, 72, 70, null, null]),
+      wave: "sawtooth",
+      brightness: 1.3,
+      density: 0.88
+    }),
+    crownfall: Object.freeze({
+      title: "CROWNFALL",
+      context: "boss",
+      tempo: 106,
+      progressions: Object.freeze([
+        Object.freeze({ chord: [42, 46, 49], bass: 30 }),
+        Object.freeze({ chord: [39, 42, 46], bass: 27 }),
+        Object.freeze({ chord: [44, 47, 51], bass: 32 }),
+        Object.freeze({ chord: [37, 42, 44], bass: 25 })
+      ]),
+      melody: Object.freeze([66, null, 70, 73, 70, null, 66, 63, 61, null, 66, 68, 70, null, null, null]),
+      wave: "square",
+      brightness: 0.78,
+      density: 0.82
+    }),
+    "deep-quake": Object.freeze({
+      title: "DEEP QUAKE",
+      context: "boss",
+      tempo: 94,
+      progressions: Object.freeze([
+        Object.freeze({ chord: [38, 43, 45], bass: 26 }),
+        Object.freeze({ chord: [36, 41, 43], bass: 24 }),
+        Object.freeze({ chord: [41, 45, 48], bass: 29 }),
+        Object.freeze({ chord: [34, 38, 41], bass: 22 })
+      ]),
+      melody: Object.freeze([57, null, 60, null, 62, 60, 57, null, 55, null, 57, 53, null, null, null, null]),
+      wave: "sawtooth",
+      brightness: 0.62,
+      density: 0.74
+    }),
+    "terminal-light": Object.freeze({
+      title: "TERMINAL LIGHT",
+      context: "boss-final",
+      tempo: 122,
+      progressions: Object.freeze([
+        Object.freeze({ chord: [47, 50, 54], bass: 35 }),
+        Object.freeze({ chord: [45, 49, 52], bass: 33 }),
+        Object.freeze({ chord: [50, 54, 57], bass: 38 }),
+        Object.freeze({ chord: [43, 47, 50], bass: 31 })
+      ]),
+      melody: Object.freeze([71, 74, 78, 76, 74, 71, 69, 71, 76, 78, 81, 78, 76, 74, 71, null]),
+      wave: "triangle",
+      brightness: 1.35,
+      density: 1
+    })
+  });
+
+  const NORMAL_SOUNDTRACK_IDS = Object.freeze(["signal-drift", "glass-current", "violet-engine"]);
+
+  function soundtrackProfile(id) {
+    return SOUNDTRACK_LIBRARY[id] || SOUNDTRACK_LIBRARY["signal-drift"];
+  }
+
+  function chooseNextSoundtrack(ids, currentId, randomValue = Math.random()) {
+    const options = ids.filter((id) => id !== currentId);
+    const pool = options.length > 0 ? options : ids;
+    return pool[Math.min(pool.length - 1, Math.floor(clamp(randomValue, 0, 0.999999) * pool.length))];
+  }
+
+  function bossSoundtrackId(boss) {
+    if (!boss) return null;
+    if (boss.bossPhaseIndex >= Math.max(1, (boss.bossTemplate?.phases?.length || 2) - 1)) return "terminal-light";
+    if (boss.archetype === "tremor-deep") return "deep-quake";
+    if (boss.archetype === "coroa-vazia") return "crownfall";
+    return "terminal-light";
+  }
+
+  function requestSoundtrack(id) {
+    if (!musicActive || !musicLayers.input || !SOUNDTRACK_LIBRARY[id]) return false;
+    if (musicLayers.trackId === id || musicLayers.pendingTrackId === id) return false;
+    musicLayers.pendingTrackId = id;
+    return true;
+  }
+
+  function activatePendingSoundtrack() {
+    if (!musicLayers.pendingTrackId) return;
+    musicLayers.previousTrackId = musicLayers.trackId || null;
+    musicLayers.trackId = musicLayers.pendingTrackId;
+    musicLayers.pendingTrackId = null;
+    musicLayers.trackStartedAt = runTime;
+    try {
+      window.EchoCore?.events?.emit("audio:soundtrack-changed", {
+        id: musicLayers.trackId,
+        title: soundtrackProfile(musicLayers.trackId).title,
+        previousId: musicLayers.previousTrackId
+      });
+    } catch (_error) {}
+  }
+
+  function scheduleSoundtrackStep(start, step) {
+    if (!musicActive || !musicLayers.input) return;
+    if (step % 64 === 0) activatePendingSoundtrack();
+    const track = soundtrackProfile(musicLayers.trackId);
+    const intensity = musicLayers.intensity || 0.3;
+    const barIndex = Math.floor(step / 16) % track.progressions.length;
+    const localStep = step % 16;
+    const progression = track.progressions[barIndex];
+    const density = track.density;
+
+    if (localStep === 0) schedulePadChord(progression.chord, start, intensity * track.brightness);
+
+    if (localStep % 4 === 0) {
+      scheduleMusicKick(start, (localStep === 0 ? 1.08 : 0.84) * (0.82 + density * 0.25));
+      const bassNote = localStep === 8 ? progression.bass + (track.context === "boss" ? 5 : 7) : progression.bass;
+      scheduleMusicTone({
+        note: bassNote,
+        start,
+        duration: track.id === "deep-quake" ? 0.3 : 0.22,
+        type: track.context.startsWith("boss") ? "sawtooth" : "triangle",
+        volume: 0.036 + intensity * 0.018,
+        attack: 0.008,
+        release: 0.24,
+        cutoff: (650 + intensity * 520) * track.brightness
+      });
+    }
+
+    if (localStep === 4 || localStep === 12 || (density > 0.9 && localStep === 8)) {
+      scheduleMusicSnare(start, 0.72 + density * 0.45);
+    }
+
+    if (intensity > 0.36 && localStep % (density > 0.76 ? 2 : 4) === 0) {
+      scheduleMusicNoise(start, 0.045, 0.004 + intensity * 0.004 * density, 5000 * track.brightness, "highpass");
+    }
+
+    if (localStep % 2 === 0) {
+      const arpeggioIndex = (localStep / 2 + barIndex) % progression.chord.length;
+      const arpeggioNote = progression.chord[arpeggioIndex] + 12;
+      scheduleMusicTone({
+        note: arpeggioNote,
+        start,
+        duration: 0.065 + (1 - density) * 0.03,
+        type: track.wave,
+        volume: 0.008 + intensity * 0.013,
+        attack: 0.004,
+        release: 0.16 + density * 0.08,
+        cutoff: (1900 + intensity * 2800) * track.brightness,
+        echo: true
+      });
+    }
+
+    const melodyNote = track.melody[step % track.melody.length];
+    if (melodyNote && intensity > 0.43) {
+      scheduleMusicTone({
+        note: melodyNote,
+        start: start + 0.012,
+        duration: track.context.startsWith("boss") ? 0.18 : 0.12,
+        type: track.wave,
+        volume: 0.009 + intensity * 0.011,
+        attack: 0.018,
+        release: 0.26,
+        cutoff: (2800 + intensity * 2500) * track.brightness,
+        echo: true
+      });
+    }
+
+    if (track.context.startsWith("boss") && localStep % 4 === 2) {
+      const accentNote = progression.chord[Math.floor(localStep / 4) % progression.chord.length] + 24;
+      scheduleMusicTone({
+        note: accentNote,
+        start,
+        duration: 0.05,
+        type: "square",
+        volume: 0.006 + density * 0.003,
+        attack: 0.003,
+        release: 0.11,
+        cutoff: 2300 * track.brightness
+      });
+    }
+  }
+
+  scheduleMusicStep = scheduleSoundtrackStep;
+
+  const startMusicWithoutSoundtrack = startMusic;
+  startMusic = function startMusicWithSoundtrack() {
+    const result = startMusicWithoutSoundtrack();
+    if (musicActive && musicLayers.input) {
+      const initialId = chooseNextSoundtrack(NORMAL_SOUNDTRACK_IDS, null);
+      Object.assign(musicLayers, {
+        trackId: initialId,
+        previousTrackId: null,
+        pendingTrackId: null,
+        trackStartedAt: runTime,
+        rotateAt: runTime + 34 + Math.random() * 14
+      });
+      musicLayers.tempo = soundtrackProfile(initialId).tempo;
+    }
+    return result;
+  };
+
+  const updateMusicWithoutSoundtrack = updateMusic;
+  updateMusic = function updateMusicWithSoundtrack() {
+    updateMusicWithoutSoundtrack();
+    if (!musicActive || !musicLayers.master) return;
+    const bossTrack = bossSoundtrackId(activeBoss && !activeBoss.dead ? activeBoss : null);
+    let desiredTrack = bossTrack;
+    if (!desiredTrack && Number(soloStage || 0) >= 3) desiredTrack = "fracture-run";
+    if (!desiredTrack && runTime >= Number(musicLayers.rotateAt || 0)) {
+      desiredTrack = chooseNextSoundtrack(NORMAL_SOUNDTRACK_IDS, musicLayers.trackId);
+      musicLayers.rotateAt = runTime + 34 + Math.random() * 14;
+    }
+    if (!desiredTrack && !NORMAL_SOUNDTRACK_IDS.includes(musicLayers.trackId)) {
+      desiredTrack = chooseNextSoundtrack(NORMAL_SOUNDTRACK_IDS, musicLayers.trackId);
+    }
+    if (desiredTrack) requestSoundtrack(desiredTrack);
+
+    const targetTrack = soundtrackProfile(musicLayers.pendingTrackId || musicLayers.trackId);
+    const pressureTempo = targetTrack.tempo + Math.min(8, Number(soloStage || 0) * 1.5);
+    musicLayers.tempo += (pressureTempo - musicLayers.tempo) * 0.035;
+  };
+
+  const drawEntityWithoutLevelPresentation = drawEntity;
+  drawEntity = function drawEntityWithLevelPresentation(entity, isPlayer = false, spectral = false, time = 0) {
+    const result = drawEntityWithoutLevelPresentation(entity, isPlayer, spectral, time);
+    if (spectral || !entity?.levelInitialized || entity.boss || !visible(entity.x, entity.y, 80)) return result;
+    const point = toScreen(entity.x, entity.y);
+    const radius = (entity.radius || 16) * camera.zoom;
+    const pulse = entity.levelPulseTimer > 0 ? 0.72 + Math.sin(time * 0.018) * 0.22 : 0.68;
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.font = `700 ${isPlayer ? 11 : 9}px Inter, sans-serif`;
+    ctx.fillStyle = hsl(entity.hue, 92, 76, pulse);
+    ctx.fillText(`LV ${entity.level}`, point.x, point.y + radius + (isPlayer ? 25 : 21));
+    ctx.restore();
+    return result;
+  };
+
+  updateLeaderboard = function updateLeaderboardWithLevels() {
+    const visibleBots = activeMode === "multiplayer" ? bots : bots.filter((bot) => !bot.dead);
+    const entries = visibleBots.map((bot) => ({
+      name: bot.name,
+      score: Math.floor(bot.score || 0),
+      level: Number(bot.level || 1),
+      player: false
+    }));
+    entries.push({
+      name: player.name,
+      score: Math.floor(player.score),
+      level: Number(player.level || 1),
+      player: true
+    });
+    entries.sort((a, b) => b.score - a.score || b.level - a.level);
+    ui.leaderboard.replaceChildren();
+    for (const [index, entry] of entries.slice(0, 6).entries()) {
+      const item = document.createElement("li");
+      if (entry.player) item.className = "is-player";
+      item.innerHTML = `<span>${String(index + 1).padStart(2, "0")}</span><strong>${escapeHtml(entry.name)} <small>LV ${entry.level}</small></strong><em>${entry.score}</em>`;
+      ui.leaderboard.append(item);
+    }
+  };
+
+  window.EchoRunProgression = Object.freeze({
+    config: LEVEL_CONFIG,
+    bossSizeScales: BOSS_SIZE_SCALES,
+    experienceForLevel,
+    experienceValueForMote,
+    entityPower,
+    averageCombatLevel
+  });
+
+  window.EchoSoundtrack = Object.freeze({
+    library: SOUNDTRACK_LIBRARY,
+    normalTrackIds: NORMAL_SOUNDTRACK_IDS,
+    chooseNextSoundtrack,
+    current() {
+      const id = musicLayers.trackId || null;
+      return id ? { id, ...soundtrackProfile(id) } : null;
+    }
+  });
+
