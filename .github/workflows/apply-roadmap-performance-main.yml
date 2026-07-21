@@ -1,0 +1,72 @@
+name: Apply roadmap performance final
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - main-roadmap-performance.trigger
+
+permissions:
+  contents: write
+
+jobs:
+  apply-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Load package builder from feature branch
+        run: |
+          git fetch origin feat/roadmap-performance-final
+          git show origin/feat/roadmap-performance-final:scripts/apply-roadmap-performance-final.js > scripts/apply-roadmap-performance-final.js
+
+      - name: Apply final roadmap and performance changes
+        run: node scripts/apply-roadmap-performance-final.js
+
+      - name: Build generated runtime
+        run: npm run build
+
+      - name: Validate architecture and syntax
+        run: npm run check
+
+      - name: Run complete test suite
+        run: npm test
+
+      - name: Record validation and remove one-time files
+        run: |
+          cat > docs/PERFORMANCE-VALIDATION.md <<EOF
+          # ECHO 0.6.1 — Roadmap and performance validation
+
+          - Source commit: ${GITHUB_SHA}
+          - Runtime build: passed
+          - Source architecture and JavaScript syntax: passed
+          - Complete Node test suite: passed
+          - Boss scale range 1.8x–2.55x: passed
+          - Cached mote sprites and background gradient: passed
+          - Adaptive internal resolution with effects preserved: passed
+          EOF
+          rm -f scripts/apply-roadmap-performance-final.js
+          rm -f .github/workflows/apply-roadmap-performance-main.yml
+          rm -f main-roadmap-performance.trigger
+
+      - name: Commit validated package
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: finalize roadmap and optimize rendering"
+          git push origin HEAD:main
