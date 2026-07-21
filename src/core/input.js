@@ -113,26 +113,47 @@
 
   if (ui.joystickZone) {
     const JOY_RADIUS = 44;
-    const JOY_BASE_X = 90;
-    const JOY_BASE_Y_DEFAULT = 100;
+    const PREF_LEFT = "joystick-position:left";
+    const PREF_RIGHT = "joystick-position:right";
+
+    const applyJoystickZonePosition = () => {
+      const pos = localStorage.getItem("joystick-position") || "left";
+      ui.joystickZone.classList.remove("is-left", "is-center", "is-right");
+      ui.joystickZone.classList.add(`is-${pos}`);
+    };
+    applyJoystickZonePosition();
+    if (ui.joystickPosition) {
+      ui.joystickPosition.value = localStorage.getItem("joystick-position") || "left";
+      ui.joystickPosition.addEventListener("change", () => {
+        localStorage.setItem("joystick-position", ui.joystickPosition.value);
+        applyJoystickZonePosition();
+      });
+    }
+
+    const showBaseAt = (x, y) => {
+      ui.joystickBase.style.left = `${x}px`;
+      ui.joystickBase.style.top = `${y}px`;
+      ui.joystickKnob.style.left = `${x}px`;
+      ui.joystickKnob.style.top = `${y}px`;
+      ui.joystickBase.classList.add("is-active");
+      ui.joystickKnob.classList.add("is-active");
+    };
+
+    const hideBase = () => {
+      ui.joystickBase.classList.remove("is-active");
+      ui.joystickKnob.classList.remove("is-active");
+    };
 
     ui.joystickZone.addEventListener("pointerdown", (event) => {
       event.preventDefault();
       ui.joystickZone.setPointerCapture?.(event.pointerId);
       joystick.active = true;
       joystick.pointerId = event.pointerId;
-      const baseRect = ui.joystickBase.getBoundingClientRect();
-      joystick.originX = baseRect.left + baseRect.width / 2;
-      joystick.originY = baseRect.top + baseRect.height / 2;
-      ui.joystickBase.classList.add("is-active");
-      ui.joystickKnob.style.left = `${event.clientX}px`;
-      ui.joystickKnob.style.top = `${event.clientY}px`;
-      let ddx = event.clientX - joystick.originX;
-      let ddy = event.clientY - joystick.originY;
-      const dist = Math.hypot(ddx, ddy);
-      if (dist > JOY_RADIUS) { ddx = ddx / dist * JOY_RADIUS; ddy = ddy / dist * JOY_RADIUS; }
-      joystick.dx = ddx / JOY_RADIUS;
-      joystick.dy = ddy / JOY_RADIUS;
+      joystick.originX = event.clientX;
+      joystick.originY = event.clientY;
+      showBaseAt(event.clientX, event.clientY);
+      joystick.dx = 0;
+      joystick.dy = 0;
     });
 
     ui.joystickZone.addEventListener("pointermove", (event) => {
@@ -154,9 +175,7 @@
       joystick.pointerId = null;
       joystick.dx = 0;
       joystick.dy = 0;
-      ui.joystickBase.classList.remove("is-active");
-      ui.joystickKnob.style.left = `${ui.joystickBase.getBoundingClientRect().left + 55}px`;
-      ui.joystickKnob.style.top = `${ui.joystickBase.getBoundingClientRect().top + 55}px`;
+      hideBase();
     };
     ui.joystickZone.addEventListener("pointerup", endJoystick);
     ui.joystickZone.addEventListener("pointercancel", endJoystick);

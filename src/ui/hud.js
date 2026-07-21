@@ -101,6 +101,7 @@
     joystickBase: document.querySelector("#joystick-base"),
     joystickKnob: document.querySelector("#joystick-knob"),
     mobileSkillButtons: document.querySelector("#mobile-skill-buttons"),
+    joystickPosition: document.querySelector("#joystick-position"),
     mobileScoreValue: document.querySelector("#mobile-score-value"),
     mobileKillsValue: document.querySelector("#mobile-kills-value"),
     mobileTimeValue: document.querySelector("#mobile-time-value")
