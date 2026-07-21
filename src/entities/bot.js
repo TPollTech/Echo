@@ -7,7 +7,8 @@
     const faction = Math.floor(Math.random() * 3);
     const factionHueBase = [15, 200, 280];
     const baseSpeed = archetype.speed * random(0.94, 1.06);
-    return {
+    const baseRadius = archetype.id === "warden" ? 21 : archetype.id === "bulwark" ? 24 : random(14, 19);
+    const entity = {
       id: `bot-${index}-${Math.random().toString(36).slice(2, 7)}`,
       name: names[index % names.length],
       archetype: archetype.id,
@@ -15,11 +16,12 @@
       boss: false,
       faction,
       factionTarget: null,
+      currentIntent: "roam",
       x: clamp(WORLD_SIZE / 2 + Math.cos(angle) * distance, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN),
       y: clamp(WORLD_SIZE / 2 + Math.sin(angle) * distance, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN),
       vx: 0,
       vy: 0,
-      radius: archetype.id === "warden" ? 21 : archetype.id === "bulwark" ? 24 : random(14, 19),
+      radius: baseRadius,
       hue: factionHueBase[faction] + archetype.hueShift + random(-8, 8),
       health: archetype.health,
       maxHealth: archetype.health,
@@ -56,6 +58,14 @@
       baseSpeed,
       ...options
     };
+    return initializeRunProgression(entity, {
+      enabled: !entity.boss,
+      level: entity.level || 1,
+      baseRadius: entity.radius,
+      baseMaxHealth: entity.maxHealth,
+      baseDamage: entity.attackDamage,
+      baseSpeed: entity.baseSpeed || entity.speed
+    });
   }
 
 /*__ECHO_SECTION_END:0031__*/
@@ -71,12 +81,14 @@
   function collectBotMotes(bot) {
     for (let index = motes.length - 1; index >= 0; index -= 1) {
       const mote = motes[index];
-      const range = bot.radius + mote.radius + 3;
+      const range = bot.radius + mote.radius + 3 + Math.max(0, (bot.rangeScale || 1) - 1) * 8;
       if (distanceSq(bot.x, bot.y, mote.x, mote.y) < range * range) {
         bot.score += mote.type === "gold" ? 5 : mote.type === "violet" ? 2 : 1;
-        bot.energy = Math.min(100, bot.energy + 2);
+        bot.energy = Math.min(100, bot.energy + (mote.type === "violet" ? 5 : 2));
+        const levelResult = grantRunExperience(bot, moteRunExperience(mote.type));
         motes.splice(index, 1);
         motes.push(createMote());
+        notifyRunLevelGain(bot, levelResult);
         break;
       }
     }
