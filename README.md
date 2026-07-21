@@ -14,7 +14,8 @@ A versão 0.6 adiciona evolução dinâmica dentro da partida e amplia a identid
 - entidades derrotadas devolvem parte de sua evolução como fragmentos;
 - bosses aparecem entre aproximadamente 1,6 e 2,05 vezes maiores e escalam conforme os níveis presentes na arena;
 - o HUD mostra nível e barra de experiência, e entidades recebem identificação visual de nível;
-- a música procedural agora possui sete temas, alternância sem repetição imediata e variações de perigo, boss e fase final;
+- o multiplayer deriva níveis visuais do placar autoritativo e exibe o nível dos participantes;
+- a soundtrack procedural possui dez temas, alternância sem repetição imediata e estados de menu, combate, ameaça, boss, fase final, vitória e derrota;
 - o servidor estático publica com segurança os módulos do navegador e valida os arquivos obrigatórios ao iniciar.
 
 A fonte editável continua organizada em módulos dentro de `src/`. O arquivo `game.js` é um bundle gerado e não deve ser editado manualmente.
@@ -22,7 +23,7 @@ A fonte editável continua organizada em módulos dentro de `src/`. O arquivo `g
 ## Modos
 
 - **Solo:** run com níveis, crescimento, mutações, modificadores, arquétipos de inimigos, escalada dinâmica e diferentes bosses.
-- **Multiplayer local:** salas para até oito jogadores, bots de treino, placar sincronizado e servidor autoritativo básico. A progressão dinâmica completa permanece concentrada no modo solo nesta versão.
+- **Multiplayer local:** salas para até oito jogadores, bots de treino, placar sincronizado, soundtrack e níveis visuais derivados do score do servidor. O crescimento de atributos completo permanece concentrado no modo solo nesta versão.
 
 ## Executar
 
@@ -99,20 +100,24 @@ Atalhos existentes:
 - `B`: invoca um boss.
 - `V`: abre o estado de vitória solo.
 
-No console do navegador, `EchoRunProgression` expõe as configurações de nível e `EchoSoundtrack` mostra a biblioteca e a faixa atual.
+No console do navegador:
+
+- `EchoRunProgression` expõe as configurações de nível;
+- `EchoSoundtrack` mostra a biblioteca completa e a faixa atual;
+- `EchoMultiplayerLevels` expõe a conversão do score autoritativo em nível visual.
 
 ## Arquitetura
 
-- `src/core/`: estado, loop, entrada, câmera, constantes e multiplayer.
+- `src/core/`: estado, loop, entrada, câmera, constantes, multiplayer e apresentação de níveis remotos.
 - `src/entities/`: jogador, bots, fragmentos e efeitos.
 - `src/combat/`: dano, colisão, rastro e efeitos de estado.
 - `src/enemies/`: dados dos arquétipos, registro de IA e comportamentos especializados.
 - `src/bosses/`: definições, controle de fases e registro de mecânicas.
 - `src/progression/`: níveis, crescimento, mutações, sinergias, modificadores, skins, desafios e upgrades.
 - `src/rendering/`: renderizador, entidades, efeitos e telegraphs.
-- `src/audio/`: engine, soundtrack procedural e efeitos sonoros.
+- `src/audio/`: engine, soundtrack procedural, estados musicais e efeitos sonoros.
 - `src/ui/`: HUD, apresentação de níveis, menus, HUD de boss e acessibilidade.
 - `core/` e `combat/` na raiz: módulos auxiliares desacoplados usados pelo runtime.
 - `server/`: persistência, servidor estático seguro e multiplayer local.
 
-Consulte `src/README.md`, `docs/ARCHITECTURE.md` e `docs/HYPERPLAN.md`.
+Consulte `src/README.md`, `docs/ARCHITECTURE.md`, `docs/HYPERPLAN.md` e `docs/VALIDATION.md`.
