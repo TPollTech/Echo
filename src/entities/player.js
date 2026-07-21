@@ -4,7 +4,7 @@
     const maxHealth = 100 + playerUpgrades.core * 5;
     const maxEnergy = 100 + playerUpgrades.charge * 10;
     const activeSkin = getSelectedSkin();
-    return {
+    const entity = {
       id: "player",
       name: "Viajante",
       x: WORLD_SIZE / 2,
@@ -37,6 +37,7 @@
       shellDefense: 1,
       siphon: false,
       killRestore: false,
+      moveSpeed: 205,
       phaseSpeed: 430,
       phaseDrain: 29,
       arrivalNova: false,
@@ -79,6 +80,14 @@
       overloadActive: false,
       overloadTimer: 0
     };
+    return initializeRunProgression(entity, {
+      baseRadius: 18,
+      baseMaxHealth: maxHealth,
+      baseDamage: 34,
+      baseSpeed: 205,
+      basePhaseSpeed: 430,
+      basePickupRadius: playerUpgrades.collection * 5
+    });
   }
 
 /*__ECHO_SECTION_END:0030__*/
@@ -86,6 +95,7 @@
   function updatePlayer(dt) {
     player.cooldown = Math.max(0, player.cooldown - dt);
     player.hitTimer = Math.max(0, player.hitTimer - dt);
+    player.levelPulse = Math.max(0, (player.levelPulse || 0) - dt * 1.8);
     if (!player.phasing && player.hitTimer <= 0 && player.health < player.maxHealth) {
       const baseRegen = 1.15;
       const upgradeRegen = playerUpgrades.regeneration * 0.3;
@@ -143,7 +153,7 @@
       collectMotes(phase, true);
       if (player.energy <= 0) endPhase();
     } else {
-      steerVelocity(player, target.x, target.y, 205, dt, 6.1);
+      steerVelocity(player, target.x, target.y, player.moveSpeed || 205, dt, 6.1);
       player.x = clamp(player.x + player.vx * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
       player.y = clamp(player.y + player.vy * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
       player.energy = Math.min(player.maxEnergy, player.energy + 13 * dt);
