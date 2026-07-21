@@ -8,6 +8,7 @@
     const x = forceNear ? player.x + Math.cos(angle) * nearDistance : random(WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
     const y = forceNear ? player.y + Math.sin(angle) * nearDistance : random(WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
     return {
+      id: `mote-${Math.random().toString(36).slice(2, 9)}`,
       x: clamp(x, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN),
       y: clamp(y, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN),
       radius: type === "gold" ? random(3.5, 5) : type === "red" ? random(3, 4.5) : random(2.2, 4),
@@ -34,6 +35,10 @@
       if (player.combo > runStats.maxCombo) runStats.maxCombo = player.combo;
       runStats.score = Math.floor(player.score);
 
+      const experienceMultiplier = spectral ? 0.82 : 1;
+      const levelResult = grantRunExperience(player, moteRunExperience(mote.type) * experienceMultiplier);
+      notifyRunLevelGain(player, levelResult);
+
       if (mote.type === "red" && !spectral) {
         player.health = Math.max(1, player.health - 5);
         runStats.redMotes += 1;
@@ -47,6 +52,11 @@
           }
         }
         spawnWave(mote.x, mote.y, 0, 55, 0.5);
+      }
+
+      if (mote.type === "violet") {
+        player.energy = clamp(player.energy + 5, 0, player.maxEnergy);
+        player.levelPulse = Math.max(player.levelPulse || 0, 0.24);
       }
 
       if (player.moteHealing) player.health = clamp(player.health + (mote.type === "gold" ? 3 : mote.type === "red" ? 1.5 : 0.7) * Math.min(2.2, 1 + player.combo / 20) * player.healScale, 0, player.maxHealth);
