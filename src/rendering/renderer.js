@@ -63,6 +63,7 @@
     drawScars();
     drawMotes(time);
     drawEffects();
+    drawClassCombat(time);
     drawBots(time);
     drawPlayer(time);
     ctx.restore();

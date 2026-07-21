@@ -1,6 +1,19 @@
-# Arquitetura ECHO 0.5.1
+# Arquitetura ECHO 0.6.0
 
-A versão 0.5.1 conclui a primeira separação estrutural do runtime principal sem alterar o gameplay. O arquivo `game.js` continua sendo entregue ao navegador, mas agora é uma saída gerada a partir da fonte canônica em `src/`.
+A versão 0.6.0 mantém `game.js` como saída gerada da fonte canônica em `src/` e acrescenta dois domínios: classes e preparação. O mesmo contrato de classe alimenta menu, jogador, bots, HUD, multiplayer e persistência.
+
+### `src/classes/`
+
+- `class-definitions.js`: registro imutável das dez classes, habilidades compatíveis, evolução, limites de composição e decisões de IA.
+- `class-runtime.js`: controladores dos ataques primários, especiais, passivas e recursos no cliente.
+- `class-effects.js`: simulação e renderização de projéteis, armadilhas, campos, unidades e indicadores.
+- `bot-class-runtime.js`: aplicação do contrato de classe e execução de IA em bots solo.
+
+### `src/menu/`
+
+- `main-menu.js`: estado persistente de preparação, seis abas, seleção de modo/classe/skin/habilidades, configurações, progresso e prévia animada.
+
+O servidor replica o contrato autoritativo em `server/multiplayer.js`. O transporte usa snapshots a 20 Hz, deltas de fragmentos, limite de fila por conexão e confirmação da sequência de entrada. O cliente faz previsão apenas do próprio movimento e suaviza entidades remotas. O SQLite armazena preferências em `player_preferences`, evolução em `class_progress` e registra classe/dificuldade em cada partida.
 
 ## Regra principal
 
@@ -54,7 +67,7 @@ O loop geral não decide mais comportamento usando uma sequência de `if (bot.ar
 - `boss-controller.js`: criação, transição de fase, defesa e conclusão.
 - `mechanics/runtime.js`: `bossMechanicRegistry` e helpers de mecânicas.
 
-O loop do jogo chama apenas `runBossMechanic(bot, dt)`. Tremor Deep, Espectro Decisivo, Necróstro, Vórtice, Cicatriz, Mímico, Silenciador e Prisma têm handlers próprios no registro; Coroa Vazia usa o comportamento-base até a revisão 0.6.
+O loop do jogo chama apenas `runBossMechanic(bot, dt)`. Tremor, Espectro Decisivo, Necróstro, Vórtice, Cicatriz, Mímico, Silenciador e Prisma têm handlers próprios no registro; Coroa Vazia usa o comportamento-base até a revisão 0.6.
 
 ### `src/progression/`
 
@@ -69,8 +82,11 @@ O loop do jogo chama apenas `runBossMechanic(bot, dt)`. Tremor Deep, Espectro De
 
 - `renderer.js`
 - `entities.js`
+- `player-skins.js`: desenho procedural compartilhado pelo jogador local e pelos participantes remotos, inclusive no perfil mobile.
 - `effects.js`
 - `telegraphs.js`
+
+`shared/skin-definitions.js` é o registro canônico de nomes, paletas, estilos e condições de desbloqueio usado pelo cliente e pelo servidor.
 
 ### `src/audio/`
 

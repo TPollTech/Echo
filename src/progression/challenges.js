@@ -1,18 +1,18 @@
 /* ECHO source module. Sections are assembled by src/build-order.json. */
 /*__ECHO_SECTION:0021__*/
   const challengePool = [
-    { id: "kill20", name: "DESTRUIÇÃO MÍNIMA", description: "Elimine 20 inimigos em uma run", goal: 20, stat: "kills", reward: 25 },
-    { id: "kill50", name: "ABATE EM MASSA", description: "Elimine 50 inimigos em uma run", goal: 50, stat: "kills", reward: 60 },
-    { id: "score1500", name: "FRAGMENTOS ABUNDANTES", description: "Alcance 1500 pontos em uma run", goal: 1500, stat: "score", reward: 30 },
-    { id: "score5000", name: "ACÚMULO EXTREMO", description: "Alcance 5000 pontos em uma run", goal: 5000, stat: "score", reward: 80 },
+    { id: "kill20", name: "PRIMEIRAS ELIMINAÇÕES", description: "Elimine 20 inimigos em uma partida", goal: 20, stat: "kills", reward: 25 },
+    { id: "kill50", name: "50 ELIMINAÇÕES", description: "Elimine 50 inimigos em uma partida", goal: 50, stat: "kills", reward: 60 },
+    { id: "score1500", name: "COLETOR", description: "Alcance 1500 pontos em uma partida", goal: 1500, stat: "score", reward: 30 },
+    { id: "score5000", name: "PONTUAÇÃO ALTA", description: "Alcance 5000 pontos em uma partida", goal: 5000, stat: "score", reward: 80 },
     { id: "combo10", name: "FLUXO CONTÍNUO", description: "Atinja combo x10", goal: 10, stat: "maxCombo", reward: 20 },
     { id: "combo20", name: "COMBO INDOMÁVEL", description: "Atinja combo x20", goal: 20, stat: "maxCombo", reward: 50 },
-    { id: "bossKill", name: "CAÇADOR DE COROAS", description: "Derrote o boss", goal: 1, stat: "bossDefeated", reward: 40 },
-    { id: "bossSpeed", name: "EXECUÇÃO RÁPIDA", description: "Derrote o boss em menos de 90s", goal: 1, stat: "bossSpeedKill", reward: 70 },
+    { id: "bossKill", name: "CHEFE DERROTADO", description: "Derrote o chefe da partida", goal: 1, stat: "bossDefeated", reward: 40 },
+    { id: "bossSpeed", name: "VITÓRIA RÁPIDA", description: "Derrote o chefe em menos de 90 segundos", goal: 1, stat: "bossSpeedKill", reward: 70 },
     { id: "time5", name: "SOBREVIVENTE", description: "Sobreviva 5 minutos", goal: 300, stat: "runTime", reward: 30 },
     { id: "time10", name: "RESISTÊNCIA", description: "Sobreviva 10 minutos", goal: 600, stat: "runTime", reward: 65 },
-    { id: "redMote5", name: "RISCO CALCULADO", description: "Colete 5 motes vermelhas em uma run", goal: 5, stat: "redMotes", reward: 20 },
-    { id: "noHitBoss", name: "PERFEIÇÃO", description: "Derrote o boss sem tomar dano na fase final", goal: 1, stat: "noHitBoss", reward: 100 }
+    { id: "redMote5", name: "FRAGMENTOS VERMELHOS", description: "Colete 5 fragmentos vermelhos em uma partida", goal: 5, stat: "redMotes", reward: 20 },
+    { id: "noHitBoss", name: "SEM DANO", description: "Derrote o chefe sem receber dano na fase final", goal: 1, stat: "noHitBoss", reward: 100 }
   ];
   let activeChallenges = [];
   let runStats = { kills: 0, score: 0, maxCombo: 0, bossDefeated: 0, bossSpeedKill: 0, runTime: 0, redMotes: 0, noHitBoss: 0 };
@@ -61,7 +61,7 @@
         ch.completed = true;
         newCompletion = true;
         pendingResonance += ch.reward;
-        showToast(`DESAFIO CONCLUÍDO: ${ch.name} (+${ch.reward} ressonância)`, 2800);
+        showToast(`DESAFIO CONCLUÍDO: ${ch.name} (+${ch.reward} CRÉDITOS)`, 2800);
         sound(523, 0.3, "triangle", 0.05);
         setTimeout(() => sound(659, 0.25, "sine", 0.04), 100);
         setTimeout(() => sound(784, 0.2, "sine", 0.035), 200);

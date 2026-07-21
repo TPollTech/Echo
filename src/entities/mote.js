@@ -28,6 +28,12 @@
       const baseValue = mote.type === "gold" ? 7 : mote.type === "red" ? 10 : mote.type === "violet" ? 3 : 1;
       const spectralMultiplier = spectral ? 0.72 : 1;
       player.score += baseValue * spectralMultiplier * (player.scoreMultiplier || 1);
+      grantClassExperience(baseValue * (spectral ? 0.65 : 1));
+      if (player.classId === "loader") {
+        if (mote.type === "violet") player.violetAmmo = Math.min(4, (player.violetAmmo || 0) + 1);
+        else player.blueAmmo = Math.min(8, (player.blueAmmo || 0) + 1);
+        player.classResource = (player.blueAmmo || 0) + (player.violetAmmo || 0);
+      }
       player.energy = clamp(player.energy + baseValue * (spectral ? 1.5 : 0.8), 0, player.maxEnergy);
       if (mote.type === "violet") {
         player.rareBoostTimer = LEVEL_CONFIG.rareBoostDuration;

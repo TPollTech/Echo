@@ -4,9 +4,9 @@
     const maxHealth = 100 + playerUpgrades.core * 5;
     const maxEnergy = 100 + playerUpgrades.charge * 10;
     const activeSkin = getSelectedSkin();
-    return {
+    const entity = {
       id: "player",
-      name: "Viajante",
+      name: "Jogador",
       x: WORLD_SIZE / 2,
       y: WORLD_SIZE / 2,
       vx: 0,
@@ -79,6 +79,7 @@
       overloadActive: false,
       overloadTimer: 0
     };
+    return applyEntityClass(entity, selectedClassId);
   }
 
 /*__ECHO_SECTION_END:0030__*/
@@ -95,7 +96,7 @@
     player.comboTimer -= dt;
     if (player.comboTimer <= 0) player.combo = 0;
 
-    if (player.skinId === "caotico") player.hue = (runTime * 52) % 360;
+    if (player.skinId === "arco-iris") player.hue = (runTime * 52) % 360;
 
     if (player.silenced && !player.silencePermanent) {
       player.silencedTimer -= dt;
@@ -145,7 +146,9 @@
       if (player.energy <= 0) endPhase();
     } else {
       const growthSpeed = (player.levelSpeedScale || 1) * (player.rareBoostTimer > 0 ? 1.06 : 1);
-      steerVelocity(player, target.x, target.y, 205 * growthSpeed, dt, 6.1);
+      const classSpeed = player.moveSpeed || 205;
+      const aimingScale = player.classId === "marksman" && player.classCharging ? 0.58 : 1;
+      steerVelocity(player, target.x, target.y, classSpeed * growthSpeed * aimingScale, dt, 6.1);
       player.x = clamp(player.x + player.vx * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
       player.y = clamp(player.y + player.vy * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
       player.energy = Math.min(player.maxEnergy, player.energy + 13 * dt);

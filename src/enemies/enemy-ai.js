@@ -124,6 +124,7 @@
       bot.hitTimer = Math.max(0, bot.hitTimer - dt);
       bot.thinkTimer -= dt;
       bot.energy = Math.min(100, bot.energy + 8 * dt);
+      const classHandled = updateBotClassAi(bot, dt);
       const behavior = getEnemyBehavior(bot);
       behavior.beforeMovement?.(bot, dt);
 
@@ -213,7 +214,7 @@
 
 /*__ECHO_SECTION_END:0072__*/
 /*__ECHO_SECTION:0074__*/
-      if (behavior.phaseAttack !== false && !bot.stealthed && !(bot.boss && bot.bossPhaseTransitioning)) {
+      if (!classHandled && behavior.phaseAttack !== false && !bot.stealthed && !(bot.boss && bot.bossPhaseTransitioning)) {
         if (bot.factionTarget && !bot.factionTarget.dead && bot.cooldown <= 0 && bot.energy > 45 && bot.aggression > 0.5) {
           const distToTarget = Math.hypot(bot.x - bot.factionTarget.x, bot.y - bot.factionTarget.y);
           if (distToTarget < attackRange) {

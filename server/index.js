@@ -177,6 +177,11 @@ function createEchoServer(options = {}) {
         sendJson(response, 201, result);
         return;
       }
+      if (request.method === "POST" && url.pathname === "/api/preferences") {
+        const body = await readJson(request);
+        sendJson(response, 200, { preferences: database.savePreferences(body.name, body.preferences) });
+        return;
+      }
       if (request.method === "GET" && url.pathname === "/api/upgrades") {
         const name = url.searchParams.get("name");
         const profile = database.getProfile(name);

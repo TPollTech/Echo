@@ -6,7 +6,7 @@
       name: "CORTINA DE LÂMINAS",
       requires: ["blade", "afterimage"],
       color: "#ff4fd8",
-      description: "Largura do rastro +50%, dano persistente dobado.",
+      description: "Aumenta a largura do rastro em 50% e dobra o dano que permanece no chão.",
       apply(player) {
         player.ribbonWidthBonus = (player.ribbonWidthBonus || 1) * 1.5;
         player.ribbonLingerDamageBonus = (player.ribbonLingerDamageBonus || 1) * 2;
@@ -17,7 +17,7 @@
       name: "DEVORADOR",
       requires: ["siphon", "resonance"],
       color: "#45e6ff",
-      description: "Kill cura 2x, sifão restaura 2x.",
+      description: "Dobra a cura recebida ao eliminar inimigos e ao absorver vida.",
       apply(player) {
         player.killRestoreHealBonus = (player.killRestoreHealBonus || 1) * 2;
         player.siphonBonus = (player.siphonBonus || 1) * 2;
@@ -28,7 +28,7 @@
       name: "MIRAGEM",
       requires: ["drift", "dualphase"],
       color: "#78ffba",
-      description: "3 projeções, velocidade +25%.",
+      description: "Permite usar três projeções e aumenta a velocidade delas em 25%.",
       apply(player) {
         player.dualPhaseCharges = 3;
         player.phaseSpeed *= 1.25;
@@ -39,7 +39,7 @@
       name: "FORTALEZA",
       requires: ["shell", "prism"],
       color: "#a88cff",
-      description: "Guarda de chegada dobada, defesa = 0.3.",
+      description: "Dobra a duração da proteção ao retornar e reduz em 70% o dano recebido.",
       apply(player) {
         player.arrivalGuard *= 2;
         player.shellDefense = Math.min(player.shellDefense, 0.3);
@@ -50,7 +50,7 @@
       name: "BURACO NEGRO",
       requires: ["nova", "vortex"],
       color: "#5ce0d2",
-      description: "Nova raio +80%, puxa inimigos antes de explodir.",
+      description: "Aumenta o alcance da explosão em 80% e puxa os inimigos antes do dano.",
       apply(player) {
         player.novaRadiusBonus = (player.novaRadiusBonus || 1) * 1.8;
         player.vortexPullBonus = (player.vortexPullBonus || 1) * 1.5;
@@ -61,17 +61,17 @@
       name: "ESPECTRO VINGATIVO",
       requires: ["ghostwall", "reversal"],
       color: "#c8b8ff",
-      description: "Ao ativar ghostwall, dano AoE devastador.",
+      description: "Ao ativar a proteção de retorno, causa uma explosão de dano ao redor do jogador.",
       apply(player) {
         player.ghostwallNova = true;
       }
     },
     {
       id: "combo-master",
-      name: "COMBO MASTER",
+      name: "MESTRE DO COMBO",
       requires: ["chain", "focus"],
       color: "#ffe066",
-      description: "Janela de chain 3s, máximo 8 stacks.",
+      description: "O combo pode continuar por 3 segundos e acumular até 8 ataques.",
       apply(player) {
         player.chainWindow = 3;
         player.chainMaxStacks = 8;
@@ -82,7 +82,7 @@
       name: "SUPERNOVA",
       requires: ["gravity", "overclock"],
       color: "#b792ff",
-      description: "Pickup radius +50% durante phase, velocidade +30%.",
+      description: "Durante a projeção, aumenta a coleta em 50% e a velocidade em 30%.",
       apply(player) {
         player.phasePickupBonus = (player.phasePickupBonus || 1) * 1.5;
         player.phaseSpeed *= 1.3;

@@ -147,7 +147,7 @@
       entity.levelPulseTimer = 1.1;
       emitLevelEvent("progression:level-up", entity, { levelsGained, source });
       if (entity === player) {
-        showToast(`NÍVEL ${entity.level} // SINAL AMPLIADO`, 1700);
+        showToast(`NÍVEL ${entity.level} ALCANÇADO`, 1700);
         spawnWave(entity.x, entity.y, entity.hue, 105 + entity.radius, 0.7);
         burst(entity.x, entity.y, entity.hue, 18);
         sound(330 + Math.min(220, entity.level * 8), 0.3, "triangle", 0.05);

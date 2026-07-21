@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
 const { sanitizeName, sanitizeRoomCode } = require("../shared/simulation.js");
+const { CLASS_IDS, CLASS_CHALLENGES, normalizeClassId, sanitizeSkillLoadout } = require("../src/classes/class-definitions.js");
 
 function createDatabase(options = {}) {
   const databasePath = options.path || path.join(__dirname, "..", "data", "echo.sqlite");
@@ -37,6 +38,8 @@ function createDatabase(options = {}) {
       duration_ms INTEGER NOT NULL CHECK (duration_ms >= 0),
       outcome TEXT NOT NULL,
       room_code TEXT,
+      class_id TEXT NOT NULL DEFAULT 'cutter',
+      difficulty TEXT NOT NULL DEFAULT 'normal',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     ) STRICT;
 
@@ -73,7 +76,28 @@ function createDatabase(options = {}) {
       mutation_id TEXT,
       PRIMARY KEY (player_id, slot)
     ) STRICT;
+
+    CREATE TABLE IF NOT EXISTS player_preferences (
+      player_id INTEGER PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
+      preferences_json TEXT NOT NULL DEFAULT '{}',
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ) STRICT;
+
+    CREATE TABLE IF NOT EXISTS class_progress (
+      player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+      class_id TEXT NOT NULL,
+      experience INTEGER NOT NULL DEFAULT 0 CHECK (experience >= 0),
+      runs INTEGER NOT NULL DEFAULT 0 CHECK (runs >= 0),
+      kills INTEGER NOT NULL DEFAULT 0 CHECK (kills >= 0),
+      victories INTEGER NOT NULL DEFAULT 0 CHECK (victories >= 0),
+      challenge_claimed INTEGER NOT NULL DEFAULT 0 CHECK (challenge_claimed IN (0,1)),
+      PRIMARY KEY (player_id, class_id)
+    ) STRICT;
   `);
+
+  const runColumns = new Set(database.prepare("PRAGMA table_info(runs)").all().map((column) => column.name));
+  if (!runColumns.has("class_id")) database.exec("ALTER TABLE runs ADD COLUMN class_id TEXT NOT NULL DEFAULT 'cutter'");
+  if (!runColumns.has("difficulty")) database.exec("ALTER TABLE runs ADD COLUMN difficulty TEXT NOT NULL DEFAULT 'normal'");
 
   const insertPlayer = database.prepare(`
     INSERT INTO players (name) VALUES (?)
@@ -81,8 +105,8 @@ function createDatabase(options = {}) {
   `);
   const selectPlayer = database.prepare("SELECT id, name FROM players WHERE name = ? COLLATE NOCASE");
   const insertRun = database.prepare(`
-    INSERT INTO runs (player_id, mode, score, kills, duration_ms, outcome, room_code)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO runs (player_id, mode, score, kills, duration_ms, outcome, room_code, class_id, difficulty)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const insertRoom = database.prepare(`
     INSERT INTO rooms (code, status) VALUES (?, 'active')
@@ -101,7 +125,7 @@ function createDatabase(options = {}) {
     WHERE player_id = ? AND mode = ?
   `);
   const recentRuns = database.prepare(`
-    SELECT mode, score, kills, duration_ms, outcome, room_code, created_at
+    SELECT mode, score, kills, duration_ms, outcome, room_code, class_id, difficulty, created_at
     FROM runs
     WHERE player_id = ?
     ORDER BY id DESC
@@ -146,6 +170,22 @@ function createDatabase(options = {}) {
     ON CONFLICT(player_id, slot) DO UPDATE SET mutation_id = excluded.mutation_id
   `);
   const clearLoadout = database.prepare("DELETE FROM loadout WHERE player_id = ?");
+  const selectPreferences = database.prepare("SELECT preferences_json FROM player_preferences WHERE player_id = ?");
+  const upsertPreferences = database.prepare(`
+    INSERT INTO player_preferences (player_id, preferences_json) VALUES (?, ?)
+    ON CONFLICT(player_id) DO UPDATE SET preferences_json = excluded.preferences_json, updated_at = CURRENT_TIMESTAMP
+  `);
+  const selectClassProgress = database.prepare("SELECT class_id, experience, runs, kills, victories, challenge_claimed FROM class_progress WHERE player_id = ?");
+  const upsertClassProgress = database.prepare(`
+    INSERT INTO class_progress (player_id, class_id, experience, runs, kills, victories)
+    VALUES (?, ?, ?, 1, ?, ?)
+    ON CONFLICT(player_id, class_id) DO UPDATE SET
+      experience = class_progress.experience + excluded.experience,
+      runs = class_progress.runs + 1,
+      kills = class_progress.kills + excluded.kills,
+      victories = class_progress.victories + excluded.victories
+  `);
+  const claimClassChallenge = database.prepare("UPDATE class_progress SET challenge_claimed = 1 WHERE player_id = ? AND class_id = ? AND challenge_claimed = 0");
 
   function getResonance(playerId) {
     const row = selectResonance.get(playerId);
@@ -170,7 +210,7 @@ function createDatabase(options = {}) {
     if (level >= 5) throw new Error("Nível máximo atingido.");
     const cost = UPGRADE_COSTS[level];
     const resonance = getResonance(playerId);
-    if (resonance < cost) throw new Error("Ressonância insuficiente.");
+    if (resonance < cost) throw new Error("Créditos insuficientes.");
     upsertResonance.run(playerId, resonance - cost);
     upsertUpgrade.run(playerId, upgradeType, level + 1);
     return { resonance: resonance - cost, upgrades: { ...current, [upgradeType]: level + 1 } };
@@ -220,9 +260,9 @@ function createDatabase(options = {}) {
   }
 
   function purchaseMutation(playerId, mutationId) {
-    if (!MUTATION_IDS.includes(mutationId)) throw new Error("Mutação inválida.");
+    if (!MUTATION_IDS.includes(mutationId)) throw new Error("Bônus inválido.");
     const owned = getOwnedMutations(playerId);
-    if (owned[mutationId]) throw new Error("Mutação já desbloqueada.");
+    if (owned[mutationId]) throw new Error("Bônus já desbloqueado.");
     const cost = getMutationCost(mutationId);
     const points = getSkillPoints(playerId);
     if (points < cost) throw new Error("Pontos de habilidade insuficientes.");
@@ -232,7 +272,7 @@ function createDatabase(options = {}) {
   }
 
   function upgradeMutation(playerId, mutationId) {
-    if (!MUTATION_IDS.includes(mutationId)) throw new Error("Mutação inválida.");
+    if (!MUTATION_IDS.includes(mutationId)) throw new Error("Bônus inválido.");
     const owned = getOwnedMutations(playerId);
     const level = owned[mutationId];
     if (!level || level >= 3) throw new Error("Nível máximo atingido.");
@@ -245,14 +285,14 @@ function createDatabase(options = {}) {
   }
 
   function saveLoadout(playerId, slots) {
-    if (!Array.isArray(slots) || slots.length !== MAX_LOADOUT_SLOTS) throw new Error("Loadout inválido.");
+    if (!Array.isArray(slots) || slots.length !== MAX_LOADOUT_SLOTS) throw new Error("Seleção de bônus inválida.");
     const owned = getOwnedMutations(playerId);
     clearLoadout.run(playerId);
     for (let i = 0; i < MAX_LOADOUT_SLOTS; i++) {
       const mutationId = slots[i] || null;
       if (mutationId) {
-        if (!MUTATION_IDS.includes(mutationId)) throw new Error(`Mutação inválida: ${mutationId}`);
-        if (!owned[mutationId]) throw new Error(`Mutação não desbloqueada: ${mutationId}`);
+        if (!MUTATION_IDS.includes(mutationId)) throw new Error(`Bônus inválido: ${mutationId}`);
+        if (!owned[mutationId]) throw new Error(`Bônus não desbloqueado: ${mutationId}`);
       }
       upsertLoadoutSlot.run(playerId, i, mutationId);
     }
@@ -262,6 +302,39 @@ function createDatabase(options = {}) {
   function addSkillPoints(playerId, amount) {
     const current = getSkillPoints(playerId);
     upsertSkillPoints.run(playerId, current + Math.max(0, Math.floor(amount)));
+  }
+
+  function sanitizePreferences(value = {}) {
+    const classId = normalizeClassId(value.classId);
+    const modes = ["solo", "multiplayer", "training"];
+    const difficulties = ["easy", "normal", "hard"];
+    const safeSettings = {};
+    const settings = value.settings && typeof value.settings === "object" ? value.settings : {};
+    for (const [key, setting] of Object.entries(settings).slice(0, 40)) {
+      if (/^[a-zA-Z][a-zA-Z0-9]{0,30}$/.test(key) && ["string", "number", "boolean"].includes(typeof setting)) safeSettings[key] = typeof setting === "string" ? setting.slice(0, 48) : setting;
+    }
+    return {
+      classId,
+      skinId: String(value.skinId || "azul-neon").slice(0, 32),
+      skillIds: sanitizeSkillLoadout(classId, value.skillIds),
+      mode: modes.includes(value.mode) ? value.mode : "solo",
+      difficulty: difficulties.includes(value.difficulty) ? value.difficulty : "normal",
+      modifierId: String(value.modifierId || "").slice(0, 32),
+      randomClass: Boolean(value.randomClass),
+      settings: safeSettings
+    };
+  }
+
+  function getPreferences(playerId) {
+    const row = selectPreferences.get(playerId);
+    if (!row) return null;
+    try { return sanitizePreferences(JSON.parse(row.preferences_json)); } catch { return null; }
+  }
+
+  function getClassProgress(playerId) {
+    const result = Object.fromEntries(CLASS_IDS.map((classId) => [classId, { experience: 0, runs: 0, kills: 0, victories: 0, challengeClaimed: false }]));
+    for (const row of selectClassProgress.all(playerId)) result[row.class_id] = { experience: row.experience, runs: row.runs, kills: row.kills, victories: row.victories, challengeClaimed: Boolean(row.challenge_claimed) };
+    return result;
   }
 
   function getOrCreatePlayer(rawName) {
@@ -279,11 +352,23 @@ function createDatabase(options = {}) {
     const outcome = String(run.outcome || "completed").slice(0, 24);
     const roomCode = mode === "multiplayer" ? sanitizeRoomCode(run.roomCode) || null : null;
     const bossDefeated = Boolean(run.bossDefeated);
-    const result = insertRun.run(player.id, mode, score, kills, durationMs, outcome, roomCode);
+    const classId = normalizeClassId(run.classId);
+    const difficulty = ["easy", "normal", "hard"].includes(run.difficulty) ? run.difficulty : "normal";
+    const victory = outcome === "victory" ? 1 : 0;
+    const experience = Math.max(1, Math.floor(score * 0.35 + kills * 8 + victory * 20));
+    const result = insertRun.run(player.id, mode, score, kills, durationMs, outcome, roomCode, classId, difficulty);
+    upsertClassProgress.run(player.id, classId, experience, kills, victory);
+    const progress = getClassProgress(player.id)[classId];
+    const challenge = CLASS_CHALLENGES[classId];
+    if (challenge && !progress.challengeClaimed && (progress[challenge.metric] || 0) >= challenge.target) {
+      const claim = claimClassChallenge.run(player.id, classId);
+      if (claim.changes > 0) { addResonance(player.id, challenge.resonance); addSkillPoints(player.id, challenge.skillPoints); }
+    }
 
     if (mode === "solo") {
-      const resonance = calculateRunResonance(score, kills, bossDefeated);
-      const skillPoints = calculateSkillPoints(score, kills, bossDefeated);
+      const multiplier = Math.max(1, Math.min(1.05, Number(run.rewardMultiplier) || 1));
+      const resonance = Math.ceil(calculateRunResonance(score, kills, bossDefeated) * multiplier);
+      const skillPoints = Math.ceil(calculateSkillPoints(score, kills, bossDefeated) * multiplier);
       addResonance(player.id, resonance);
       addSkillPoints(player.id, skillPoints);
       return { id: Number(result.lastInsertRowid), playerId: player.id, resonance, skillPoints };
@@ -308,6 +393,8 @@ function createDatabase(options = {}) {
       mutationCosts: MUTATION_COSTS,
       mutationUpgradeCosts: MUTATION_UPGRADE_COSTS,
       mutationIds: MUTATION_IDS
+      ,preferences: getPreferences(player.id)
+      ,classProgress: getClassProgress(player.id)
     };
   }
 
@@ -325,6 +412,12 @@ function createDatabase(options = {}) {
     },
     getProfile,
     saveRun,
+    savePreferences(rawName, preferences) {
+      const player = getOrCreatePlayer(rawName);
+      const sanitized = sanitizePreferences(preferences);
+      upsertPreferences.run(player.id, JSON.stringify(sanitized));
+      return sanitized;
+    },
     getUpgrades(rawName) {
       const player = getOrCreatePlayer(rawName);
       return getUpgrades(player.id);

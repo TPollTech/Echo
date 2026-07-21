@@ -14,3 +14,10 @@ The complete ECHO 0.6 evolution roadmap was generated and validated by GitHub Ac
 - Ten procedural soundtrack themes and menu/victory/defeat state checks: passed
 - Multiplayer authoritative-score level presentation checks: passed
 - All evolution modules inside the main runtime closure: passed
+- Ten class contracts, balanced bot composition and class-specific AI: passed
+- Unified preparation menu, direct solo/training start and mobile layout: passed
+- Authoritative multiplayer class identity, resources, primary attacks and specials: passed
+- Local SQLite preferences and per-class progression: passed
+- Multiplayer snapshots at 20 Hz, mote deltas, ping protocol and queue backpressure: passed
+- Shared desktop/mobile skin registry and player rendering path: passed
+- Mode-first preparation, direct ability text and functional one-time class achievements: passed

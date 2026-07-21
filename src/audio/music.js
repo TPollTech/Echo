@@ -138,7 +138,7 @@
     feedback.gain.value = 0.16;
     wet.gain.value = 0.16;
     master.gain.setValueAtTime(0.0001, now);
-    master.gain.exponentialRampToValueAtTime(Math.max(0.0001, masterVolume * 0.55), now + 0.8);
+    master.gain.exponentialRampToValueAtTime(Math.max(0.0001, masterVolume * musicVolume * 0.55), now + 0.8);
 
     input.connect(filter).connect(compressor).connect(master).connect(audioContext.destination);
     echoInput.connect(delay);
@@ -211,7 +211,7 @@
       0.92
     );
     const targetTempo = isBoss ? 104 : 86 + Math.min(12, stage * 4);
-    const targetGain = muted ? 0.0001 : Math.max(0.0001, masterVolume * 0.55);
+    const targetGain = muted ? 0.0001 : Math.max(0.0001, masterVolume * musicVolume * 0.55);
     const now = audioContext.currentTime;
 
     musicLayers.intensity = intensity;

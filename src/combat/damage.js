@@ -25,7 +25,7 @@
 /*__ECHO_SECTION_END:0055__*/
 /*__ECHO_SECTION:0059__*/
   function damagePlayer(amount, x, y) {
-    if (activeMode !== "solo" || state !== "playing" || player.hitTimer > 0) return;
+    if (!["solo", "training"].includes(activeMode) || state !== "playing" || player.hitTimer > 0) return;
     if (player.barrierActive) {
       player.barrierActive = false;
       player.barrierTimer = 0;
@@ -37,6 +37,17 @@
     }
     const multiplier = player.phasing ? player.shellDefense : 1;
     let applied = amount * multiplier;
+    if (player.classId === "defender") {
+      applied *= player.damageTakenScale || 1;
+      if (player.classShieldTimer > 0) {
+        const incoming = Math.atan2(y - player.y, x - player.x);
+        const delta = Math.abs(Math.atan2(Math.sin(incoming - player.classShieldAngle), Math.cos(incoming - player.classShieldAngle)));
+        if (delta < Math.PI * 0.55) {
+          player.classCounterCharge = Math.min(24, (player.classCounterCharge || 0) + applied * 0.45);
+          applied *= 0.22;
+        }
+      }
+    }
 
     if (player.reversal) {
       const reflected = applied * 0.3;
@@ -77,6 +88,12 @@
     sound(82, 0.2, "square", 0.055);
 
     if (player.health <= 0) {
+      if (activeMode === "training") {
+        player.health = player.maxHealth;
+        player.hitTimer = 1.2;
+        showToast("TREINO // JOGADOR REINICIADO", 1200);
+        return;
+      }
       if (player.ghostWall && !player.ghostWallUsed) {
         player.ghostWallUsed = true;
         player.health = 1;
@@ -115,6 +132,7 @@
     let finalDamage = applyBossDefense(bot, amount);
     finalDamage = redirectBulwarkDamage(bot, finalDamage, attacker);
     bot.health -= Math.max(1, finalDamage);
+    spawnDamageNumber(bot.x, bot.y - bot.radius, finalDamage, bot.hue);
     bot.hitTimer = 0.22;
     const dx = bot.x - x;
     const dy = bot.y - y;

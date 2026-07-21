@@ -152,7 +152,7 @@
         player.health = clamp(player.health + 9 * killBonus, 0, player.maxHealth);
         player.energy = clamp(player.energy + 24 * killBonus, 0, player.maxEnergy);
       }
-      showToast(`RUPTURA CONFIRMADA // ${bot.name}`, 1200);
+      showToast(`INIMIGO ELIMINADO // ${bot.name}`, 1200);
       sound(420, 0.25, "triangle", 0.055);
       setTimeout(() => sound(630, 0.22, "sine", 0.035), 70);
     } else if (owner && owner !== player && !owner.dead && !bot.prismaIllusion) {
@@ -181,9 +181,9 @@
       const bossRewards = {
         "coroa-vazia": { motes: 20, bonusScore: 150, toast: "A COROA VAZIA FOI ROMPIDA // RECOMPENSA COLETADA" },
         "espectro-decisivo": { motes: 22, bonusScore: 180, toast: "O ESPECTRO DECISIVO SE DISSOLVE // RECOMPENSA COLETADA" },
-        "tremor-deep": { motes: 24, bonusScore: 200, toast: "O TREMOR DEEP CESOU // RECOMPENSA COLETADA" },
+        "tremor-deep": { motes: 24, bonusScore: 200, toast: "TREMOR DERROTADO // RECOMPENSA COLETADA" },
         "necrostro": { motes: 18, bonusScore: 160, toast: "O NECRÓSTRO RETORNA AO SILÊNCIO // RECOMPENSA COLETADA" },
-        "vortice": { motes: 20, bonusScore: 190, toast: "O VÓRVICE COLAPSOU // RECOMPENSA COLETADA" },
+        "vortice": { motes: 20, bonusScore: 190, toast: "VÓRTICE DERROTADO // RECOMPENSA COLETADA" },
         "cicatriz": { motes: 18, bonusScore: 170, toast: "A CICATRIZ SAROU // RECOMPENSA COLETADA" },
         "mimico": { motes: 16, bonusScore: 155, toast: "O ESPELHO QUEBROU // RECOMPENSA COLETADA" },
         "prisma": { motes: 22, bonusScore: 210, toast: "OS FRAGMENTOS SE DISPERSARAM // RECOMPENSA COLETADA" },

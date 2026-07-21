@@ -5,7 +5,7 @@
     const now = audioContext.currentTime;
     const oscillator = new OscillatorNode(audioContext, { type, frequency });
     const gain = new GainNode(audioContext);
-    gain.gain.setValueAtTime(Math.max(0.0001, volume * masterVolume), now);
+    gain.gain.setValueAtTime(Math.max(0.0001, volume * masterVolume * sfxVolume), now);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
     oscillator.connect(gain).connect(destination || audioContext.destination);
     oscillator.start(now);

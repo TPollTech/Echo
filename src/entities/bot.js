@@ -7,7 +7,7 @@
     const faction = Math.floor(Math.random() * 3);
     const factionHueBase = [15, 200, 280];
     const baseSpeed = archetype.speed * random(0.94, 1.06);
-    return {
+    const bot = {
       id: `bot-${index}-${Math.random().toString(36).slice(2, 7)}`,
       name: names[index % names.length],
       archetype: archetype.id,
@@ -56,13 +56,14 @@
       baseSpeed,
       ...options
     };
+    return applyDifficultyToBot(initializeBotClass(bot, options.classId || "cutter"));
   }
 
 /*__ECHO_SECTION_END:0031__*/
 /*__ECHO_SECTION:0064__*/
   function respawnBot(bot) {
     if (bot.boss) return;
-    const fresh = createBot(Math.floor(Math.random() * names.length));
+    const fresh = createBot(Math.floor(Math.random() * names.length), { classId: bot.classId });
     Object.assign(bot, fresh, { id: bot.id });
   }
 

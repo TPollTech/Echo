@@ -3,6 +3,9 @@
   let audioContext = null;
   let muted = false;
   let masterVolume = 0.7;
+  let musicVolume = 0.7;
+  let sfxVolume = 0.8;
+  let interfaceVolume = 0.7;
   let musicActive = false;
   let musicLayers = {};
 /*__ECHO_SECTION_END:0011__*/

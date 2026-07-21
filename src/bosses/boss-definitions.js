@@ -33,7 +33,7 @@
     },
     {
       id: "tremor-deep",
-      name: "TREMOR DEEP",
+      name: "TREMOR",
       roleLabel: "COLOSSO",
       hue: 28,
       radius: 42,
@@ -43,8 +43,8 @@
         { hpThreshold: 0.15, label: "TREMOR FINAL", speed: 130, aggression: 1, radius: 48, attackDamage: 44, energy: 100, description: "Fase 3 — Terremoto total" }
       ],
       score: 1300,
-      spawnDialogue: "O TREMOR DEEP SACODE O CAMPO",
-      phaseDialogues: ["O TREMOR DEEP ERUPTE!", "O TREMOR FINAL APPROXIMA!"]
+      spawnDialogue: "O TREMOR ENTROU NO CAMPO",
+      phaseDialogues: ["O TREMOR FICOU MAIS RÁPIDO!", "O TREMOR ENTROU NA FASE FINAL!"]
     },
     {
       id: "necrostro",
@@ -55,7 +55,7 @@
       phases: [
         { hpThreshold: 1, label: "DESPERTAR", speed: 110, aggression: 0.8, radius: 32, attackDamage: 14, energy: 100, description: "Fase 1 — Cura aliados próximos" },
         { hpThreshold: 0.55, label: "NECRÓSTRO VIVO", speed: 120, aggression: 0.9, radius: 34, attackDamage: 18, energy: 100, description: "Fase 2 — Cura + escudo" },
-        { hpThreshold: 0.2, label: "DESPERTAR FINAL", speed: 145, aggression: 1, radius: 36, attackDamage: 24, energy: 100, description: "Fase 3 — Cura explosiva + enrage" }
+        { hpThreshold: 0.2, label: "DESPERTAR FINAL", speed: 145, aggression: 1, radius: 36, attackDamage: 24, energy: 100, description: "Fase 3 — Cura explosiva e ataques mais fortes" }
       ],
       score: 1000,
       spawnDialogue: "O NECRÓSTRO REANIMA OS CAÍDOS",
@@ -68,13 +68,13 @@
       hue: 240,
       radius: 36,
       phases: [
-        { hpThreshold: 1, label: "ABISMO", speed: 100, aggression: 0.85, radius: 36, attackDamage: 16, energy: 100, description: "Fase 1 — Puxa jogador e bots" },
+        { hpThreshold: 1, label: "ABISMO", speed: 100, aggression: 0.85, radius: 36, attackDamage: 16, energy: 100, description: "Fase 1 — Puxa todos os personagens" },
         { hpThreshold: 0.5, label: "VÓRTICE DUPLO", speed: 115, aggression: 0.9, radius: 38, attackDamage: 22, energy: 100, description: "Fase 2 — Vórtices orbitais" },
         { hpThreshold: 0.15, label: "ABISMO TOTAL", speed: 140, aggression: 1, radius: 40, attackDamage: 30, energy: 100, description: "Fase 3 — Gravidade reversa" }
       ],
       score: 1200,
       spawnDialogue: "O ABISMO SE ABRE",
-      phaseDialogues: ["A GRAVIDADE SE DEFORMA!", "O VÓRTICE ENGOLA TUDO!"]
+      phaseDialogues: ["O VÓRTICE AUMENTOU A FORÇA!", "O VÓRTICE ENTROU NA FASE FINAL!"]
     },
     {
       id: "cicatriz",
@@ -98,9 +98,9 @@
       hue: 45,
       radius: 26,
       phases: [
-        { hpThreshold: 1, label: "ESPELHO", speed: 135, aggression: 0.85, radius: 26, attackDamage: 13, energy: 100, description: "Fase 1 — Copia 1 mutação" },
-        { hpThreshold: 0.55, label: "MÍMICO DUPLO", speed: 150, aggression: 0.9, radius: 28, attackDamage: 18, energy: 100, description: "Fase 2 — Copia 2 mutações" },
-        { hpThreshold: 0.2, label: "O ESPELHO QUEBRA", speed: 175, aggression: 1, radius: 30, attackDamage: 26, energy: 100, description: "Fase 3 — Copia todas as mutações" }
+        { hpThreshold: 1, label: "ESPELHO", speed: 135, aggression: 0.85, radius: 26, attackDamage: 13, energy: 100, description: "Fase 1 — Copia 1 bônus" },
+        { hpThreshold: 0.55, label: "MÍMICO DUPLO", speed: 150, aggression: 0.9, radius: 28, attackDamage: 18, energy: 100, description: "Fase 2 — Copia 2 bônus" },
+        { hpThreshold: 0.2, label: "O ESPELHO QUEBRA", speed: 175, aggression: 1, radius: 30, attackDamage: 26, energy: 100, description: "Fase 3 — Copia todos os bônus" }
       ],
       score: 950,
       spawnDialogue: "O ESPELHO SE FORMA",
@@ -127,13 +127,13 @@
       hue: 280,
       radius: 30,
       phases: [
-        { hpThreshold: 1, label: "VÁCUO", speed: 125, aggression: 0.85, radius: 30, attackDamage: 15, energy: 100, description: "Fase 1 — Silencia mutações" },
-        { hpThreshold: 0.5, label: "SILENCIADOR ATIVO", speed: 140, aggression: 0.9, radius: 32, attackDamage: 20, energy: 100, description: "Fase 2 — Silêncio frequente + debuff" },
+        { hpThreshold: 1, label: "VÁCUO", speed: 125, aggression: 0.85, radius: 30, attackDamage: 15, energy: 100, description: "Fase 1 — Desativa bônus" },
+        { hpThreshold: 0.5, label: "SILENCIADOR ATIVO", speed: 140, aggression: 0.9, radius: 32, attackDamage: 20, energy: 100, description: "Fase 2 — Desativa bônus com mais frequência" },
         { hpThreshold: 0.15, label: "O VÁCUO ABSOLUTO", speed: 160, aggression: 1, radius: 34, attackDamage: 28, energy: 100, description: "Fase 3 — Silêncio permanente" }
       ],
       score: 1050,
-      spawnDialogue: "O SILENCIADOR AMORTECE O SINAL",
-      phaseDialogues: ["O VÁCUO ENGOLA TUDO!", "O SILÊNCIO É ABSOLUTO!"]
+      spawnDialogue: "O SILENCIADOR ENTROU NA ARENA",
+      phaseDialogues: ["OS BÔNUS SERÃO BLOQUEADOS COM MAIS FREQUÊNCIA!", "OS BÔNUS FORAM BLOQUEADOS!"]
     }
   ];
 

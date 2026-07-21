@@ -22,7 +22,7 @@
     player.silencedTimer = 0;
     player.damageDebuff = 1;
     ui.mutationSlots.classList.remove("is-silenced");
-    showToast("MUTAÇÕES RESTAURADAS", 1500);
+    showToast("BÔNUS RESTAURADOS", 1500);
     checkMutation();
   }
 

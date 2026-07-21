@@ -3,10 +3,11 @@
   async function loadProfile() {
     try {
       const profile = await requestJson(`/api/profile?name=${encodeURIComponent(sanitizeName(ui.name.value))}`);
-      ui.profileSummary.innerHTML = `<strong>RECORDE SOLO ${profile.solo.best_score}</strong> · ${profile.solo.runs} RUNS · <strong>${profile.multiplayer.total_kills} RUPTURAS ONLINE</strong> · <strong style="color:#ffd86b">${profile.resonance} ♦</strong> · <strong style="color:#45e6ff">${profile.skillPoints} ◈</strong>`;
+      ui.profileSummary.innerHTML = `<strong>RECORDE SOLO: ${profile.solo.best_score}</strong> · ${profile.solo.runs} PARTIDAS SOLO · <strong>${profile.multiplayer.total_kills} ELIMINAÇÕES ONLINE</strong> · <strong style="color:#ffd86b">${profile.resonance} CRÉDITOS</strong> · <strong style="color:#45e6ff">${profile.skillPoints} PONTOS DE HABILIDADE</strong>`;
       playerSkillPoints = profile.skillPoints || 0;
       playerOwnedMutations = profile.ownedMutations || {};
       playerLoadout = profile.loadout || [null, null, null, null];
+      applyServerPreparation(profile.preferences, profile.classProgress);
     } catch {
       ui.profileSummary.textContent = "Inicie com npm start para ativar banco local e multiplayer.";
     }
@@ -39,9 +40,9 @@
   }
 
   const UPGRADE_META = {
-    core: { name: "NÚCLEO", symbol: "♥", description: "+5 vida máxima por nível", color: "#ff4fd8" },
-    charge: { name: "CARGA", symbol: "⚡", description: "+10 energia máxima por nível", color: "#45e6ff" },
-    calibration: { name: "CALIBRAÇÃO", symbol: "◎", description: "-8% cooldown base por nível", color: "#78ffba" },
+    core: { name: "VIDA", symbol: "♥", description: "+5 de vida máxima por nível", color: "#ff4fd8" },
+    charge: { name: "ENERGIA", symbol: "⚡", description: "+10 de energia máxima por nível", color: "#45e6ff" },
+    calibration: { name: "RECARGA", symbol: "◎", description: "Habilidades recarregam 8% mais rápido por nível", color: "#78ffba" },
     collection: { name: "COLETA", symbol: "◉", description: "+5px raio de coleta por nível", color: "#b792ff" },
     regeneration: { name: "REGENERAÇÃO", symbol: "∞", description: "+0.3 HP/s passivo por nível", color: "#ff8cb7" }
   };
@@ -66,7 +67,7 @@
         <h3>${meta.name}</h3>
         <p>${meta.description}</p>
         <div class="level-bar">${Array.from({ length: 5 }, (_, i) => `<div class="level-pip${i < level ? " is-filled" : ""}" style="--pip-color:${meta.color}"></div>`).join("")}</div>
-        <span class="cost">${isMaxed ? "MÁXIMO" : `${cost} ♦`}</span>
+        <span class="cost">${isMaxed ? "MÁXIMO" : `${cost} CRÉDITOS`}</span>
       `;
       if (!isMaxed && canAfford) {
         card.addEventListener("click", () => purchaseUpgrade(type));
@@ -109,7 +110,7 @@
       } else if (!isMaxed) {
         cost = SKILL_UPGRADE_COSTS[i][level - 1];
         canAfford = playerSkillPoints >= cost;
-        action = `UPGRADE NÍVEL ${["I", "II", "III"][level]}`;
+        action = `MELHORAR PARA O NÍVEL ${["I", "II", "III"][level]}`;
       }
       const card = document.createElement("button");
       card.type = "button";
@@ -121,7 +122,7 @@
         <h3>${mutation.name}</h3>
         <p>${isOwned ? mutation.tiers[level - 1]?.desc || mutation.description : mutation.description}</p>
         <div class="level-bar">${Array.from({ length: 3 }, (_, i) => `<div class="level-pip${i < level ? " is-filled" : ""}" style="--pip-color:${mutation.color}"></div>`).join("")}</div>
-        <span class="cost">${isMaxed ? "MÁXIMO" : `${cost} ◈`}</span>
+        <span class="cost">${isMaxed ? "MÁXIMO" : `${cost} PONTOS`}</span>
       `;
       if (!isMaxed && canAfford) {
         card.addEventListener("click", () => purchaseSkillMutation(mutation.id));
@@ -154,7 +155,7 @@
         body: JSON.stringify({ name: sanitizeName(ui.name.value), slots: playerLoadout })
       });
       playerLoadout = data.loadout;
-      showToast("LOADOUT SALVA", 1200);
+      showToast("BÔNUS SALVOS", 1200);
     } catch (e) {
       showToast(e.message, 2000);
     }

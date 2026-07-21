@@ -3,16 +3,18 @@
   function update(dt) {
     if (state !== "playing") return;
     if (activeMode === "multiplayer") {
+      classSpecialCooldown = Math.max(0, classSpecialCooldown - dt);
       updateMultiplayer(dt);
       return;
     }
     runTime += dt;
     runStats.runTime = runTime;
     updatePlayer(dt);
+    updateClassCombat(dt);
     updateBotProgression(dt);
     updateBots(dt);
     updateSkills(dt);
-    updateSoloDirector();
+    if (activeMode !== "training") updateSoloDirector();
     updateEffects(dt);
     updateCamera(dt);
     musicUpdateTimer -= dt;
@@ -42,9 +44,11 @@
       return;
     }
     const elapsed = now - previousTime;
-    const minimumFrameMs = state === "playing"
+    const profileMinimum = state === "playing"
       ? PERFORMANCE_PROFILE.activeMinimumFrameMs
       : PERFORMANCE_PROFILE.idleMinimumFrameMs;
+    const fpsLimit = clamp(Number(preparation?.settings?.fps || 60), 30, 120);
+    const minimumFrameMs = Math.max(profileMinimum, 1000 / fpsLimit - 0.35);
     if (elapsed < minimumFrameMs) {
       requestAnimationFrame(frame);
       return;

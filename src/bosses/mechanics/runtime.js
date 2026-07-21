@@ -83,7 +83,7 @@
     bots.push(anchor);
     source.silenceAnchorId = anchor.id;
     silencePlayer(Number.POSITIVE_INFINITY, true);
-    showToast("ROMPA A ÂNCORA PARA RECUPERAR AS MUTAÇÕES", 2800);
+    showToast("DESTRUA A ÂNCORA PARA RECUPERAR SEUS BÔNUS", 2800);
     return anchor;
   }
 
@@ -430,7 +430,7 @@
         spawnWave(player.x, player.y, 280, 140, 0.7);
         burst(player.x, player.y, 280, 16);
         sound(82, 0.3, "sawtooth", 0.05);
-        showToast(permanent ? "SILÊNCIO ABSOLUTO — ROMPA A ÂNCORA" : "SILENCIADO — MUTAÇÕES DESATIVADAS", 2200);
+        showToast(permanent ? "BÔNUS BLOQUEADOS — DESTRUA A ÂNCORA" : "BÔNUS DESATIVADOS TEMPORARIAMENTE", 2200);
         bot.cooldown = silenceInterval;
         bot.energy -= 30;
       }

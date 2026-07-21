@@ -28,6 +28,10 @@ const REQUIRED_FILES = [
   "combat/collision.js",
   "combat/trail.js",
   "combat/status-effects.js",
+  "classes/class-definitions.js",
+  "classes/class-runtime.js",
+  "classes/class-effects.js",
+  "classes/bot-class-runtime.js",
   "enemies/archetypes.js",
   "enemies/enemy-ai.js",
   "enemies/sniper.js",
@@ -42,6 +46,7 @@ const REQUIRED_FILES = [
   "progression/skins.js",
   "progression/upgrades.js",
   "rendering/renderer.js",
+  "rendering/player-skins.js",
   "rendering/entities.js",
   "rendering/effects.js",
   "rendering/telegraphs.js",
@@ -51,7 +56,8 @@ const REQUIRED_FILES = [
   "ui/hud.js",
   "ui/menus.js",
   "ui/boss-hud.js",
-  "ui/accessibility.js"
+  "ui/accessibility.js",
+  "menu/main-menu.js"
 ];
 
 function fail(message) {
@@ -71,12 +77,15 @@ function extractSection(relativePath, section) {
 function assertRegistryArchitecture() {
   const enemyAi = fs.readFileSync(path.join(SRC, "enemies", "enemy-ai.js"), "utf8");
   const bossRuntime = fs.readFileSync(path.join(SRC, "bosses", "mechanics", "runtime.js"), "utf8");
+  const classDefinitions = fs.readFileSync(path.join(SRC, "classes", "class-definitions.js"), "utf8");
   if (!enemyAi.includes("const enemyBehaviorRegistry")) fail("Registro de comportamento dos inimigos ausente.");
   if (!enemyAi.includes("function getEnemyBehavior")) fail("Despachante de IA dos inimigos ausente.");
   if (/bot\.archetype\s*===/.test(enemyAi)) fail("enemy-ai.js voltou a decidir comportamento por cadeia de arquétipos.");
   if (!bossRuntime.includes("const bossMechanicRegistry")) fail("Registro de mecânicas dos bosses ausente.");
   if (!bossRuntime.includes("function runBossMechanic")) fail("Despachante de mecânicas dos bosses ausente.");
   if (/bot\.archetype\s*===/.test(bossRuntime)) fail("runtime de bosses voltou a decidir mecânicas por cadeia de arquétipos.");
+  if (!classDefinitions.includes("const classRegistry")) fail("Registro central de classes ausente.");
+  if (!classDefinitions.includes("const classAiRegistry")) fail("Registro de IA das classes ausente.");
 }
 
 function main() {

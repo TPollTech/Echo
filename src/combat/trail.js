@@ -1,14 +1,17 @@
 /* ECHO source module. Sections are assembled by src/build-order.json. */
 /*__ECHO_SECTION:0054__*/
   function beginPhase() {
-    if (state !== "playing" || mutationPending || player.phasing || player.cooldown > 0 || player.energy < 12) return;
-    if (player.dualPhase && player.dualPhaseUsed >= player.dualPhaseCharges) return;
     if (activeMode === "multiplayer") {
-      if (multiplayerSocket?.readyState === WebSocket.OPEN) multiplayerSocket.send(JSON.stringify({ type: "phase_begin" }));
+      if (multiplayerSocket?.readyState === WebSocket.OPEN) multiplayerSocket.send(JSON.stringify({ type: "primary_begin" }));
       ui.mobilePhase.classList.add("is-active");
-      sound(220, 0.2, "sine", 0.025);
       return;
     }
+    beginClassPrimary();
+  }
+
+  function beginCutterPhase() {
+    if (state !== "playing" || mutationPending || player.phasing || player.cooldown > 0 || player.energy < 12) return;
+    if (player.dualPhase && player.dualPhaseUsed >= player.dualPhaseCharges) return;
     player.phasing = true;
     player.phase = {
       x: player.x,
@@ -28,9 +31,13 @@
   function endPhase(cancelled = false) {
     if (activeMode === "multiplayer") {
       ui.mobilePhase.classList.remove("is-active");
-      if (!cancelled && multiplayerSocket?.readyState === WebSocket.OPEN) multiplayerSocket.send(JSON.stringify({ type: "phase_end" }));
+      if (!cancelled && multiplayerSocket?.readyState === WebSocket.OPEN) multiplayerSocket.send(JSON.stringify({ type: "primary_end" }));
       return;
     }
+    endClassPrimary(cancelled);
+  }
+
+  function endCutterPhase(cancelled = false) {
     if (!player.phasing || !player.phase) return;
     const phase = player.phase;
     player.phasing = false;

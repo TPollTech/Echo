@@ -3,7 +3,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createDatabase } = require("../server/database.js");
-const { ArenaRoom, RoomManager } = require("../server/multiplayer.js");
+const { ArenaRoom, RoomManager, constants } = require("../server/multiplayer.js");
 
 function fakeSocket() {
   return { readyState: 0, sent: [], send(message) { this.sent.push(JSON.parse(message)); } };
@@ -75,6 +75,39 @@ test("fim da partida publica classificação e persiste o resultado multiplayer"
     assert.equal(profile.multiplayer.best_score, 77);
     assert.equal(profile.multiplayer.total_kills, 2);
   } finally {
+    database.close();
+  }
+});
+
+test("snapshot frequente usa deltas pequenos e o protocolo mede ping", () => {
+  const database = createDatabase({ path: ":memory:" });
+  const manager = new RoomManager(database, { autoStart: false });
+  try {
+    const room = manager.createRoom();
+    const socket = fakeSocket();
+    socket.readyState = 1;
+    socket.bufferedAmount = 0;
+    const { player } = manager.join(socket, room.code, "Rede");
+    const full = room.snapshotFor(player.id);
+    const steady = room.snapshotFor(player.id, { moteRevision: full.moteRevision });
+    assert.equal(constants.SNAPSHOT_RATE, 20);
+    assert.ok(Buffer.byteLength(JSON.stringify(steady)) < Buffer.byteLength(JSON.stringify(full)) * 0.2);
+    assert.deepEqual(steady.moteChanges, []);
+
+    const collected = room.motes[0];
+    player.x = collected.x; player.y = collected.y;
+    room.collectMotes(player, player);
+    const changed = room.snapshotFor(player.id, { moteRevision: full.moteRevision });
+    assert.equal(changed.motes, undefined);
+    assert.equal(changed.moteChanges.length, 1);
+
+    manager.handleMessage(socket, { type: "ping", clientTime: 123 });
+    const pong = socket.sent.at(-1);
+    assert.equal(pong.type, "pong");
+    assert.equal(pong.clientTime, 123);
+    assert.ok(Number.isFinite(pong.serverTime));
+  } finally {
+    manager.stop();
     database.close();
   }
 });
