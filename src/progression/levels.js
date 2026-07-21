@@ -27,7 +27,20 @@
     dropFraction: 0.34,
     maxDropMotes: 18,
     botThinkInterval: 0.34,
-    botDangerRadius: 310
+    botDangerRadius: 310,
+    botHuntRadius: 390
+  });
+
+  const BOSS_SIZE_SCALES = Object.freeze({
+    "coroa-vazia": 1.85,
+    "espectro-decisivo": 1.72,
+    "tremor-deep": 2.05,
+    necrostro: 1.76,
+    vortice: 1.82,
+    cicatriz: 1.68,
+    mimico: 1.62,
+    prisma: 1.7,
+    silenciador: 1.76
   });
 
   let levelHud = null;
@@ -161,12 +174,20 @@
     return level * 16 + damage * 0.7 + healthRatio * 24 + (entity?.boss ? 300 : 0);
   }
 
+  function hostileEntitiesFor(bot) {
+    return [player, ...bots].filter((entity) => (
+      entity
+      && entity !== bot
+      && !entity.dead
+      && (entity === player || entity.boss || entity.faction !== bot.faction)
+    ));
+  }
+
   function nearestDanger(bot) {
-    const candidates = [player, ...bots].filter((entity) => entity && entity !== bot && !entity.dead && entity.faction !== bot.faction);
     let danger = null;
     let bestDistance = Infinity;
     const ownPower = entityPower(bot);
-    for (const entity of candidates) {
+    for (const entity of hostileEntitiesFor(bot)) {
       const distance = Math.hypot(entity.x - bot.x, entity.y - bot.y);
       if (distance > LEVEL_CONFIG.botDangerRadius || entityPower(entity) < ownPower * 1.22) continue;
       if (distance < bestDistance) {
@@ -177,8 +198,28 @@
     return danger ? { entity: danger, distance: bestDistance } : null;
   }
 
+  function weakestHuntTarget(bot) {
+    if (bot.health < bot.maxHealth * 0.48) return null;
+    const ownPower = entityPower(bot);
+    let target = null;
+    let bestUtility = -Infinity;
+    for (const entity of hostileEntitiesFor(bot)) {
+      if (entity.boss) continue;
+      const distance = Math.hypot(entity.x - bot.x, entity.y - bot.y);
+      if (distance > LEVEL_CONFIG.botHuntRadius) continue;
+      const targetPower = entityPower(entity);
+      if (targetPower > ownPower * 0.78) continue;
+      const utility = (ownPower - targetPower) * 2.2 - distance * 0.14;
+      if (utility > bestUtility) {
+        bestUtility = utility;
+        target = entity;
+      }
+    }
+    return target ? { target, utility: bestUtility } : null;
+  }
+
   function chooseBotResourceTarget(bot) {
-    if (!bot || bot.dead || bot.boss || bot.phasing || motes.length === 0) return null;
+    if (!bot || bot.dead || bot.boss || bot.phasing) return null;
     const healthRatio = bot.health / Math.max(1, bot.maxHealth);
     const danger = nearestDanger(bot);
     if ((healthRatio < 0.28 || danger?.distance < 175) && danger) {
@@ -193,6 +234,18 @@
       };
     }
 
+    const hunt = weakestHuntTarget(bot);
+    if (hunt && bot.aggression > 0.52) {
+      return {
+        mode: "hunt",
+        x: hunt.target.x + (hunt.target.vx || 0) * 0.55,
+        y: hunt.target.y + (hunt.target.vy || 0) * 0.55,
+        target: hunt.target,
+        utility: hunt.utility
+      };
+    }
+
+    if (motes.length === 0) return null;
     let best = null;
     let bestUtility = -Infinity;
     const ownPower = entityPower(bot);
@@ -220,14 +273,19 @@
     for (const bot of bots) {
       if (bot.dead || bot.boss || bot.bossClone || bot.noRespawn) continue;
       updateLevelProgression(bot, dt);
+      const speedBoost = bot.rareBoostTimer > 0 ? 1.06 : 1;
+      if (!bot.swarmer && bot.archetype !== "berserker") {
+        bot.speed = (bot.baseSpeed || bot.speed) * (bot.levelSpeedScale || 1) * speedBoost;
+      }
       bot.resourceThinkTimer = Math.max(0, (bot.resourceThinkTimer || 0) - dt);
       if (bot.resourceThinkTimer > 0 || bot.phasing) continue;
       bot.resourceThinkTimer = LEVEL_CONFIG.botThinkInterval + Math.random() * 0.18;
       const decision = chooseBotResourceTarget(bot);
       if (!decision) continue;
       bot.resourceMode = decision.mode;
-      bot.targetX = decision.x;
-      bot.targetY = decision.y;
+      bot.targetX = clamp(decision.x, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+      bot.targetY = clamp(decision.y, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+      bot.factionTarget = decision.mode === "hunt" && decision.target !== player ? decision.target : null;
       bot.thinkTimer = Math.max(bot.thinkTimer, decision.mode === "flee" ? 0.48 : 0.28);
       if (decision.mode === "flee") bot.cooldown = Math.max(bot.cooldown, 0.35);
     }
@@ -237,7 +295,8 @@
     if (!entity || entity.prismaIllusion) return 0;
     const stored = Number(entity.experience || 0) + Math.max(0, Number(entity.level || 1) - 1) * 18;
     const budget = Math.max(0, Math.round(stored * LEVEL_CONFIG.dropFraction * multiplier));
-    const count = clamp(Math.ceil(budget / 7), entity.boss ? 10 : 2, LEVEL_CONFIG.maxDropMotes);
+    const minimum = entity.boss ? 10 : 2;
+    const count = Math.round(clamp(Math.ceil(budget / 7), minimum, LEVEL_CONFIG.maxDropMotes));
     for (let index = 0; index < count; index += 1) {
       const mote = createMote();
       mote.x = clamp(entity.x + random(-58, 58), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
@@ -258,7 +317,8 @@
 
   function scaleBossForRun(boss) {
     const averageLevel = averageCombatLevel();
-    const highestLevel = Math.max(Number(player.level || 1), ...bots.filter((bot) => !bot.dead).map((bot) => Number(bot.level || 1)));
+    const livingLevels = bots.filter((bot) => !bot.dead).map((bot) => Number(bot.level || 1));
+    const highestLevel = Math.max(Number(player.level || 1), ...livingLevels);
     const levelPressure = Math.max(0, averageLevel - 1) * 0.045 + Math.max(0, highestLevel - averageLevel) * 0.018;
     const stagePressure = Math.max(0, Number(soloStage || 0)) * 0.08;
     const healthScale = 1 + levelPressure + stagePressure;
@@ -303,5 +363,37 @@
       ? "NÍVEL MÁXIMO"
       : `${Math.floor(player.experience)} / ${player.experienceToNext} XP${player.rareBoostTimer > 0 ? " // IMPULSO ROXO" : ""}`;
   }
+
+  for (const template of bossTemplates) {
+    if (template.levelSizeApplied) continue;
+    const scale = BOSS_SIZE_SCALES[template.id] || 1.7;
+    template.levelSizeApplied = true;
+    template.sizeScale = scale;
+    template.radius = Math.round((template.radius || template.phases[0].radius) * scale);
+    for (const phase of template.phases) phase.radius = Math.round(phase.radius * scale);
+  }
+
+  const spawnSoloBossWithoutLevelScaling = spawnSoloBoss;
+  spawnSoloBoss = function spawnSoloBossWithLevelScaling(templateId = null) {
+    const previousBoss = activeBoss;
+    const result = spawnSoloBossWithoutLevelScaling(templateId);
+    if (activeBoss && activeBoss !== previousBoss) scaleBossForRun(activeBoss);
+    return result;
+  };
+
+  const killBotWithoutExperienceDrops = killBot;
+  killBot = function killBotWithExperienceDrops(bot, owner = null) {
+    const wasDead = Boolean(bot?.dead);
+    const prismaShellSplit = Boolean(bot?.archetype === "prisma" && bot?.boss && !bot?.prismaFragment && !bot?.prismaSplit);
+    const result = killBotWithoutExperienceDrops(bot, owner);
+    if (!wasDead && bot?.dead && !bot.prismaIllusion && !prismaShellSplit) {
+      dropExperienceMotes(bot, bot.boss ? 1.45 : 1);
+      if (owner && owner !== bot && !owner.dead && !owner.boss) {
+        const killExperience = bot.boss ? 80 : Math.max(8, 8 + Number(bot.level || 1) * 3);
+        gainExperience(owner, killExperience, bot.boss ? "boss:defeated" : "enemy:defeated");
+      }
+    }
+    return result;
+  };
 
 /*__ECHO_SECTION_END:0118__*/
