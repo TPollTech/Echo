@@ -86,46 +86,65 @@
 
 /*__ECHO_SECTION_END:0053__*/
 /*__ECHO_SECTION:0081__*/
+  function setTextIfChanged(node, value) {
+    const text = String(value);
+    if (node && node.textContent !== text) node.textContent = text;
+  }
+
+  function setStyleIfChanged(node, property, value) {
+    if (node && node.style[property] !== value) node.style[property] = value;
+  }
+
+  function setCustomPropertyIfChanged(node, property, value) {
+    if (node && node.style.getPropertyValue(property) !== value) node.style.setProperty(property, value);
+  }
+
+  function toggleClassIfChanged(node, className, enabled) {
+    if (node && node.classList.contains(className) !== enabled) node.classList.toggle(className, enabled);
+  }
+
   function updateHud() {
     const energy = Math.round(player.energy || 0);
     const health = Math.max(0, Math.round(player.health || 0));
-    ui.score.textContent = Math.floor(player.score || 0).toString().padStart(3, "0");
-    ui.kills.textContent = String(player.kills || 0);
-    ui.time.textContent = formatTime(activeMode === "multiplayer" ? multiplayerRemaining : runTime);
-    ui.integrity.textContent = health.toString();
-    ui.integrityFill.style.width = `${clamp(player.health, 0, player.maxHealth || 100) / (player.maxHealth || 100) * 100}%`;
-    ui.charge.textContent = `${energy}%`;
-    ui.chargeFill.style.width = `${clamp(player.energy, 0, player.maxEnergy || 100) / (player.maxEnergy || 100) * 100}%`;
-    ui.abilityRing.style.setProperty("--charge", `${clamp(player.energy, 0, player.maxEnergy || 100) / (player.maxEnergy || 100) * 100}%`);
+    const healthPercent = `${Math.round(clamp(player.health, 0, player.maxHealth || 100) / (player.maxHealth || 100) * 1000) / 10}%`;
+    const energyPercent = `${Math.round(clamp(player.energy, 0, player.maxEnergy || 100) / (player.maxEnergy || 100) * 1000) / 10}%`;
+    setTextIfChanged(ui.score, Math.floor(player.score || 0).toString().padStart(3, "0"));
+    setTextIfChanged(ui.kills, player.kills || 0);
+    setTextIfChanged(ui.time, formatTime(activeMode === "multiplayer" ? multiplayerRemaining : runTime));
+    setTextIfChanged(ui.integrity, health);
+    setStyleIfChanged(ui.integrityFill, "width", healthPercent);
+    setTextIfChanged(ui.charge, `${energy}%`);
+    setStyleIfChanged(ui.chargeFill, "width", energyPercent);
+    setCustomPropertyIfChanged(ui.abilityRing, "--charge", energyPercent);
 
     if (activeMode === "multiplayer") {
-      ui.sector.textContent = `SALA ${multiplayerRoomCode} // ${formatTime(multiplayerRemaining)}`;
+      setTextIfChanged(ui.sector, `SALA ${multiplayerRoomCode} // ${formatTime(multiplayerRemaining)}`);
     } else {
       const sectorX = clamp(Math.floor(player.x / (WORLD_SIZE / 3)), 0, 2);
       const sectorY = clamp(Math.floor(player.y / (WORLD_SIZE / 3)), 0, 2);
-      ui.sector.textContent = sectorNames[sectorY * 3 + sectorX];
+      setTextIfChanged(ui.sector, sectorNames[sectorY * 3 + sectorX]);
     }
     const combo = player.combo || 0;
-    ui.comboValue.textContent = Math.max(2, combo).toString();
-    ui.combo.classList.toggle("is-visible", activeMode === "solo" && combo >= 5 && player.comboTimer > 0);
+    setTextIfChanged(ui.comboValue, Math.max(2, combo));
+    toggleClassIfChanged(ui.combo, "is-visible", activeMode === "solo" && combo >= 5 && player.comboTimer > 0);
 
     if (leaderboardTimer <= 0) updateChallengePanel();
 
     if (activeBoss && !activeBoss.dead) {
-      ui.bossBar.classList.remove("is-hidden");
+      toggleClassIfChanged(ui.bossBar, "is-hidden", false);
       const activePhase = activeBoss.bossTemplate?.phases?.[activeBoss.bossPhaseIndex];
       const mechanic = activePhase?.description?.replace(/^Fase \d+\s*—\s*/, "").toUpperCase();
-      ui.bossRole.textContent = mechanic ? `${activeBoss.roleLabel} // ${mechanic}` : activeBoss.roleLabel;
-      ui.bossName.textContent = activeBoss.name;
+      setTextIfChanged(ui.bossRole, mechanic ? `${activeBoss.roleLabel} // ${mechanic}` : activeBoss.roleLabel);
+      setTextIfChanged(ui.bossName, activeBoss.name);
       const bossHpRatio = clamp(activeBoss.health, 0, activeBoss.maxHealth) / activeBoss.maxHealth;
-      ui.bossHpFill.style.width = `${bossHpRatio * 100}%`;
+      setStyleIfChanged(ui.bossHpFill, "width", `${Math.round(bossHpRatio * 1000) / 10}%`);
       if (activeBoss.bossPhaseTransitioning) {
-        ui.bossHpFill.style.background = `linear-gradient(90deg, ${hsl(activeBoss.hue, 90, 64, 1)}, white)`;
+        setStyleIfChanged(ui.bossHpFill, "background", `linear-gradient(90deg, ${hsl(activeBoss.hue, 90, 64, 1)}, white)`);
       } else {
-        ui.bossHpFill.style.background = "";
+        setStyleIfChanged(ui.bossHpFill, "background", "");
       }
     } else {
-      ui.bossBar.classList.add("is-hidden");
+      toggleClassIfChanged(ui.bossBar, "is-hidden", true);
     }
   }
 
@@ -147,16 +166,17 @@
 /*__ECHO_SECTION:0096__*/
   function drawMinimap(time) {
     if (state !== "playing" || activeMode !== "solo") {
-      ui.minimap.classList.add("is-hidden");
+      toggleClassIfChanged(ui.minimap, "is-hidden", true);
       return;
     }
-    ui.minimap.classList.remove("is-hidden");
+    toggleClassIfChanged(ui.minimap, "is-hidden", false);
 
     minimapFrame += 1;
     if (minimapFrame % 6 !== 0 && ui.minimap.dataset.drawn === "1") return;
     ui.minimap.dataset.drawn = "1";
 
-    const mctx = ui.minimap.getContext("2d");
+    const mctx = minimapContext;
+    if (!mctx) return;
     const mw = MINIMAP_SIZE;
     const mh = MINIMAP_SIZE;
     const scale = mw / WORLD_SIZE;

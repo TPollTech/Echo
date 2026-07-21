@@ -16,6 +16,8 @@ const REQUIRED_FILES = [
   "core/input.js",
   "core/camera.js",
   "core/constants.js",
+  "core/performance.js",
+  "core/spatial-index.js",
   "core/random.js",
   "core/events.js",
   "entities/player.js",

@@ -25,14 +25,22 @@
 
 /*__ECHO_SECTION_END:0080__*/
 /*__ECHO_SECTION:0100__*/
-  function resize() {
-    width = window.innerWidth;
-    height = window.innerHeight;
-    dpr = Math.min(window.devicePixelRatio || 1, MOBILE_QUALITY ? 1.5 : 2);
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
+  function resize(force = false) {
+    const nextWidth = window.innerWidth;
+    const nextHeight = window.innerHeight;
+    const nextDpr = targetRenderDpr();
+    const pixelWidth = Math.round(nextWidth * nextDpr);
+    const pixelHeight = Math.round(nextHeight * nextDpr);
+    if (!force && width === nextWidth && height === nextHeight && dpr === nextDpr
+      && canvas.width === pixelWidth && canvas.height === pixelHeight) return;
+    width = nextWidth;
+    height = nextHeight;
+    dpr = nextDpr;
+    canvas.width = pixelWidth;
+    canvas.height = pixelHeight;
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
+    backgroundGradient = null;
     pointer.x = clamp(pointer.x, 0, width);
     pointer.y = clamp(pointer.y, 0, height);
   }

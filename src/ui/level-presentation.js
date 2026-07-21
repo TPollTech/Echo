@@ -1,10 +1,12 @@
 /* ECHO source module. Sections are assembled by src/build-order.json. */
 /*__ECHO_SECTION:0120__*/
   const drawEntityWithoutLevelPresentation = drawEntity;
-  drawEntity = function drawEntityWithLevelPresentation(entity, isPlayer = false, spectral = false, time = 0) {
-    const result = drawEntityWithoutLevelPresentation(entity, isPlayer, spectral, time);
-    if (spectral || !entity?.levelInitialized || entity.boss || !visible(entity.x, entity.y, 80)) return result;
-    const point = toScreen(entity.x, entity.y);
+  drawEntity = function drawEntityWithLevelPresentation(entity, isPlayer = false, spectral = false, time = 0, override = null) {
+    const result = drawEntityWithoutLevelPresentation(entity, isPlayer, spectral, time, override);
+    const renderX = override?.x ?? entity?.x;
+    const renderY = override?.y ?? entity?.y;
+    if (spectral || !entity?.levelInitialized || entity.boss || !visible(renderX, renderY, 80)) return result;
+    const point = toScreen(renderX, renderY);
     const radius = (entity.radius || 16) * camera.zoom;
     const pulse = entity.levelPulseTimer > 0 ? 0.72 + Math.sin(time * 0.018) * 0.22 : 0.68;
     ctx.save();

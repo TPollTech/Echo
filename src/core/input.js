@@ -164,7 +164,14 @@
         },
         mode: activeMode,
         roomCode: multiplayerRoomCode,
-        counts: { bots: bots.filter((bot) => !bot.dead).length, motes: motes.length, particles: particles.length }
+        counts: { bots: bots.filter((bot) => !bot.dead).length, motes: motes.length, particles: particles.length },
+        performance: {
+          frameMs: Math.round(renderPerformance.averageFrameMs * 10) / 10,
+          workMs: Math.round(renderPerformance.averageWorkMs * 10) / 10,
+          dpr: Math.round(dpr * 100) / 100,
+          nativeDpr: renderPerformance.maximumDpr,
+          scaleChanges: renderPerformance.scaleChanges
+        }
       };
     }
   };

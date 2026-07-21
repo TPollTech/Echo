@@ -1,30 +1,43 @@
 /* ECHO source module. Sections are assembled by src/build-order.json. */
 /*__ECHO_SECTION:0090__*/
+  const moteVisuals = Object.freeze({
+    cyan: Object.freeze({ hue: 188, fill: hsl(188, 95, 68, 0.88), shadow: hsl(188, 90, 65, 0.9), blur: 9 }),
+    violet: Object.freeze({ hue: 268, fill: hsl(268, 95, 68, 0.88), shadow: hsl(268, 90, 65, 0.9), blur: 9 }),
+    gold: Object.freeze({ hue: 42, fill: hsl(42, 95, 68, 0.88), shadow: hsl(42, 90, 65, 0.9), blur: 15 }),
+    red: Object.freeze({ hue: 0, fill: hsl(0, 95, 55, 0.88), shadow: hsl(0, 90, 50, 0.9), blur: 18 })
+  });
+
   function drawMotes(time) {
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
+    let previousMoteType = null;
     for (const mote of motes) {
       if (!visible(mote.x, mote.y, 20)) continue;
-      const point = toScreen(mote.x, mote.y);
+      const pointX = (mote.x - camera.x) * camera.zoom + width / 2;
+      const pointY = (mote.y - camera.y) * camera.zoom + height / 2;
       const pulse = 0.78 + Math.sin(time * 0.002 * mote.drift + mote.phase) * 0.22;
-      const hue = mote.type === "gold" ? 42 : mote.type === "red" ? 0 : mote.type === "violet" ? 268 : 188;
+      const visual = moteVisuals[mote.type] || moteVisuals.cyan;
+      const hue = visual.hue;
       const radius = mote.radius * pulse * camera.zoom;
-      if (!MOBILE_QUALITY) {
-        ctx.shadowColor = hsl(hue, 90, mote.type === "red" ? 50 : 65, 0.9);
-        ctx.shadowBlur = mote.type === "gold" ? 15 : mote.type === "red" ? 18 : 9;
-      } else {
-        ctx.shadowColor = "transparent";
-        ctx.shadowBlur = 0;
+      if (previousMoteType !== mote.type) {
+        if (!MOBILE_QUALITY) {
+          ctx.shadowColor = visual.shadow;
+          ctx.shadowBlur = visual.blur;
+        } else {
+          ctx.shadowColor = "transparent";
+          ctx.shadowBlur = 0;
+        }
+        ctx.fillStyle = visual.fill;
+        previousMoteType = mote.type;
       }
-      ctx.fillStyle = hsl(hue, mote.type === "red" ? 95 : 95, mote.type === "red" ? 55 : 68, 0.88);
       ctx.beginPath();
-      ctx.arc(point.x, point.y, radius, 0, TAU);
+      ctx.arc(pointX, pointY, radius, 0, TAU);
       ctx.fill();
       if (!MOBILE_QUALITY && mote.type === "gold") {
         ctx.strokeStyle = hsl(hue, 90, 72, 0.45);
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.arc(point.x, point.y, radius + 5 + pulse * 2, 0, TAU);
+        ctx.arc(pointX, pointY, radius + 5 + pulse * 2, 0, TAU);
         ctx.stroke();
       }
       if (mote.type === "red" && !MOBILE_QUALITY) {
@@ -32,12 +45,12 @@
         ctx.strokeStyle = hsl(0, 95, 55, 0.55 * warnPulse);
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(point.x, point.y, radius + 6 + pulse * 3, 0, TAU);
+        ctx.arc(pointX, pointY, radius + 6 + pulse * 3, 0, TAU);
         ctx.stroke();
         ctx.strokeStyle = hsl(30, 90, 60, 0.3 * warnPulse);
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.arc(point.x, point.y, radius + 12 + pulse * 5, 0, TAU);
+        ctx.arc(pointX, pointY, radius + 12 + pulse * 5, 0, TAU);
         ctx.stroke();
       }
     }
@@ -46,15 +59,72 @@
 
 /*__ECHO_SECTION_END:0090__*/
 /*__ECHO_SECTION:0092__*/
-  function drawEntity(entity, isPlayer = false, spectral = false, time = 0) {
-    if (!visible(entity.x, entity.y, 70)) return;
-    const point = toScreen(entity.x, entity.y);
+  const entityGradientSprites = new Map();
+
+  function cacheEntityGradientSprite(key, create) {
+    const cached = entityGradientSprites.get(key);
+    if (cached) return cached;
+    const sprite = create();
+    if (entityGradientSprites.size >= 96) entityGradientSprites.delete(entityGradientSprites.keys().next().value);
+    entityGradientSprites.set(key, sprite);
+    return sprite;
+  }
+
+  function entityAuraSprite(hue, spectral) {
+    const key = `aura:${Number(hue).toFixed(2)}:${spectral ? 1 : 0}`;
+    return cacheEntityGradientSprite(key, () => {
+      const logicalSize = 144;
+      const sprite = document.createElement("canvas");
+      sprite.width = logicalSize * 2;
+      sprite.height = logicalSize * 2;
+      const spriteContext = sprite.getContext("2d");
+      spriteContext.scale(2, 2);
+      const center = logicalSize / 2;
+      const radius = logicalSize / 2;
+      const gradient = spriteContext.createRadialGradient(center, center, radius * 0.048, center, center, radius);
+      gradient.addColorStop(0, hsl(hue, 95, 72, spectral ? 0.42 : 0.34));
+      gradient.addColorStop(0.35, hsl(hue, 85, 55, spectral ? 0.14 : 0.1));
+      gradient.addColorStop(1, hsl(hue, 80, 40, 0));
+      spriteContext.fillStyle = gradient;
+      spriteContext.fillRect(0, 0, logicalSize, logicalSize);
+      return sprite;
+    });
+  }
+
+  function entityCoreSprite(hue, spectral) {
+    const key = `core:${Number(hue).toFixed(2)}:${spectral ? 1 : 0}`;
+    return cacheEntityGradientSprite(key, () => {
+      const logicalSize = 144;
+      const sprite = document.createElement("canvas");
+      sprite.width = logicalSize * 2;
+      sprite.height = logicalSize * 2;
+      const spriteContext = sprite.getContext("2d");
+      spriteContext.scale(2, 2);
+      const center = logicalSize / 2;
+      const radius = 64;
+      const gradient = spriteContext.createRadialGradient(center - radius * 0.25, center - radius * 0.3, 0, center, center, radius);
+      gradient.addColorStop(0, spectral ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.92)");
+      gradient.addColorStop(0.2, hsl(hue, 95, 75, spectral ? 0.75 : 0.95));
+      gradient.addColorStop(0.72, hsl(hue, 85, 45, spectral ? 0.23 : 0.68));
+      gradient.addColorStop(1, hsl(hue, 85, 35, 0.08));
+      spriteContext.fillStyle = gradient;
+      spriteContext.fillRect(0, 0, logicalSize, logicalSize);
+      return sprite;
+    });
+  }
+
+  function drawEntity(entity, isPlayer = false, spectral = false, time = 0, override = null) {
+    const renderX = override?.x ?? entity.x;
+    const renderY = override?.y ?? entity.y;
+    if (!visible(renderX, renderY, 70)) return;
+    const point = toScreen(renderX, renderY);
     const radius = (entity.radius || 16) * camera.zoom * (spectral ? 0.85 : 1);
     const healthRatio = clamp(entity.health / (entity.maxHealth || 100), 0, 1);
     const pulse = 1 + Math.sin(time * 0.004 + entity.x) * 0.035;
     const isLowHealth = !isPlayer && !spectral && healthRatio < 0.3 && healthRatio > 0;
     const renderHue = isPlayer && entity.skinId === "caotico" ? (time * 0.05) % 360 : entity.hue;
     const glow = isPlayer ? entity.skinGlow || 1 : 1;
+    const cacheGradient = !(isPlayer && entity.skinId === "caotico");
 
     if (!isPlayer && !spectral && entity.archetype === "sniper" && entity.sniperAimTimer > 0) {
       const aimPoint = toScreen(entity.sniperAimX, entity.sniperAimY);
@@ -81,7 +151,8 @@
     }
 
     ctx.save();
-    if (entity.alpha != null) ctx.globalAlpha = entity.alpha;
+    const entityAlpha = override?.alpha ?? entity.alpha;
+    if (entityAlpha != null) ctx.globalAlpha = entityAlpha;
     ctx.translate(point.x, point.y);
     ctx.globalCompositeOperation = "lighter";
     if (!MOBILE_QUALITY) {
@@ -92,14 +163,19 @@
     if (!MOBILE_QUALITY || isPlayer) {
       const auraRadius = (isLowHealth ? radius * 2.8 : radius * 2.1) * glow;
       const auraAlpha = isLowHealth ? 0.42 + Math.sin(time * 0.008) * 0.18 : spectral ? 0.42 : 0.34;
-      const aura = ctx.createRadialGradient(0, 0, radius * 0.1, 0, 0, auraRadius);
-      aura.addColorStop(0, hsl(isLowHealth ? 0 : renderHue, 95, isLowHealth ? 55 : 72, auraAlpha));
-      aura.addColorStop(0.35, hsl(isLowHealth ? 0 : renderHue, 85, 55, spectral ? 0.14 : 0.1));
-      aura.addColorStop(1, hsl(isLowHealth ? 0 : renderHue, 80, 40, 0));
-      ctx.fillStyle = aura;
-      ctx.beginPath();
-      ctx.arc(0, 0, auraRadius, 0, TAU);
-      ctx.fill();
+      if (!isLowHealth && cacheGradient) {
+        const auraSprite = entityAuraSprite(renderHue, spectral);
+        ctx.drawImage(auraSprite, -auraRadius, -auraRadius, auraRadius * 2, auraRadius * 2);
+      } else {
+        const aura = ctx.createRadialGradient(0, 0, radius * 0.1, 0, 0, auraRadius);
+        aura.addColorStop(0, hsl(isLowHealth ? 0 : renderHue, 95, isLowHealth ? 55 : 72, auraAlpha));
+        aura.addColorStop(0.35, hsl(isLowHealth ? 0 : renderHue, 85, 55, spectral ? 0.14 : 0.1));
+        aura.addColorStop(1, hsl(isLowHealth ? 0 : renderHue, 80, 40, 0));
+        ctx.fillStyle = aura;
+        ctx.beginPath();
+        ctx.arc(0, 0, auraRadius, 0, TAU);
+        ctx.fill();
+      }
     }
 
     if (!MOBILE_QUALITY) {
@@ -118,12 +194,6 @@
     }
 
     if (!MOBILE_QUALITY) {
-      const coreGradient = ctx.createRadialGradient(-radius * 0.25, -radius * 0.3, 0, 0, 0, radius);
-      coreGradient.addColorStop(0, spectral ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.92)");
-      coreGradient.addColorStop(0.2, hsl(renderHue, 95, 75, spectral ? 0.75 : 0.95));
-      coreGradient.addColorStop(0.72, hsl(renderHue, 85, 45, spectral ? 0.23 : 0.68));
-      coreGradient.addColorStop(1, hsl(renderHue, 85, 35, 0.08));
-      ctx.fillStyle = coreGradient;
       ctx.beginPath();
       for (let index = 0; index <= 18; index += 1) {
         const angle = index / 18 * TAU;
@@ -133,7 +203,21 @@
         if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.closePath();
-      ctx.fill();
+      if (cacheGradient) {
+        ctx.save();
+        ctx.clip();
+        const coreExtent = radius * 1.125;
+        ctx.drawImage(entityCoreSprite(renderHue, spectral), -coreExtent, -coreExtent, coreExtent * 2, coreExtent * 2);
+        ctx.restore();
+      } else {
+        const coreGradient = ctx.createRadialGradient(-radius * 0.25, -radius * 0.3, 0, 0, 0, radius);
+        coreGradient.addColorStop(0, spectral ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.92)");
+        coreGradient.addColorStop(0.2, hsl(renderHue, 95, 75, spectral ? 0.75 : 0.95));
+        coreGradient.addColorStop(0.72, hsl(renderHue, 85, 45, spectral ? 0.23 : 0.68));
+        coreGradient.addColorStop(1, hsl(renderHue, 85, 35, 0.08));
+        ctx.fillStyle = coreGradient;
+        ctx.fill();
+      }
     } else {
       ctx.fillStyle = hsl(renderHue, 85, 50, spectral ? 0.5 : 0.8);
       ctx.beginPath();
@@ -238,10 +322,80 @@
 
 /*__ECHO_SECTION_END:0092__*/
 /*__ECHO_SECTION:0093__*/
+  const mutationRenderById = new Map(mutations.map((mutation) => [mutation.id, mutation]));
+
+  function drawEfficientArchetypeSignature(bot, time) {
+    const hasBossSignature = bot.boss && (bot.archetype === "necrostro" || bot.archetype === "vortice"
+      || bot.archetype === "cicatriz" || bot.archetype === "prisma");
+    const hasRegularSignature = bot.archetype === "silenciador" || bot.archetype === "bulwark"
+      || (bot.archetype === "berserker" && bot.health < bot.maxHealth * 0.4);
+    if (!hasBossSignature && !hasRegularSignature) return;
+    const pointX = (bot.x - camera.x) * camera.zoom + width / 2;
+    const pointY = (bot.y - camera.y) * camera.zoom + height / 2;
+    const radius = bot.radius * camera.zoom;
+    ctx.save();
+    ctx.translate(pointX, pointY);
+    ctx.lineWidth = 1.5;
+    if (bot.archetype === "necrostro" && bot.boss) {
+      ctx.strokeStyle = hsl(120, 80, 55, 0.35 + Math.sin(time * 0.003) * 0.12);
+      ctx.beginPath();
+      ctx.arc(0, 0, radius + 14, 0, TAU);
+      ctx.stroke();
+    } else if (bot.archetype === "vortice" && bot.boss) {
+      ctx.fillStyle = hsl(240, 85, 65, 0.62);
+      for (let index = 0; index < 2; index += 1) {
+        const angle = time * 0.002 + index * Math.PI;
+        const orbit = radius + 14 + index * 8;
+        ctx.beginPath();
+        ctx.arc(Math.cos(angle) * orbit, Math.sin(angle) * orbit, 2.5, 0, TAU);
+        ctx.fill();
+      }
+    } else if (bot.archetype === "cicatriz" && bot.boss) {
+      ctx.strokeStyle = hsl(350, 90, 58, 0.45);
+      ctx.beginPath();
+      for (let index = 0; index < 3; index += 1) {
+        const angle = index * TAU / 3 + time * 0.0004;
+        ctx.moveTo(Math.cos(angle) * radius * 0.6, Math.sin(angle) * radius * 0.6);
+        ctx.lineTo(Math.cos(angle + 0.14) * radius * 1.75, Math.sin(angle + 0.14) * radius * 1.75);
+      }
+      ctx.stroke();
+    } else if (bot.archetype === "prisma" && bot.boss) {
+      for (let index = 0; index < 3; index += 1) {
+        const angle = index * TAU / 3 + time * 0.001;
+        ctx.fillStyle = hsl((time * 0.05 + index * 120) % 360, 85, 67, 0.7);
+        ctx.beginPath();
+        ctx.arc(Math.cos(angle) * (radius + 10), Math.sin(angle) * (radius + 10), 2.5, 0, TAU);
+        ctx.fill();
+      }
+    } else if (bot.archetype === "silenciador") {
+      const wave = (time * 0.04) % 42;
+      ctx.strokeStyle = hsl(280, 80, 65, 0.4 * (1 - wave / 42));
+      ctx.beginPath();
+      ctx.arc(0, 0, radius + wave, 0, TAU);
+      ctx.stroke();
+    } else if (bot.archetype === "berserker" && bot.health < bot.maxHealth * 0.4) {
+      ctx.strokeStyle = hsl(0, 92, 62, 0.48 + Math.sin(time * 0.01) * 0.18);
+      ctx.beginPath();
+      ctx.arc(0, 0, radius + 7, 0, TAU);
+      ctx.stroke();
+    } else if (bot.archetype === "bulwark") {
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = hsl(bot.hue, 65, 62, 0.42);
+      ctx.beginPath();
+      ctx.arc(0, 0, radius + 6, 0, TAU);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
+  }
+
   function drawBots(time) {
     for (const bot of bots) {
       if (bot.dead) continue;
+      const renderPadding = bot.boss ? Math.max(460, bot.telegraphRadius || 0) : 120;
+      if (!visible(bot.x, bot.y, renderPadding)) continue;
       drawBossTelegraph(bot);
+      if (MOBILE_QUALITY) drawEfficientArchetypeSignature(bot, time);
       if (!MOBILE_QUALITY && bot.boss && bot.bossPhaseTransitioning) {
         const point = toScreen(bot.x, bot.y);
         const radius = bot.radius * camera.zoom;
@@ -326,7 +480,7 @@
         ctx.translate(point.x, point.y);
         const copied = bot.copiedMutationIds || [];
         copied.forEach((id, index) => {
-          const mutation = mutations.find((entry) => entry.id === id);
+          const mutation = mutationRenderById.get(id);
           const angle = time * 0.0018 + index * TAU / Math.max(1, copied.length);
           ctx.fillStyle = mutation?.color || hsl(bot.hue, 90, 65, 0.7);
           ctx.beginPath();
@@ -366,15 +520,15 @@
         ctx.restore();
       }
       if (bot.prismaIllusion) {
-        drawEntity({ ...bot, alpha: 0.22 }, false, false, time);
+        drawEntity(bot, false, false, time, { alpha: 0.22 });
         continue;
       }
       if (bot.archetype === "phantom" && bot.stealthed) {
         if (bot.phasing && bot.phase) {
-          drawRibbon({ points: bot.phase.points, hue: bot.hue, width: 4 }, true);
-          drawEntity({ ...bot, x: bot.phase.x, y: bot.phase.y, alpha: 0.3 }, false, true, time);
+          drawRibbon(bot.phase, true, bot.hue, 4);
+          drawEntity(bot, false, true, time, { x: bot.phase.x, y: bot.phase.y, alpha: 0.3 });
         } else {
-          drawEntity({ ...bot, alpha: 0.25 }, false, false, time);
+          drawEntity(bot, false, false, time, { alpha: 0.25 });
         }
         continue;
       }
@@ -406,9 +560,9 @@
         ctx.restore();
       }
       if (bot.phasing && bot.phase) {
-        drawRibbon({ points: bot.phase.points, hue: bot.hue, width: 6 }, true);
+        drawRibbon(bot.phase, true, bot.hue, 6);
         drawShell(bot, time);
-        drawEntity({ ...bot, x: bot.phase.x, y: bot.phase.y }, false, true, time);
+        drawEntity(bot, false, true, time, { x: bot.phase.x, y: bot.phase.y });
       } else {
         drawEntity(bot, false, false, time);
       }
@@ -426,9 +580,9 @@
       return;
     }
     if (player.phasing && player.phase) {
-      drawRibbon({ points: player.phase.points, hue: player.hue, width: 8 * (player.skinTrail || 1) }, true);
+      drawRibbon(player.phase, true, player.hue, 8 * (player.skinTrail || 1));
       drawShell(player, time);
-      drawEntity({ ...player, x: player.phase.x, y: player.phase.y }, true, true, time);
+      drawEntity(player, true, true, time, { x: player.phase.x, y: player.phase.y });
 
       const shell = toScreen(player.x, player.y);
       const ghost = toScreen(player.phase.x, player.phase.y);

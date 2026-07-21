@@ -656,6 +656,78 @@
   let runTime = 0;
   let screenShake = 0;
   let flash = 0;
+  const PERFORMANCE_PROFILE = Object.freeze({
+    activeMinimumFrameMs: 10,
+    idleMinimumFrameMs: 28,
+    hudInterval: MOBILE_QUALITY ? 1 / 20 : 1 / 30,
+    slowFrameMs: 21.5,
+    recoveryFrameMs: 17.2,
+    scaleCooldownMs: 4200,
+    slowSamplesBeforeScale: 36,
+    fastSamplesBeforeScale: 300
+  });
+
+  const nativeRenderDpr = Math.min(window.devicePixelRatio || 1, MOBILE_QUALITY ? 1.5 : 2);
+  const renderPerformance = {
+    averageFrameMs: 1000 / 60,
+    averageWorkMs: 0,
+    dprCap: nativeRenderDpr,
+    minimumDpr: Math.min(nativeRenderDpr, MOBILE_QUALITY ? 1 : 1.25),
+    maximumDpr: nativeRenderDpr,
+    slowSamples: 0,
+    fastSamples: 0,
+    lastScaleChange: 0,
+    scaleChanges: 0
+  };
+
+  let hudUpdateTimer = 0;
+  let musicUpdateTimer = 0;
+
+  function targetRenderDpr() {
+    return Math.max(renderPerformance.minimumDpr, Math.min(window.devicePixelRatio || 1, renderPerformance.dprCap));
+  }
+
+  function updateAdaptiveResolution(frameMs, workMs, now) {
+    if (state !== "playing" || document.hidden) return;
+    renderPerformance.averageFrameMs = lerp(renderPerformance.averageFrameMs, frameMs, 0.06);
+    renderPerformance.averageWorkMs = lerp(renderPerformance.averageWorkMs, workMs, 0.08);
+    if (now - renderPerformance.lastScaleChange < PERFORMANCE_PROFILE.scaleCooldownMs) return;
+
+    const overloaded = renderPerformance.averageFrameMs > PERFORMANCE_PROFILE.slowFrameMs
+      || renderPerformance.averageWorkMs > 15.5;
+    const comfortable = renderPerformance.averageFrameMs < PERFORMANCE_PROFILE.recoveryFrameMs
+      && renderPerformance.averageWorkMs < 10.5;
+
+    if (overloaded) {
+      renderPerformance.slowSamples += 1;
+      renderPerformance.fastSamples = 0;
+    } else if (comfortable) {
+      renderPerformance.fastSamples += 1;
+      renderPerformance.slowSamples = Math.max(0, renderPerformance.slowSamples - 2);
+    } else {
+      renderPerformance.slowSamples = Math.max(0, renderPerformance.slowSamples - 1);
+      renderPerformance.fastSamples = Math.max(0, renderPerformance.fastSamples - 1);
+    }
+
+    if (renderPerformance.slowSamples >= PERFORMANCE_PROFILE.slowSamplesBeforeScale
+      && renderPerformance.dprCap > renderPerformance.minimumDpr) {
+      renderPerformance.dprCap = Math.max(renderPerformance.minimumDpr, renderPerformance.dprCap - 0.25);
+      renderPerformance.slowSamples = 0;
+      renderPerformance.fastSamples = 0;
+      renderPerformance.lastScaleChange = now;
+      renderPerformance.scaleChanges += 1;
+      resize(true);
+    } else if (renderPerformance.fastSamples >= PERFORMANCE_PROFILE.fastSamplesBeforeScale
+      && renderPerformance.dprCap < renderPerformance.maximumDpr) {
+      renderPerformance.dprCap = Math.min(renderPerformance.maximumDpr, renderPerformance.dprCap + 0.125);
+      renderPerformance.slowSamples = 0;
+      renderPerformance.fastSamples = 0;
+      renderPerformance.lastScaleChange = now;
+      renderPerformance.scaleChanges += 1;
+      resize(true);
+    }
+  }
+
   let audioContext = null;
   let muted = false;
   let masterVolume = 0.7;
@@ -909,6 +981,82 @@
 
   function hsl(hue, saturation = 90, lightness = 62, alpha = 1) {
     return `hsla(${hue} ${saturation}% ${lightness}% / ${alpha})`;
+  }
+
+  const MOTE_CELL_SIZE = 180;
+  const moteCells = new Map();
+  const moteQueryBuffer = [];
+
+  function moteCellCoordinate(value) {
+    return Math.floor(value / MOTE_CELL_SIZE);
+  }
+
+  function moteCellKey(cellX, cellY) {
+    return cellY * 65536 + cellX;
+  }
+
+  function indexMote(mote) {
+    if (!mote) return;
+    const key = moteCellKey(moteCellCoordinate(mote.x), moteCellCoordinate(mote.y));
+    let bucket = moteCells.get(key);
+    if (!bucket) {
+      bucket = [];
+      moteCells.set(key, bucket);
+    }
+    bucket.push(mote);
+    mote._spatialCell = key;
+  }
+
+  function unindexMote(mote) {
+    const key = mote?._spatialCell;
+    if (key == null) return;
+    const bucket = moteCells.get(key);
+    if (!bucket) return;
+    const bucketIndex = bucket.indexOf(mote);
+    if (bucketIndex >= 0) bucket.splice(bucketIndex, 1);
+    if (bucket.length === 0) moteCells.delete(key);
+    mote._spatialCell = null;
+  }
+
+  function rebuildMoteSpatialIndex() {
+    moteCells.clear();
+    for (const mote of motes) indexMote(mote);
+  }
+
+  function queryMotes(x, y, radius) {
+    moteQueryBuffer.length = 0;
+    const minX = moteCellCoordinate(x - radius);
+    const maxX = moteCellCoordinate(x + radius);
+    const minY = moteCellCoordinate(y - radius);
+    const maxY = moteCellCoordinate(y + radius);
+    const radiusSq = radius * radius;
+    for (let cellY = minY; cellY <= maxY; cellY += 1) {
+      for (let cellX = minX; cellX <= maxX; cellX += 1) {
+        const bucket = moteCells.get(moteCellKey(cellX, cellY));
+        if (!bucket) continue;
+        for (const mote of bucket) {
+          if (distanceSq(x, y, mote.x, mote.y) <= radiusSq) moteQueryBuffer.push(mote);
+        }
+      }
+    }
+    return moteQueryBuffer;
+  }
+
+  function replaceCollectedMote(mote) {
+    const index = motes.indexOf(mote);
+    if (index < 0) return null;
+    unindexMote(mote);
+    motes.splice(index, 1);
+    const replacement = createMote();
+    motes.push(replacement);
+    indexMote(replacement);
+    return replacement;
+  }
+
+  function appendIndexedMote(mote) {
+    motes.push(mote);
+    indexMote(mote);
+    return mote;
   }
 
   function loadSkinProgress() {
@@ -1191,6 +1339,7 @@
     player.hitTimer = 1.2;
     bots = Array.from({ length: BOT_COUNT }, (_, index) => createBot(index));
     motes = Array.from({ length: moteCount }, (_, index) => createMote(index < 90));
+    rebuildMoteSpatialIndex();
     particles = [];
     ribbons = [];
     waves = [];
@@ -2315,8 +2464,11 @@
       const b = points[index];
       for (const bot of bots) {
         if (bot.dead || hitIds.has(bot.id) || (bot.archetype === "phantom" && bot.stealthed)) continue;
+        const collisionRadius = bot.radius + 12;
+        if (bot.x < Math.min(a.x, b.x) - collisionRadius || bot.x > Math.max(a.x, b.x) + collisionRadius
+          || bot.y < Math.min(a.y, b.y) - collisionRadius || bot.y > Math.max(a.y, b.y) + collisionRadius) continue;
         const distance = pointToSegmentDistance(bot.x, bot.y, a.x, a.y, b.x, b.y);
-        if (distance < bot.radius + 12) {
+        if (distance < collisionRadius) {
           hitIds.add(bot.id);
           let dmg = applyBossDefense(bot, damage);
           dmg = redirectBulwarkDamage(bot, dmg, owner);
@@ -2552,6 +2704,7 @@
             pulled += 1;
           }
         }
+        if (pulled > 0) rebuildMoteSpatialIndex();
         spawnWave(player.x, player.y, 268, magnetRadius * 0.6, 0.5);
         burst(player.x, player.y, 268, 8);
         sound(440, 0.2, "sine", 0.035);
@@ -2584,11 +2737,15 @@
   let activeSkills = [];
   let skillCooldowns = [];
   let skillSlots = 4;
+  let skillHudLayoutKey = "";
+  const skillHudBaseCache = new Map();
 
   function initSkills() {
     const pool = [...SKILL_DEFS].sort(() => Math.random() - 0.5);
     activeSkills = pool.slice(0, skillSlots);
     skillCooldowns = activeSkills.map(() => 0);
+    skillHudLayoutKey = activeSkills.map((skill) => skill?.id || "empty").join(":");
+    skillHudBaseCache.clear();
   }
 
   function useSkill(index) {
@@ -2628,43 +2785,71 @@
     if (state !== "playing" || activeMode !== "solo") return;
     const slotW = 50;
     const gap = 6;
+    const panelPad = 10;
     const totalW = activeSkills.length * slotW + (activeSkills.length - 1) * gap;
     const startX = width / 2 - totalW / 2;
     const y = height - 82;
+    let readyMask = 0;
+    for (let i = 0; i < activeSkills.length; i++) {
+      const skill = activeSkills[i];
+      if (skill && skillCooldowns[i] <= 0 && player.energy >= skill.energyCost) readyMask |= 1 << i;
+    }
+
+    const cacheKey = `${skillHudLayoutKey}:${readyMask}`;
+    let base = skillHudBaseCache.get(cacheKey);
+    const panelWidth = totalW + panelPad * 2;
+    const panelHeight = slotW + 36 + panelPad * 2;
+    if (!base) {
+      const scale = 2;
+      base = document.createElement("canvas");
+      base.width = panelWidth * scale;
+      base.height = panelHeight * scale;
+      const baseContext = base.getContext("2d");
+      baseContext.scale(scale, scale);
+      baseContext.textAlign = "center";
+      baseContext.fillStyle = "rgba(11,9,24,0.45)";
+      baseContext.beginPath();
+      baseContext.roundRect(0, 0, panelWidth, panelHeight, 10);
+      baseContext.fill();
+      for (let i = 0; i < activeSkills.length; i++) {
+        const skill = activeSkills[i];
+        if (!skill) continue;
+        const localX = panelPad + i * (slotW + gap);
+        const localY = panelPad;
+        const ready = Boolean(readyMask & (1 << i));
+        baseContext.fillStyle = ready ? "rgba(11,9,24,0.85)" : "rgba(11,9,24,0.65)";
+        baseContext.beginPath();
+        baseContext.roundRect(localX, localY, slotW, slotW, 6);
+        baseContext.fill();
+        baseContext.strokeStyle = ready ? skill.color : "rgba(132,105,202,0.25)";
+        baseContext.lineWidth = ready ? 2 : 1;
+        baseContext.beginPath();
+        baseContext.roundRect(localX, localY, slotW, slotW, 6);
+        baseContext.stroke();
+        baseContext.fillStyle = ready ? skill.color : "rgba(205,197,220,0.25)";
+        baseContext.font = "600 17px Inter, sans-serif";
+        baseContext.fillText(skill.symbol, localX + slotW / 2, localY + slotW / 2 + 1);
+        baseContext.fillStyle = "rgba(255,255,255,0.5)";
+        baseContext.font = "700 9px Inter, sans-serif";
+        baseContext.fillText(`[${i + 1}]`, localX + slotW / 2, localY + slotW - 4);
+        baseContext.fillStyle = ready ? "rgba(255,255,255,0.65)" : "rgba(205,197,220,0.25)";
+        baseContext.font = "500 8px Inter, sans-serif";
+        baseContext.fillText(skill.name, localX + slotW / 2, localY + slotW + 12);
+        baseContext.fillStyle = ready ? "rgba(255,255,255,0.35)" : "rgba(205,197,220,0.15)";
+        baseContext.font = "400 7px Inter, sans-serif";
+        baseContext.fillText(`${skill.energyCost}⚡`, localX + slotW / 2, localY + slotW + 22);
+      }
+      skillHudBaseCache.set(cacheKey, base);
+    }
+
+    ctx.drawImage(base, startX - panelPad, y - panelPad, panelWidth, panelHeight);
     ctx.save();
     ctx.textAlign = "center";
-    const panelPad = 10;
-    ctx.fillStyle = "rgba(11,9,24,0.45)";
-    ctx.beginPath();
-    ctx.roundRect(startX - panelPad, y - panelPad, totalW + panelPad * 2, slotW + 36 + panelPad * 2, 10);
-    ctx.fill();
     for (let i = 0; i < activeSkills.length; i++) {
       const skill = activeSkills[i];
       if (!skill) continue;
       const x = startX + i * (slotW + gap);
       const cd = skillCooldowns[i];
-      const ready = cd <= 0 && player.energy >= skill.energyCost;
-      ctx.fillStyle = ready ? "rgba(11,9,24,0.85)" : "rgba(11,9,24,0.65)";
-      ctx.beginPath();
-      ctx.roundRect(x, y, slotW, slotW, 6);
-      ctx.fill();
-      ctx.strokeStyle = ready ? skill.color : "rgba(132,105,202,0.25)";
-      ctx.lineWidth = ready ? 2 : 1;
-      ctx.beginPath();
-      ctx.roundRect(x, y, slotW, slotW, 6);
-      ctx.stroke();
-      ctx.fillStyle = ready ? skill.color : "rgba(205,197,220,0.25)";
-      ctx.font = "600 17px Inter, sans-serif";
-      ctx.fillText(skill.symbol, x + slotW / 2, y + slotW / 2 + 1);
-      ctx.fillStyle = "rgba(255,255,255,0.5)";
-      ctx.font = "700 9px Inter, sans-serif";
-      ctx.fillText(`[${i + 1}]`, x + slotW / 2, y + slotW - 4);
-      ctx.fillStyle = ready ? "rgba(255,255,255,0.65)" : "rgba(205,197,220,0.25)";
-      ctx.font = "500 8px Inter, sans-serif";
-      ctx.fillText(skill.name, x + slotW / 2, y + slotW + 12);
-      ctx.fillStyle = ready ? "rgba(255,255,255,0.35)" : "rgba(205,197,220,0.15)";
-      ctx.font = "400 7px Inter, sans-serif";
-      ctx.fillText(`${skill.energyCost}⚡`, x + slotW / 2, y + slotW + 22);
       if (cd > 0) {
         const cdRatio = cd / skill.cooldown;
         ctx.fillStyle = `rgba(255,79,216,${0.2 * cdRatio})`;
@@ -2753,7 +2938,7 @@
         mote.x = clamp(bot.x + random(-55, 55), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
         mote.y = clamp(bot.y + random(-55, 55), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
         mote.type = i < 2 ? "gold" : i === 2 ? "red" : Math.random() > 0.45 ? "violet" : "cyan";
-        motes.push(mote);
+        appendIndexedMote(mote);
       }
     }
 
@@ -2822,7 +3007,7 @@
           mote.x = clamp(bot.x + random(-65, 65), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
           mote.y = clamp(bot.y + random(-65, 65), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
           mote.type = i < 4 ? "gold" : i < 6 ? "red" : Math.random() > 0.4 ? "violet" : "cyan";
-          motes.push(mote);
+          appendIndexedMote(mote);
         }
         showToast(reward.toast, 2800);
       }
@@ -3465,15 +3650,14 @@
     }
 
     resolveEntityOverlap();
-    updateLevelHud();
   }
 
   function collectMotes(entity, spectral) {
-    for (let index = motes.length - 1; index >= 0; index -= 1) {
-      const mote = motes[index];
+    const maximumRange = (spectral ? 16 : player.radius) + 10 + player.pickupRadius * (spectral ? (player.phasePickupBonus || 1) : 1);
+    const nearbyMotes = [...queryMotes(entity.x, entity.y, maximumRange)];
+    for (const mote of nearbyMotes) {
       const range = (spectral ? 16 : player.radius) + mote.radius + 5 + player.pickupRadius * (spectral ? (player.phasePickupBonus || 1) : 1);
       if (distanceSq(entity.x, entity.y, mote.x, mote.y) > range * range) continue;
-      motes.splice(index, 1);
       const baseValue = mote.type === "gold" ? 7 : mote.type === "red" ? 10 : mote.type === "violet" ? 3 : 1;
       const spectralMultiplier = spectral ? 0.72 : 1;
       player.score += baseValue * spectralMultiplier * (player.scoreMultiplier || 1);
@@ -3506,7 +3690,7 @@
       if (player.moteHealing) player.health = clamp(player.health + (mote.type === "gold" ? 3 : mote.type === "red" ? 1.5 : 0.7) * Math.min(2.2, 1 + player.combo / 20) * player.healScale, 0, player.maxHealth);
       playCollectSound(mote.type);
       for (let i = 0; i < (mote.type === "gold" ? 7 : mote.type === "red" ? 5 : 3); i += 1) spawnParticle(mote.x, mote.y, mote.type === "gold" ? 42 : mote.type === "red" ? 0 : mote.type === "violet" ? 268 : 188, random(30, 90), 0.35);
-      motes.push(createMote());
+      replaceCollectedMote(mote);
       checkMutation();
     }
   }
@@ -3925,8 +4109,8 @@
   }
 
   function collectBotMotes(bot) {
-    for (let index = motes.length - 1; index >= 0; index -= 1) {
-      const mote = motes[index];
+    const nearbyMotes = queryMotes(bot.x, bot.y, bot.radius + 8);
+    for (const mote of nearbyMotes) {
       const range = bot.radius + mote.radius + 3;
       if (distanceSq(bot.x, bot.y, mote.x, mote.y) < range * range) {
         const scoreValue = mote.type === "gold" ? 5 : mote.type === "red" ? 4 : mote.type === "violet" ? 2 : 1;
@@ -3937,8 +4121,7 @@
           bot.rareBoostMultiplier = LEVEL_CONFIG.rareBoostMultiplier;
         }
         gainExperience(bot, experienceValueForMote(mote.type), `mote:${mote.type}`);
-        motes.splice(index, 1);
-        motes.push(createMote());
+        replaceCollectedMote(mote);
         break;
       }
     }
@@ -4106,46 +4289,65 @@
     camera.zoom = lerp(camera.zoom, targetZoom, 1 - Math.exp(-3 * dt));
   }
 
+  function setTextIfChanged(node, value) {
+    const text = String(value);
+    if (node && node.textContent !== text) node.textContent = text;
+  }
+
+  function setStyleIfChanged(node, property, value) {
+    if (node && node.style[property] !== value) node.style[property] = value;
+  }
+
+  function setCustomPropertyIfChanged(node, property, value) {
+    if (node && node.style.getPropertyValue(property) !== value) node.style.setProperty(property, value);
+  }
+
+  function toggleClassIfChanged(node, className, enabled) {
+    if (node && node.classList.contains(className) !== enabled) node.classList.toggle(className, enabled);
+  }
+
   function updateHud() {
     const energy = Math.round(player.energy || 0);
     const health = Math.max(0, Math.round(player.health || 0));
-    ui.score.textContent = Math.floor(player.score || 0).toString().padStart(3, "0");
-    ui.kills.textContent = String(player.kills || 0);
-    ui.time.textContent = formatTime(activeMode === "multiplayer" ? multiplayerRemaining : runTime);
-    ui.integrity.textContent = health.toString();
-    ui.integrityFill.style.width = `${clamp(player.health, 0, player.maxHealth || 100) / (player.maxHealth || 100) * 100}%`;
-    ui.charge.textContent = `${energy}%`;
-    ui.chargeFill.style.width = `${clamp(player.energy, 0, player.maxEnergy || 100) / (player.maxEnergy || 100) * 100}%`;
-    ui.abilityRing.style.setProperty("--charge", `${clamp(player.energy, 0, player.maxEnergy || 100) / (player.maxEnergy || 100) * 100}%`);
+    const healthPercent = `${Math.round(clamp(player.health, 0, player.maxHealth || 100) / (player.maxHealth || 100) * 1000) / 10}%`;
+    const energyPercent = `${Math.round(clamp(player.energy, 0, player.maxEnergy || 100) / (player.maxEnergy || 100) * 1000) / 10}%`;
+    setTextIfChanged(ui.score, Math.floor(player.score || 0).toString().padStart(3, "0"));
+    setTextIfChanged(ui.kills, player.kills || 0);
+    setTextIfChanged(ui.time, formatTime(activeMode === "multiplayer" ? multiplayerRemaining : runTime));
+    setTextIfChanged(ui.integrity, health);
+    setStyleIfChanged(ui.integrityFill, "width", healthPercent);
+    setTextIfChanged(ui.charge, `${energy}%`);
+    setStyleIfChanged(ui.chargeFill, "width", energyPercent);
+    setCustomPropertyIfChanged(ui.abilityRing, "--charge", energyPercent);
 
     if (activeMode === "multiplayer") {
-      ui.sector.textContent = `SALA ${multiplayerRoomCode} // ${formatTime(multiplayerRemaining)}`;
+      setTextIfChanged(ui.sector, `SALA ${multiplayerRoomCode} // ${formatTime(multiplayerRemaining)}`);
     } else {
       const sectorX = clamp(Math.floor(player.x / (WORLD_SIZE / 3)), 0, 2);
       const sectorY = clamp(Math.floor(player.y / (WORLD_SIZE / 3)), 0, 2);
-      ui.sector.textContent = sectorNames[sectorY * 3 + sectorX];
+      setTextIfChanged(ui.sector, sectorNames[sectorY * 3 + sectorX]);
     }
     const combo = player.combo || 0;
-    ui.comboValue.textContent = Math.max(2, combo).toString();
-    ui.combo.classList.toggle("is-visible", activeMode === "solo" && combo >= 5 && player.comboTimer > 0);
+    setTextIfChanged(ui.comboValue, Math.max(2, combo));
+    toggleClassIfChanged(ui.combo, "is-visible", activeMode === "solo" && combo >= 5 && player.comboTimer > 0);
 
     if (leaderboardTimer <= 0) updateChallengePanel();
 
     if (activeBoss && !activeBoss.dead) {
-      ui.bossBar.classList.remove("is-hidden");
+      toggleClassIfChanged(ui.bossBar, "is-hidden", false);
       const activePhase = activeBoss.bossTemplate?.phases?.[activeBoss.bossPhaseIndex];
       const mechanic = activePhase?.description?.replace(/^Fase \d+\s*—\s*/, "").toUpperCase();
-      ui.bossRole.textContent = mechanic ? `${activeBoss.roleLabel} // ${mechanic}` : activeBoss.roleLabel;
-      ui.bossName.textContent = activeBoss.name;
+      setTextIfChanged(ui.bossRole, mechanic ? `${activeBoss.roleLabel} // ${mechanic}` : activeBoss.roleLabel);
+      setTextIfChanged(ui.bossName, activeBoss.name);
       const bossHpRatio = clamp(activeBoss.health, 0, activeBoss.maxHealth) / activeBoss.maxHealth;
-      ui.bossHpFill.style.width = `${bossHpRatio * 100}%`;
+      setStyleIfChanged(ui.bossHpFill, "width", `${Math.round(bossHpRatio * 1000) / 10}%`);
       if (activeBoss.bossPhaseTransitioning) {
-        ui.bossHpFill.style.background = `linear-gradient(90deg, ${hsl(activeBoss.hue, 90, 64, 1)}, white)`;
+        setStyleIfChanged(ui.bossHpFill, "background", `linear-gradient(90deg, ${hsl(activeBoss.hue, 90, 64, 1)}, white)`);
       } else {
-        ui.bossHpFill.style.background = "";
+        setStyleIfChanged(ui.bossHpFill, "background", "");
       }
     } else {
-      ui.bossBar.classList.add("is-hidden");
+      toggleClassIfChanged(ui.bossBar, "is-hidden", true);
     }
   }
 
@@ -4254,14 +4456,25 @@
     updateSoloDirector();
     updateEffects(dt);
     updateCamera(dt);
-    updateMusic();
-    updateHud();
+    musicUpdateTimer -= dt;
+    if (musicUpdateTimer <= 0) {
+      musicUpdateTimer = 0.08;
+      updateMusic();
+    }
+    hudUpdateTimer -= dt;
+    if (hudUpdateTimer <= 0) {
+      hudUpdateTimer = PERFORMANCE_PROFILE.hudInterval;
+      updateHud();
+      updateLevelHud();
+    }
     leaderboardTimer -= dt;
     if (leaderboardTimer <= 0) {
       leaderboardTimer = 0.7;
       updateLeaderboard();
     }
   }
+
+  let backgroundGradient = null;
 
   function toScreen(x, y) {
     return {
@@ -4271,16 +4484,19 @@
   }
 
   function visible(x, y, padding = 80) {
-    const point = toScreen(x, y);
-    return point.x > -padding && point.x < width + padding && point.y > -padding && point.y < height + padding;
+    const pointX = (x - camera.x) * camera.zoom + width / 2;
+    const pointY = (y - camera.y) * camera.zoom + height / 2;
+    return pointX > -padding && pointX < width + padding && pointY > -padding && pointY < height + padding;
   }
 
   function drawBackground(time) {
-    const gradient = ctx.createRadialGradient(width * 0.52, height * 0.48, 0, width * 0.52, height * 0.48, Math.max(width, height) * 0.72);
-    gradient.addColorStop(0, "#0d0920");
-    gradient.addColorStop(0.52, "#080612");
-    gradient.addColorStop(1, "#03030a");
-    ctx.fillStyle = gradient;
+    if (!backgroundGradient) {
+      backgroundGradient = ctx.createRadialGradient(width * 0.52, height * 0.48, 0, width * 0.52, height * 0.48, Math.max(width, height) * 0.72);
+      backgroundGradient.addColorStop(0, "#0d0920");
+      backgroundGradient.addColorStop(0.52, "#080612");
+      backgroundGradient.addColorStop(1, "#03030a");
+    }
+    ctx.fillStyle = backgroundGradient;
     ctx.fillRect(0, 0, width, height);
 
     ctx.save();
@@ -4296,11 +4512,12 @@
 
     for (const seed of ambientSeeds) {
       if (!visible(seed.x, seed.y, 10)) continue;
-      const point = toScreen(seed.x, seed.y);
+      const pointX = (seed.x - camera.x) * camera.zoom + width / 2;
+      const pointY = (seed.y - camera.y) * camera.zoom + height / 2;
       const pulse = 0.65 + Math.sin(time * 0.0007 + seed.x) * 0.25;
       ctx.fillStyle = hsl(seed.hue, 75, 70, seed.alpha * pulse);
       ctx.beginPath();
-      ctx.arc(point.x, point.y, seed.radius * camera.zoom, 0, TAU);
+      ctx.arc(pointX, pointY, seed.radius * camera.zoom, 0, TAU);
       ctx.fill();
     }
     ctx.restore();
@@ -4319,80 +4536,133 @@
     ctx.setLineDash([]);
 
     if (!MOBILE_QUALITY) {
-      const edgeGradient = ctx.createLinearGradient(topLeft.x, 0, topLeft.x + 130, 0);
-      edgeGradient.addColorStop(0, "rgba(255, 50, 130, 0.08)");
-      edgeGradient.addColorStop(1, "rgba(255, 50, 130, 0)");
-      ctx.fillStyle = edgeGradient;
-      ctx.fillRect(topLeft.x, topLeft.y, 130, bottomRight.y - topLeft.y);
+      const leftEdgeVisible = topLeft.x < width && topLeft.x + 130 > 0
+        && bottomRight.y > 0 && topLeft.y < height;
+      if (leftEdgeVisible) {
+        const edgeGradient = ctx.createLinearGradient(topLeft.x, 0, topLeft.x + 130, 0);
+        edgeGradient.addColorStop(0, "rgba(255, 50, 130, 0.08)");
+        edgeGradient.addColorStop(1, "rgba(255, 50, 130, 0)");
+        ctx.fillStyle = edgeGradient;
+        ctx.fillRect(topLeft.x, Math.max(0, topLeft.y), 130, Math.min(height, bottomRight.y) - Math.max(0, topLeft.y));
+      }
     }
     ctx.restore();
   }
 
+  const scarSpriteCache = new Map();
+
+  function scarSprite(scar) {
+    const radius = Math.max(1, Math.round(scar.radius));
+    const hue = Math.round(scar.hue);
+    const key = `${hue}:${radius}`;
+    const cached = scarSpriteCache.get(key);
+    if (cached) return cached;
+    const padding = 4;
+    const extent = radius + padding;
+    const sprite = document.createElement("canvas");
+    sprite.width = extent * 4;
+    sprite.height = extent * 4;
+    const spriteContext = sprite.getContext("2d");
+    spriteContext.setTransform(2, 0, 0, 2, extent * 2, extent * 2);
+    const gradient = spriteContext.createRadialGradient(0, 0, 0, 0, 0, radius);
+    gradient.addColorStop(0, hsl(hue, 85, 55, 1));
+    gradient.addColorStop(0.35, hsl(hue, 80, 40, 0.45));
+    gradient.addColorStop(1, hsl(hue, 80, 35, 0));
+    spriteContext.fillStyle = gradient;
+    spriteContext.beginPath();
+    spriteContext.arc(0, 0, radius, 0, TAU);
+    spriteContext.fill();
+    spriteContext.strokeStyle = hsl(hue, 85, 65, 0.75);
+    spriteContext.lineWidth = 1;
+    spriteContext.beginPath();
+    for (let index = 0; index < 5; index += 1) {
+      const angle = index * TAU / 5;
+      spriteContext.moveTo(Math.cos(angle) * 6, Math.sin(angle) * 6);
+      spriteContext.lineTo(Math.cos(angle + 0.18) * radius, Math.sin(angle + 0.18) * radius);
+    }
+    spriteContext.stroke();
+    const result = { canvas: sprite, extent };
+    scarSpriteCache.set(key, result);
+    return result;
+  }
+
   function drawScars() {
+    if (scars.length === 0) return;
     if (!MOBILE_QUALITY) {
-      const wounds = scars.filter((scar) => scar.wound && scar.life > 0 && visible(scar.x, scar.y, scar.radius));
       ctx.save();
       ctx.strokeStyle = hsl(350, 88, 58, 0.14);
       ctx.lineWidth = 1;
-      for (let index = 1; index < wounds.length; index += 1) {
-        const previous = toScreen(wounds[index - 1].x, wounds[index - 1].y);
-        const current = toScreen(wounds[index].x, wounds[index].y);
-        ctx.beginPath();
-        ctx.moveTo(previous.x, previous.y);
-        ctx.lineTo(current.x, current.y);
-        ctx.stroke();
+      ctx.beginPath();
+      let previousWoundX = null;
+      let previousWoundY = null;
+      for (const wound of scars) {
+        if (!wound.wound || wound.life <= 0 || !visible(wound.x, wound.y, wound.radius)) continue;
+        const woundX = (wound.x - camera.x) * camera.zoom + width / 2;
+        const woundY = (wound.y - camera.y) * camera.zoom + height / 2;
+        if (previousWoundX != null) {
+          ctx.moveTo(previousWoundX, previousWoundY);
+          ctx.lineTo(woundX, woundY);
+        }
+        previousWoundX = woundX;
+        previousWoundY = woundY;
       }
+      ctx.stroke();
       ctx.restore();
     }
     for (const scar of scars) {
       if (!visible(scar.x, scar.y, scar.radius)) continue;
-      const point = toScreen(scar.x, scar.y);
       const alpha = clamp(scar.life / scar.maxLife, 0, 1) * 0.24;
-      const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, scar.radius * camera.zoom);
-      gradient.addColorStop(0, hsl(scar.hue, 85, 55, alpha));
-      gradient.addColorStop(0.35, hsl(scar.hue, 80, 40, alpha * 0.45));
-      gradient.addColorStop(1, hsl(scar.hue, 80, 35, 0));
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(point.x, point.y, scar.radius * camera.zoom, 0, TAU);
-      ctx.fill();
-      ctx.strokeStyle = hsl(scar.hue, 85, 65, alpha * 0.75);
-      ctx.lineWidth = 1;
-      for (let i = 0; i < 5; i += 1) {
-        const angle = i * TAU / 5 + scar.x;
-        ctx.beginPath();
-        ctx.moveTo(point.x + Math.cos(angle) * 6, point.y + Math.sin(angle) * 6);
-        ctx.lineTo(point.x + Math.cos(angle + 0.18) * scar.radius * camera.zoom, point.y + Math.sin(angle + 0.18) * scar.radius * camera.zoom);
-        ctx.stroke();
-      }
+      const pointX = (scar.x - camera.x) * camera.zoom + width / 2;
+      const pointY = (scar.y - camera.y) * camera.zoom + height / 2;
+      const sprite = scarSprite(scar);
+      const displayExtent = sprite.extent * camera.zoom;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(pointX, pointY);
+      ctx.rotate(scar.x);
+      ctx.drawImage(sprite.canvas, -displayExtent, -displayExtent, displayExtent * 2, displayExtent * 2);
+      ctx.restore();
     }
   }
+
+  const moteVisuals = Object.freeze({
+    cyan: Object.freeze({ hue: 188, fill: hsl(188, 95, 68, 0.88), shadow: hsl(188, 90, 65, 0.9), blur: 9 }),
+    violet: Object.freeze({ hue: 268, fill: hsl(268, 95, 68, 0.88), shadow: hsl(268, 90, 65, 0.9), blur: 9 }),
+    gold: Object.freeze({ hue: 42, fill: hsl(42, 95, 68, 0.88), shadow: hsl(42, 90, 65, 0.9), blur: 15 }),
+    red: Object.freeze({ hue: 0, fill: hsl(0, 95, 55, 0.88), shadow: hsl(0, 90, 50, 0.9), blur: 18 })
+  });
 
   function drawMotes(time) {
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
+    let previousMoteType = null;
     for (const mote of motes) {
       if (!visible(mote.x, mote.y, 20)) continue;
-      const point = toScreen(mote.x, mote.y);
+      const pointX = (mote.x - camera.x) * camera.zoom + width / 2;
+      const pointY = (mote.y - camera.y) * camera.zoom + height / 2;
       const pulse = 0.78 + Math.sin(time * 0.002 * mote.drift + mote.phase) * 0.22;
-      const hue = mote.type === "gold" ? 42 : mote.type === "red" ? 0 : mote.type === "violet" ? 268 : 188;
+      const visual = moteVisuals[mote.type] || moteVisuals.cyan;
+      const hue = visual.hue;
       const radius = mote.radius * pulse * camera.zoom;
-      if (!MOBILE_QUALITY) {
-        ctx.shadowColor = hsl(hue, 90, mote.type === "red" ? 50 : 65, 0.9);
-        ctx.shadowBlur = mote.type === "gold" ? 15 : mote.type === "red" ? 18 : 9;
-      } else {
-        ctx.shadowColor = "transparent";
-        ctx.shadowBlur = 0;
+      if (previousMoteType !== mote.type) {
+        if (!MOBILE_QUALITY) {
+          ctx.shadowColor = visual.shadow;
+          ctx.shadowBlur = visual.blur;
+        } else {
+          ctx.shadowColor = "transparent";
+          ctx.shadowBlur = 0;
+        }
+        ctx.fillStyle = visual.fill;
+        previousMoteType = mote.type;
       }
-      ctx.fillStyle = hsl(hue, mote.type === "red" ? 95 : 95, mote.type === "red" ? 55 : 68, 0.88);
       ctx.beginPath();
-      ctx.arc(point.x, point.y, radius, 0, TAU);
+      ctx.arc(pointX, pointY, radius, 0, TAU);
       ctx.fill();
       if (!MOBILE_QUALITY && mote.type === "gold") {
         ctx.strokeStyle = hsl(hue, 90, 72, 0.45);
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.arc(point.x, point.y, radius + 5 + pulse * 2, 0, TAU);
+        ctx.arc(pointX, pointY, radius + 5 + pulse * 2, 0, TAU);
         ctx.stroke();
       }
       if (mote.type === "red" && !MOBILE_QUALITY) {
@@ -4400,41 +4670,43 @@
         ctx.strokeStyle = hsl(0, 95, 55, 0.55 * warnPulse);
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(point.x, point.y, radius + 6 + pulse * 3, 0, TAU);
+        ctx.arc(pointX, pointY, radius + 6 + pulse * 3, 0, TAU);
         ctx.stroke();
         ctx.strokeStyle = hsl(30, 90, 60, 0.3 * warnPulse);
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.arc(point.x, point.y, radius + 12 + pulse * 5, 0, TAU);
+        ctx.arc(pointX, pointY, radius + 12 + pulse * 5, 0, TAU);
         ctx.stroke();
       }
     }
     ctx.restore();
   }
 
-  function drawRibbon(ribbon, active = false) {
+  function drawRibbon(ribbon, active = false, hueOverride = null, widthOverride = null) {
     if (ribbon.points.length < 2) return;
+    const ribbonHue = hueOverride ?? ribbon.hue;
+    const ribbonWidth = widthOverride ?? ribbon.width;
     const alpha = active ? 0.75 : clamp(ribbon.life / ribbon.maxLife, 0, 1);
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     if (!MOBILE_QUALITY) {
-      ctx.shadowColor = hsl(ribbon.hue, 90, 60, 0.8);
+      ctx.shadowColor = hsl(ribbonHue, 90, 60, 0.8);
       ctx.shadowBlur = active ? 18 : 12;
     }
-    const lifeRatio = clamp(ribbon.life / ribbon.maxLife, 0, 1);
-    const taperWidth = ribbon.width * (0.35 + lifeRatio * 0.65);
+    const lifeRatio = active ? 1 : clamp(ribbon.life / ribbon.maxLife, 0, 1);
+    const taperWidth = ribbonWidth * (0.35 + lifeRatio * 0.65);
     ctx.beginPath();
     ribbon.points.forEach((point, index) => {
       const screen = toScreen(point.x, point.y);
       if (index === 0) ctx.moveTo(screen.x, screen.y);
       else ctx.lineTo(screen.x, screen.y);
     });
-    ctx.strokeStyle = hsl(ribbon.hue, 94, 64, alpha * 0.22);
+    ctx.strokeStyle = hsl(ribbonHue, 94, 64, alpha * 0.22);
     ctx.lineWidth = taperWidth * 2.8 * camera.zoom;
     ctx.stroke();
-    ctx.strokeStyle = hsl(ribbon.hue, 95, 74, alpha * 0.78);
+    ctx.strokeStyle = hsl(ribbonHue, 95, 74, alpha * 0.78);
     ctx.lineWidth = taperWidth * 0.7 * camera.zoom;
     ctx.stroke();
     if (!MOBILE_QUALITY) {
@@ -4445,15 +4717,72 @@
     ctx.restore();
   }
 
-  function drawEntity(entity, isPlayer = false, spectral = false, time = 0) {
-    if (!visible(entity.x, entity.y, 70)) return;
-    const point = toScreen(entity.x, entity.y);
+  const entityGradientSprites = new Map();
+
+  function cacheEntityGradientSprite(key, create) {
+    const cached = entityGradientSprites.get(key);
+    if (cached) return cached;
+    const sprite = create();
+    if (entityGradientSprites.size >= 96) entityGradientSprites.delete(entityGradientSprites.keys().next().value);
+    entityGradientSprites.set(key, sprite);
+    return sprite;
+  }
+
+  function entityAuraSprite(hue, spectral) {
+    const key = `aura:${Number(hue).toFixed(2)}:${spectral ? 1 : 0}`;
+    return cacheEntityGradientSprite(key, () => {
+      const logicalSize = 144;
+      const sprite = document.createElement("canvas");
+      sprite.width = logicalSize * 2;
+      sprite.height = logicalSize * 2;
+      const spriteContext = sprite.getContext("2d");
+      spriteContext.scale(2, 2);
+      const center = logicalSize / 2;
+      const radius = logicalSize / 2;
+      const gradient = spriteContext.createRadialGradient(center, center, radius * 0.048, center, center, radius);
+      gradient.addColorStop(0, hsl(hue, 95, 72, spectral ? 0.42 : 0.34));
+      gradient.addColorStop(0.35, hsl(hue, 85, 55, spectral ? 0.14 : 0.1));
+      gradient.addColorStop(1, hsl(hue, 80, 40, 0));
+      spriteContext.fillStyle = gradient;
+      spriteContext.fillRect(0, 0, logicalSize, logicalSize);
+      return sprite;
+    });
+  }
+
+  function entityCoreSprite(hue, spectral) {
+    const key = `core:${Number(hue).toFixed(2)}:${spectral ? 1 : 0}`;
+    return cacheEntityGradientSprite(key, () => {
+      const logicalSize = 144;
+      const sprite = document.createElement("canvas");
+      sprite.width = logicalSize * 2;
+      sprite.height = logicalSize * 2;
+      const spriteContext = sprite.getContext("2d");
+      spriteContext.scale(2, 2);
+      const center = logicalSize / 2;
+      const radius = 64;
+      const gradient = spriteContext.createRadialGradient(center - radius * 0.25, center - radius * 0.3, 0, center, center, radius);
+      gradient.addColorStop(0, spectral ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.92)");
+      gradient.addColorStop(0.2, hsl(hue, 95, 75, spectral ? 0.75 : 0.95));
+      gradient.addColorStop(0.72, hsl(hue, 85, 45, spectral ? 0.23 : 0.68));
+      gradient.addColorStop(1, hsl(hue, 85, 35, 0.08));
+      spriteContext.fillStyle = gradient;
+      spriteContext.fillRect(0, 0, logicalSize, logicalSize);
+      return sprite;
+    });
+  }
+
+  function drawEntity(entity, isPlayer = false, spectral = false, time = 0, override = null) {
+    const renderX = override?.x ?? entity.x;
+    const renderY = override?.y ?? entity.y;
+    if (!visible(renderX, renderY, 70)) return;
+    const point = toScreen(renderX, renderY);
     const radius = (entity.radius || 16) * camera.zoom * (spectral ? 0.85 : 1);
     const healthRatio = clamp(entity.health / (entity.maxHealth || 100), 0, 1);
     const pulse = 1 + Math.sin(time * 0.004 + entity.x) * 0.035;
     const isLowHealth = !isPlayer && !spectral && healthRatio < 0.3 && healthRatio > 0;
     const renderHue = isPlayer && entity.skinId === "caotico" ? (time * 0.05) % 360 : entity.hue;
     const glow = isPlayer ? entity.skinGlow || 1 : 1;
+    const cacheGradient = !(isPlayer && entity.skinId === "caotico");
 
     if (!isPlayer && !spectral && entity.archetype === "sniper" && entity.sniperAimTimer > 0) {
       const aimPoint = toScreen(entity.sniperAimX, entity.sniperAimY);
@@ -4480,7 +4809,8 @@
     }
 
     ctx.save();
-    if (entity.alpha != null) ctx.globalAlpha = entity.alpha;
+    const entityAlpha = override?.alpha ?? entity.alpha;
+    if (entityAlpha != null) ctx.globalAlpha = entityAlpha;
     ctx.translate(point.x, point.y);
     ctx.globalCompositeOperation = "lighter";
     if (!MOBILE_QUALITY) {
@@ -4491,14 +4821,19 @@
     if (!MOBILE_QUALITY || isPlayer) {
       const auraRadius = (isLowHealth ? radius * 2.8 : radius * 2.1) * glow;
       const auraAlpha = isLowHealth ? 0.42 + Math.sin(time * 0.008) * 0.18 : spectral ? 0.42 : 0.34;
-      const aura = ctx.createRadialGradient(0, 0, radius * 0.1, 0, 0, auraRadius);
-      aura.addColorStop(0, hsl(isLowHealth ? 0 : renderHue, 95, isLowHealth ? 55 : 72, auraAlpha));
-      aura.addColorStop(0.35, hsl(isLowHealth ? 0 : renderHue, 85, 55, spectral ? 0.14 : 0.1));
-      aura.addColorStop(1, hsl(isLowHealth ? 0 : renderHue, 80, 40, 0));
-      ctx.fillStyle = aura;
-      ctx.beginPath();
-      ctx.arc(0, 0, auraRadius, 0, TAU);
-      ctx.fill();
+      if (!isLowHealth && cacheGradient) {
+        const auraSprite = entityAuraSprite(renderHue, spectral);
+        ctx.drawImage(auraSprite, -auraRadius, -auraRadius, auraRadius * 2, auraRadius * 2);
+      } else {
+        const aura = ctx.createRadialGradient(0, 0, radius * 0.1, 0, 0, auraRadius);
+        aura.addColorStop(0, hsl(isLowHealth ? 0 : renderHue, 95, isLowHealth ? 55 : 72, auraAlpha));
+        aura.addColorStop(0.35, hsl(isLowHealth ? 0 : renderHue, 85, 55, spectral ? 0.14 : 0.1));
+        aura.addColorStop(1, hsl(isLowHealth ? 0 : renderHue, 80, 40, 0));
+        ctx.fillStyle = aura;
+        ctx.beginPath();
+        ctx.arc(0, 0, auraRadius, 0, TAU);
+        ctx.fill();
+      }
     }
 
     if (!MOBILE_QUALITY) {
@@ -4517,12 +4852,6 @@
     }
 
     if (!MOBILE_QUALITY) {
-      const coreGradient = ctx.createRadialGradient(-radius * 0.25, -radius * 0.3, 0, 0, 0, radius);
-      coreGradient.addColorStop(0, spectral ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.92)");
-      coreGradient.addColorStop(0.2, hsl(renderHue, 95, 75, spectral ? 0.75 : 0.95));
-      coreGradient.addColorStop(0.72, hsl(renderHue, 85, 45, spectral ? 0.23 : 0.68));
-      coreGradient.addColorStop(1, hsl(renderHue, 85, 35, 0.08));
-      ctx.fillStyle = coreGradient;
       ctx.beginPath();
       for (let index = 0; index <= 18; index += 1) {
         const angle = index / 18 * TAU;
@@ -4532,7 +4861,21 @@
         if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.closePath();
-      ctx.fill();
+      if (cacheGradient) {
+        ctx.save();
+        ctx.clip();
+        const coreExtent = radius * 1.125;
+        ctx.drawImage(entityCoreSprite(renderHue, spectral), -coreExtent, -coreExtent, coreExtent * 2, coreExtent * 2);
+        ctx.restore();
+      } else {
+        const coreGradient = ctx.createRadialGradient(-radius * 0.25, -radius * 0.3, 0, 0, 0, radius);
+        coreGradient.addColorStop(0, spectral ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.92)");
+        coreGradient.addColorStop(0.2, hsl(renderHue, 95, 75, spectral ? 0.75 : 0.95));
+        coreGradient.addColorStop(0.72, hsl(renderHue, 85, 45, spectral ? 0.23 : 0.68));
+        coreGradient.addColorStop(1, hsl(renderHue, 85, 35, 0.08));
+        ctx.fillStyle = coreGradient;
+        ctx.fill();
+      }
     } else {
       ctx.fillStyle = hsl(renderHue, 85, 50, spectral ? 0.5 : 0.8);
       ctx.beginPath();
@@ -4635,10 +4978,80 @@
     ctx.restore();
   }
 
+  const mutationRenderById = new Map(mutations.map((mutation) => [mutation.id, mutation]));
+
+  function drawEfficientArchetypeSignature(bot, time) {
+    const hasBossSignature = bot.boss && (bot.archetype === "necrostro" || bot.archetype === "vortice"
+      || bot.archetype === "cicatriz" || bot.archetype === "prisma");
+    const hasRegularSignature = bot.archetype === "silenciador" || bot.archetype === "bulwark"
+      || (bot.archetype === "berserker" && bot.health < bot.maxHealth * 0.4);
+    if (!hasBossSignature && !hasRegularSignature) return;
+    const pointX = (bot.x - camera.x) * camera.zoom + width / 2;
+    const pointY = (bot.y - camera.y) * camera.zoom + height / 2;
+    const radius = bot.radius * camera.zoom;
+    ctx.save();
+    ctx.translate(pointX, pointY);
+    ctx.lineWidth = 1.5;
+    if (bot.archetype === "necrostro" && bot.boss) {
+      ctx.strokeStyle = hsl(120, 80, 55, 0.35 + Math.sin(time * 0.003) * 0.12);
+      ctx.beginPath();
+      ctx.arc(0, 0, radius + 14, 0, TAU);
+      ctx.stroke();
+    } else if (bot.archetype === "vortice" && bot.boss) {
+      ctx.fillStyle = hsl(240, 85, 65, 0.62);
+      for (let index = 0; index < 2; index += 1) {
+        const angle = time * 0.002 + index * Math.PI;
+        const orbit = radius + 14 + index * 8;
+        ctx.beginPath();
+        ctx.arc(Math.cos(angle) * orbit, Math.sin(angle) * orbit, 2.5, 0, TAU);
+        ctx.fill();
+      }
+    } else if (bot.archetype === "cicatriz" && bot.boss) {
+      ctx.strokeStyle = hsl(350, 90, 58, 0.45);
+      ctx.beginPath();
+      for (let index = 0; index < 3; index += 1) {
+        const angle = index * TAU / 3 + time * 0.0004;
+        ctx.moveTo(Math.cos(angle) * radius * 0.6, Math.sin(angle) * radius * 0.6);
+        ctx.lineTo(Math.cos(angle + 0.14) * radius * 1.75, Math.sin(angle + 0.14) * radius * 1.75);
+      }
+      ctx.stroke();
+    } else if (bot.archetype === "prisma" && bot.boss) {
+      for (let index = 0; index < 3; index += 1) {
+        const angle = index * TAU / 3 + time * 0.001;
+        ctx.fillStyle = hsl((time * 0.05 + index * 120) % 360, 85, 67, 0.7);
+        ctx.beginPath();
+        ctx.arc(Math.cos(angle) * (radius + 10), Math.sin(angle) * (radius + 10), 2.5, 0, TAU);
+        ctx.fill();
+      }
+    } else if (bot.archetype === "silenciador") {
+      const wave = (time * 0.04) % 42;
+      ctx.strokeStyle = hsl(280, 80, 65, 0.4 * (1 - wave / 42));
+      ctx.beginPath();
+      ctx.arc(0, 0, radius + wave, 0, TAU);
+      ctx.stroke();
+    } else if (bot.archetype === "berserker" && bot.health < bot.maxHealth * 0.4) {
+      ctx.strokeStyle = hsl(0, 92, 62, 0.48 + Math.sin(time * 0.01) * 0.18);
+      ctx.beginPath();
+      ctx.arc(0, 0, radius + 7, 0, TAU);
+      ctx.stroke();
+    } else if (bot.archetype === "bulwark") {
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = hsl(bot.hue, 65, 62, 0.42);
+      ctx.beginPath();
+      ctx.arc(0, 0, radius + 6, 0, TAU);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
+  }
+
   function drawBots(time) {
     for (const bot of bots) {
       if (bot.dead) continue;
+      const renderPadding = bot.boss ? Math.max(460, bot.telegraphRadius || 0) : 120;
+      if (!visible(bot.x, bot.y, renderPadding)) continue;
       drawBossTelegraph(bot);
+      if (MOBILE_QUALITY) drawEfficientArchetypeSignature(bot, time);
       if (!MOBILE_QUALITY && bot.boss && bot.bossPhaseTransitioning) {
         const point = toScreen(bot.x, bot.y);
         const radius = bot.radius * camera.zoom;
@@ -4723,7 +5136,7 @@
         ctx.translate(point.x, point.y);
         const copied = bot.copiedMutationIds || [];
         copied.forEach((id, index) => {
-          const mutation = mutations.find((entry) => entry.id === id);
+          const mutation = mutationRenderById.get(id);
           const angle = time * 0.0018 + index * TAU / Math.max(1, copied.length);
           ctx.fillStyle = mutation?.color || hsl(bot.hue, 90, 65, 0.7);
           ctx.beginPath();
@@ -4763,15 +5176,15 @@
         ctx.restore();
       }
       if (bot.prismaIllusion) {
-        drawEntity({ ...bot, alpha: 0.22 }, false, false, time);
+        drawEntity(bot, false, false, time, { alpha: 0.22 });
         continue;
       }
       if (bot.archetype === "phantom" && bot.stealthed) {
         if (bot.phasing && bot.phase) {
-          drawRibbon({ points: bot.phase.points, hue: bot.hue, width: 4 }, true);
-          drawEntity({ ...bot, x: bot.phase.x, y: bot.phase.y, alpha: 0.3 }, false, true, time);
+          drawRibbon(bot.phase, true, bot.hue, 4);
+          drawEntity(bot, false, true, time, { x: bot.phase.x, y: bot.phase.y, alpha: 0.3 });
         } else {
-          drawEntity({ ...bot, alpha: 0.25 }, false, false, time);
+          drawEntity(bot, false, false, time, { alpha: 0.25 });
         }
         continue;
       }
@@ -4803,9 +5216,9 @@
         ctx.restore();
       }
       if (bot.phasing && bot.phase) {
-        drawRibbon({ points: bot.phase.points, hue: bot.hue, width: 6 }, true);
+        drawRibbon(bot.phase, true, bot.hue, 6);
         drawShell(bot, time);
-        drawEntity({ ...bot, x: bot.phase.x, y: bot.phase.y }, false, true, time);
+        drawEntity(bot, false, true, time, { x: bot.phase.x, y: bot.phase.y });
       } else {
         drawEntity(bot, false, false, time);
       }
@@ -4823,9 +5236,9 @@
       return;
     }
     if (player.phasing && player.phase) {
-      drawRibbon({ points: player.phase.points, hue: player.hue, width: 8 * (player.skinTrail || 1) }, true);
+      drawRibbon(player.phase, true, player.hue, 8 * (player.skinTrail || 1));
       drawShell(player, time);
-      drawEntity({ ...player, x: player.phase.x, y: player.phase.y }, true, true, time);
+      drawEntity(player, true, true, time, { x: player.phase.x, y: player.phase.y });
 
       const shell = toScreen(player.x, player.y);
       const ghost = toScreen(player.phase.x, player.phase.y);
@@ -4864,22 +5277,24 @@
     ctx.globalCompositeOperation = "lighter";
     for (const wave of waves) {
       if (!visible(wave.x, wave.y, wave.maxRadius)) continue;
-      const point = toScreen(wave.x, wave.y);
+      const pointX = (wave.x - camera.x) * camera.zoom + width / 2;
+      const pointY = (wave.y - camera.y) * camera.zoom + height / 2;
       const alpha = clamp(wave.life / wave.maxLife, 0, 1);
       ctx.strokeStyle = hsl(wave.hue, 92, 68, alpha * 0.65);
       ctx.lineWidth = wave.width * alpha;
       ctx.beginPath();
-      ctx.arc(point.x, point.y, wave.radius * camera.zoom, 0, TAU);
+      ctx.arc(pointX, pointY, wave.radius * camera.zoom, 0, TAU);
       ctx.stroke();
     }
     for (const particle of particles) {
       if (!visible(particle.x, particle.y, 10)) continue;
-      const point = toScreen(particle.x, particle.y);
+      const pointX = (particle.x - camera.x) * camera.zoom + width / 2;
+      const pointY = (particle.y - camera.y) * camera.zoom + height / 2;
       const alpha = clamp(particle.life / particle.maxLife, 0, 1);
       ctx.fillStyle = hsl(particle.hue, 95, 70, alpha * 0.8);
       if (!MOBILE_QUALITY) ctx.shadowColor = hsl(particle.hue, 95, 62, alpha);
       ctx.beginPath();
-      ctx.arc(point.x, point.y, particle.radius * alpha * camera.zoom, 0, TAU);
+      ctx.arc(pointX, pointY, particle.radius * alpha * camera.zoom, 0, TAU);
       ctx.fill();
     }
     ctx.restore();
@@ -4887,6 +5302,7 @@
 
   let minimapFrame = 0;
   const MINIMAP_SIZE = MOBILE_QUALITY ? 100 : 140;
+  const minimapContext = ui.minimap?.getContext("2d") || null;
 
   if (MOBILE_QUALITY && ui.minimap) {
     ui.minimap.width = 100;
@@ -4895,16 +5311,17 @@
 
   function drawMinimap(time) {
     if (state !== "playing" || activeMode !== "solo") {
-      ui.minimap.classList.add("is-hidden");
+      toggleClassIfChanged(ui.minimap, "is-hidden", true);
       return;
     }
-    ui.minimap.classList.remove("is-hidden");
+    toggleClassIfChanged(ui.minimap, "is-hidden", false);
 
     minimapFrame += 1;
     if (minimapFrame % 6 !== 0 && ui.minimap.dataset.drawn === "1") return;
     ui.minimap.dataset.drawn = "1";
 
-    const mctx = ui.minimap.getContext("2d");
+    const mctx = minimapContext;
+    if (!mctx) return;
     const mw = MINIMAP_SIZE;
     const mh = MINIMAP_SIZE;
     const scale = mw / WORLD_SIZE;
@@ -5072,21 +5489,44 @@
   }
 
   function frame(now) {
-    const dt = Math.min((now - previousTime) / 1000, 0.034);
+    if (document.hidden) {
+      previousTime = now;
+      requestAnimationFrame(frame);
+      return;
+    }
+    const elapsed = now - previousTime;
+    const minimumFrameMs = state === "playing"
+      ? PERFORMANCE_PROFILE.activeMinimumFrameMs
+      : PERFORMANCE_PROFILE.idleMinimumFrameMs;
+    if (elapsed < minimumFrameMs) {
+      requestAnimationFrame(frame);
+      return;
+    }
+    const workStartedAt = performance.now();
+    const dt = Math.min(elapsed / 1000, 0.034);
     previousTime = now;
     update(dt);
     render(now);
+    updateAdaptiveResolution(elapsed, performance.now() - workStartedAt, now);
     requestAnimationFrame(frame);
   }
 
-  function resize() {
-    width = window.innerWidth;
-    height = window.innerHeight;
-    dpr = Math.min(window.devicePixelRatio || 1, MOBILE_QUALITY ? 1.5 : 2);
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
+  function resize(force = false) {
+    const nextWidth = window.innerWidth;
+    const nextHeight = window.innerHeight;
+    const nextDpr = targetRenderDpr();
+    const pixelWidth = Math.round(nextWidth * nextDpr);
+    const pixelHeight = Math.round(nextHeight * nextDpr);
+    if (!force && width === nextWidth && height === nextHeight && dpr === nextDpr
+      && canvas.width === pixelWidth && canvas.height === pixelHeight) return;
+    width = nextWidth;
+    height = nextHeight;
+    dpr = nextDpr;
+    canvas.width = pixelWidth;
+    canvas.height = pixelHeight;
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
+    backgroundGradient = null;
     pointer.x = clamp(pointer.x, 0, width);
     pointer.y = clamp(pointer.y, 0, height);
   }
@@ -5451,32 +5891,35 @@
     ));
   }
 
-  function nearestDanger(bot) {
+  function nearestDanger(bot, hostiles = hostileEntitiesFor(bot)) {
     let danger = null;
     let bestDistance = Infinity;
     const ownPower = entityPower(bot);
-    for (const entity of hostileEntitiesFor(bot)) {
-      const distance = Math.hypot(entity.x - bot.x, entity.y - bot.y);
-      if (distance > LEVEL_CONFIG.botDangerRadius || entityPower(entity) < ownPower * 1.22) continue;
-      if (distance < bestDistance) {
-        bestDistance = distance;
+    const dangerRadiusSq = LEVEL_CONFIG.botDangerRadius * LEVEL_CONFIG.botDangerRadius;
+    for (const entity of hostiles) {
+      const distanceSquared = distanceSq(entity.x, entity.y, bot.x, bot.y);
+      if (distanceSquared > dangerRadiusSq || entityPower(entity) < ownPower * 1.22) continue;
+      if (distanceSquared < bestDistance) {
+        bestDistance = distanceSquared;
         danger = entity;
       }
     }
-    return danger ? { entity: danger, distance: bestDistance } : null;
+    return danger ? { entity: danger, distance: Math.sqrt(bestDistance) } : null;
   }
 
-  function weakestHuntTarget(bot) {
+  function weakestHuntTarget(bot, hostiles = hostileEntitiesFor(bot)) {
     if (bot.health < bot.maxHealth * 0.48) return null;
     const ownPower = entityPower(bot);
     let target = null;
     let bestUtility = -Infinity;
-    for (const entity of hostileEntitiesFor(bot)) {
+    const huntRadiusSq = LEVEL_CONFIG.botHuntRadius * LEVEL_CONFIG.botHuntRadius;
+    for (const entity of hostiles) {
       if (entity.boss) continue;
-      const distance = Math.hypot(entity.x - bot.x, entity.y - bot.y);
-      if (distance > LEVEL_CONFIG.botHuntRadius) continue;
+      const distanceSquared = distanceSq(entity.x, entity.y, bot.x, bot.y);
+      if (distanceSquared > huntRadiusSq) continue;
       const targetPower = entityPower(entity);
       if (targetPower > ownPower * 0.78) continue;
+      const distance = Math.sqrt(distanceSquared);
       const utility = (ownPower - targetPower) * 2.2 - distance * 0.14;
       if (utility > bestUtility) {
         bestUtility = utility;
@@ -5489,7 +5932,8 @@
   function chooseBotResourceTarget(bot) {
     if (!bot || bot.dead || bot.boss || bot.phasing) return null;
     const healthRatio = bot.health / Math.max(1, bot.maxHealth);
-    const danger = nearestDanger(bot);
+    const hostiles = hostileEntitiesFor(bot);
+    const danger = nearestDanger(bot, hostiles);
     if ((healthRatio < 0.28 || danger?.distance < 175) && danger) {
       const dx = bot.x - danger.entity.x;
       const dy = bot.y - danger.entity.y;
@@ -5502,7 +5946,7 @@
       };
     }
 
-    const hunt = weakestHuntTarget(bot);
+    const hunt = weakestHuntTarget(bot, hostiles);
     if (hunt && bot.aggression > 0.52) {
       return {
         mode: "hunt",
@@ -5517,9 +5961,8 @@
     let best = null;
     let bestUtility = -Infinity;
     const ownPower = entityPower(bot);
-    for (const mote of motes) {
+    for (const mote of queryMotes(bot.x, bot.y, 900)) {
       const distance = Math.hypot(mote.x - bot.x, mote.y - bot.y);
-      if (distance > 900) continue;
       const value = experienceValueForMote(mote.type);
       let utility = value * 24 - distance * 0.12;
       if (mote.type === "violet") utility += 125;
@@ -5572,7 +6015,7 @@
       const ratio = index / Math.max(1, count - 1);
       mote.type = ratio < 0.18 ? "gold" : ratio < 0.52 ? "violet" : "cyan";
       mote.droppedExperience = true;
-      motes.push(mote);
+      appendIndexedMote(mote);
     }
     return count;
   }
@@ -5625,11 +6068,11 @@
     const hud = ensureLevelHud();
     if (!hud || !player?.levelInitialized) return;
     const ratio = player.level >= LEVEL_CONFIG.maxLevel ? 1 : clamp(player.experience / Math.max(1, player.experienceToNext), 0, 1);
-    hud.level.textContent = String(player.level);
-    hud.fill.style.width = `${ratio * 100}%`;
-    hud.copy.textContent = player.level >= LEVEL_CONFIG.maxLevel
+    setTextIfChanged(hud.level, player.level);
+    setStyleIfChanged(hud.fill, "width", `${Math.round(ratio * 1000) / 10}%`);
+    setTextIfChanged(hud.copy, player.level >= LEVEL_CONFIG.maxLevel
       ? "NÍVEL MÁXIMO"
-      : `${Math.floor(player.experience)} / ${player.experienceToNext} XP${player.rareBoostTimer > 0 ? " // IMPULSO ROXO" : ""}`;
+      : `${Math.floor(player.experience)} / ${player.experienceToNext} XP${player.rareBoostTimer > 0 ? " // IMPULSO ROXO" : ""}`);
   }
 
   for (const template of bossTemplates) {
@@ -5936,10 +6379,12 @@
   };
 
   const drawEntityWithoutLevelPresentation = drawEntity;
-  drawEntity = function drawEntityWithLevelPresentation(entity, isPlayer = false, spectral = false, time = 0) {
-    const result = drawEntityWithoutLevelPresentation(entity, isPlayer, spectral, time);
-    if (spectral || !entity?.levelInitialized || entity.boss || !visible(entity.x, entity.y, 80)) return result;
-    const point = toScreen(entity.x, entity.y);
+  drawEntity = function drawEntityWithLevelPresentation(entity, isPlayer = false, spectral = false, time = 0, override = null) {
+    const result = drawEntityWithoutLevelPresentation(entity, isPlayer, spectral, time, override);
+    const renderX = override?.x ?? entity?.x;
+    const renderY = override?.y ?? entity?.y;
+    if (spectral || !entity?.levelInitialized || entity.boss || !visible(renderX, renderY, 80)) return result;
+    const point = toScreen(renderX, renderY);
     const radius = (entity.radius || 16) * camera.zoom;
     const pulse = entity.levelPulseTimer > 0 ? 0.72 + Math.sin(time * 0.018) * 0.22 : 0.68;
     ctx.save();
@@ -6254,7 +6699,14 @@
         },
         mode: activeMode,
         roomCode: multiplayerRoomCode,
-        counts: { bots: bots.filter((bot) => !bot.dead).length, motes: motes.length, particles: particles.length }
+        counts: { bots: bots.filter((bot) => !bot.dead).length, motes: motes.length, particles: particles.length },
+        performance: {
+          frameMs: Math.round(renderPerformance.averageFrameMs * 10) / 10,
+          workMs: Math.round(renderPerformance.averageWorkMs * 10) / 10,
+          dpr: Math.round(dpr * 100) / 100,
+          nativeDpr: renderPerformance.maximumDpr,
+          scaleChanges: renderPerformance.scaleChanges
+        }
       };
     }
   };

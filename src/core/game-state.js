@@ -84,6 +84,7 @@
     player.hitTimer = 1.2;
     bots = Array.from({ length: BOT_COUNT }, (_, index) => createBot(index));
     motes = Array.from({ length: moteCount }, (_, index) => createMote(index < 90));
+    rebuildMoteSpatialIndex();
     particles = [];
     ribbons = [];
     waves = [];
@@ -262,11 +263,15 @@
     ctx.setLineDash([]);
 
     if (!MOBILE_QUALITY) {
-      const edgeGradient = ctx.createLinearGradient(topLeft.x, 0, topLeft.x + 130, 0);
-      edgeGradient.addColorStop(0, "rgba(255, 50, 130, 0.08)");
-      edgeGradient.addColorStop(1, "rgba(255, 50, 130, 0)");
-      ctx.fillStyle = edgeGradient;
-      ctx.fillRect(topLeft.x, topLeft.y, 130, bottomRight.y - topLeft.y);
+      const leftEdgeVisible = topLeft.x < width && topLeft.x + 130 > 0
+        && bottomRight.y > 0 && topLeft.y < height;
+      if (leftEdgeVisible) {
+        const edgeGradient = ctx.createLinearGradient(topLeft.x, 0, topLeft.x + 130, 0);
+        edgeGradient.addColorStop(0, "rgba(255, 50, 130, 0.08)");
+        edgeGradient.addColorStop(1, "rgba(255, 50, 130, 0)");
+        ctx.fillStyle = edgeGradient;
+        ctx.fillRect(topLeft.x, Math.max(0, topLeft.y), 130, Math.min(height, bottomRight.y) - Math.max(0, topLeft.y));
+      }
     }
     ctx.restore();
   }
@@ -275,6 +280,7 @@
 /*__ECHO_SECTION:0095__*/
   let minimapFrame = 0;
   const MINIMAP_SIZE = MOBILE_QUALITY ? 100 : 140;
+  const minimapContext = ui.minimap?.getContext("2d") || null;
 
   if (MOBILE_QUALITY && ui.minimap) {
     ui.minimap.width = 100;

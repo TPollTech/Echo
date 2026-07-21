@@ -183,32 +183,35 @@
     ));
   }
 
-  function nearestDanger(bot) {
+  function nearestDanger(bot, hostiles = hostileEntitiesFor(bot)) {
     let danger = null;
     let bestDistance = Infinity;
     const ownPower = entityPower(bot);
-    for (const entity of hostileEntitiesFor(bot)) {
-      const distance = Math.hypot(entity.x - bot.x, entity.y - bot.y);
-      if (distance > LEVEL_CONFIG.botDangerRadius || entityPower(entity) < ownPower * 1.22) continue;
-      if (distance < bestDistance) {
-        bestDistance = distance;
+    const dangerRadiusSq = LEVEL_CONFIG.botDangerRadius * LEVEL_CONFIG.botDangerRadius;
+    for (const entity of hostiles) {
+      const distanceSquared = distanceSq(entity.x, entity.y, bot.x, bot.y);
+      if (distanceSquared > dangerRadiusSq || entityPower(entity) < ownPower * 1.22) continue;
+      if (distanceSquared < bestDistance) {
+        bestDistance = distanceSquared;
         danger = entity;
       }
     }
-    return danger ? { entity: danger, distance: bestDistance } : null;
+    return danger ? { entity: danger, distance: Math.sqrt(bestDistance) } : null;
   }
 
-  function weakestHuntTarget(bot) {
+  function weakestHuntTarget(bot, hostiles = hostileEntitiesFor(bot)) {
     if (bot.health < bot.maxHealth * 0.48) return null;
     const ownPower = entityPower(bot);
     let target = null;
     let bestUtility = -Infinity;
-    for (const entity of hostileEntitiesFor(bot)) {
+    const huntRadiusSq = LEVEL_CONFIG.botHuntRadius * LEVEL_CONFIG.botHuntRadius;
+    for (const entity of hostiles) {
       if (entity.boss) continue;
-      const distance = Math.hypot(entity.x - bot.x, entity.y - bot.y);
-      if (distance > LEVEL_CONFIG.botHuntRadius) continue;
+      const distanceSquared = distanceSq(entity.x, entity.y, bot.x, bot.y);
+      if (distanceSquared > huntRadiusSq) continue;
       const targetPower = entityPower(entity);
       if (targetPower > ownPower * 0.78) continue;
+      const distance = Math.sqrt(distanceSquared);
       const utility = (ownPower - targetPower) * 2.2 - distance * 0.14;
       if (utility > bestUtility) {
         bestUtility = utility;
@@ -221,7 +224,8 @@
   function chooseBotResourceTarget(bot) {
     if (!bot || bot.dead || bot.boss || bot.phasing) return null;
     const healthRatio = bot.health / Math.max(1, bot.maxHealth);
-    const danger = nearestDanger(bot);
+    const hostiles = hostileEntitiesFor(bot);
+    const danger = nearestDanger(bot, hostiles);
     if ((healthRatio < 0.28 || danger?.distance < 175) && danger) {
       const dx = bot.x - danger.entity.x;
       const dy = bot.y - danger.entity.y;
@@ -234,7 +238,7 @@
       };
     }
 
-    const hunt = weakestHuntTarget(bot);
+    const hunt = weakestHuntTarget(bot, hostiles);
     if (hunt && bot.aggression > 0.52) {
       return {
         mode: "hunt",
@@ -249,9 +253,8 @@
     let best = null;
     let bestUtility = -Infinity;
     const ownPower = entityPower(bot);
-    for (const mote of motes) {
+    for (const mote of queryMotes(bot.x, bot.y, 900)) {
       const distance = Math.hypot(mote.x - bot.x, mote.y - bot.y);
-      if (distance > 900) continue;
       const value = experienceValueForMote(mote.type);
       let utility = value * 24 - distance * 0.12;
       if (mote.type === "violet") utility += 125;
@@ -304,7 +307,7 @@
       const ratio = index / Math.max(1, count - 1);
       mote.type = ratio < 0.18 ? "gold" : ratio < 0.52 ? "violet" : "cyan";
       mote.droppedExperience = true;
-      motes.push(mote);
+      appendIndexedMote(mote);
     }
     return count;
   }
@@ -357,11 +360,11 @@
     const hud = ensureLevelHud();
     if (!hud || !player?.levelInitialized) return;
     const ratio = player.level >= LEVEL_CONFIG.maxLevel ? 1 : clamp(player.experience / Math.max(1, player.experienceToNext), 0, 1);
-    hud.level.textContent = String(player.level);
-    hud.fill.style.width = `${ratio * 100}%`;
-    hud.copy.textContent = player.level >= LEVEL_CONFIG.maxLevel
+    setTextIfChanged(hud.level, player.level);
+    setStyleIfChanged(hud.fill, "width", `${Math.round(ratio * 1000) / 10}%`);
+    setTextIfChanged(hud.copy, player.level >= LEVEL_CONFIG.maxLevel
       ? "NÍVEL MÁXIMO"
-      : `${Math.floor(player.experience)} / ${player.experienceToNext} XP${player.rareBoostTimer > 0 ? " // IMPULSO ROXO" : ""}`;
+      : `${Math.floor(player.experience)} / ${player.experienceToNext} XP${player.rareBoostTimer > 0 ? " // IMPULSO ROXO" : ""}`);
   }
 
   for (const template of bossTemplates) {

@@ -2259,3 +2259,24 @@ body {
   .mutation-card, .modifier-card, .skin-card, .upgrade-card { min-height: 0; }
   .boss-bar { width: min(330px, calc(100vw - 32px)); }
 }
+
+/* O vidro móvel mantém a mesma leitura sem recompor o Canvas inteiro atrás da UI. */
+@media (pointer: coarse) {
+  .sector-pill,
+  .icon-button,
+  .toast,
+  .start-screen,
+  .mutation-screen,
+  .gameover-screen,
+  .pause-screen,
+  .modifier-screen,
+  .workshop-screen,
+  .skin-screen {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .sector-pill { background-color: rgba(7, 6, 17, 0.84); }
+  .icon-button { background-color: rgba(8, 7, 19, 0.86); }
+  .toast { background-color: rgba(7, 6, 17, 0.94); }
+}

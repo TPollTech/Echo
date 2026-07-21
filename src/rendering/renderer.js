@@ -1,5 +1,7 @@
 /* ECHO source module. Sections are assembled by src/build-order.json. */
 /*__ECHO_SECTION:0087__*/
+  let backgroundGradient = null;
+
   function toScreen(x, y) {
     return {
       x: (x - camera.x) * camera.zoom + width / 2,
@@ -8,16 +10,19 @@
   }
 
   function visible(x, y, padding = 80) {
-    const point = toScreen(x, y);
-    return point.x > -padding && point.x < width + padding && point.y > -padding && point.y < height + padding;
+    const pointX = (x - camera.x) * camera.zoom + width / 2;
+    const pointY = (y - camera.y) * camera.zoom + height / 2;
+    return pointX > -padding && pointX < width + padding && pointY > -padding && pointY < height + padding;
   }
 
   function drawBackground(time) {
-    const gradient = ctx.createRadialGradient(width * 0.52, height * 0.48, 0, width * 0.52, height * 0.48, Math.max(width, height) * 0.72);
-    gradient.addColorStop(0, "#0d0920");
-    gradient.addColorStop(0.52, "#080612");
-    gradient.addColorStop(1, "#03030a");
-    ctx.fillStyle = gradient;
+    if (!backgroundGradient) {
+      backgroundGradient = ctx.createRadialGradient(width * 0.52, height * 0.48, 0, width * 0.52, height * 0.48, Math.max(width, height) * 0.72);
+      backgroundGradient.addColorStop(0, "#0d0920");
+      backgroundGradient.addColorStop(0.52, "#080612");
+      backgroundGradient.addColorStop(1, "#03030a");
+    }
+    ctx.fillStyle = backgroundGradient;
     ctx.fillRect(0, 0, width, height);
 
     ctx.save();
@@ -33,11 +38,12 @@
 
     for (const seed of ambientSeeds) {
       if (!visible(seed.x, seed.y, 10)) continue;
-      const point = toScreen(seed.x, seed.y);
+      const pointX = (seed.x - camera.x) * camera.zoom + width / 2;
+      const pointY = (seed.y - camera.y) * camera.zoom + height / 2;
       const pulse = 0.65 + Math.sin(time * 0.0007 + seed.x) * 0.25;
       ctx.fillStyle = hsl(seed.hue, 75, 70, seed.alpha * pulse);
       ctx.beginPath();
-      ctx.arc(point.x, point.y, seed.radius * camera.zoom, 0, TAU);
+      ctx.arc(pointX, pointY, seed.radius * camera.zoom, 0, TAU);
       ctx.fill();
     }
     ctx.restore();

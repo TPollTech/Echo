@@ -153,7 +153,6 @@
     }
 
     resolveEntityOverlap();
-    updateLevelHud();
   }
 
 /*__ECHO_SECTION_END:0067__*/

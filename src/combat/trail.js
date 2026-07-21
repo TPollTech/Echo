@@ -134,8 +134,11 @@
       const b = points[index];
       for (const bot of bots) {
         if (bot.dead || hitIds.has(bot.id) || (bot.archetype === "phantom" && bot.stealthed)) continue;
+        const collisionRadius = bot.radius + 12;
+        if (bot.x < Math.min(a.x, b.x) - collisionRadius || bot.x > Math.max(a.x, b.x) + collisionRadius
+          || bot.y < Math.min(a.y, b.y) - collisionRadius || bot.y > Math.max(a.y, b.y) + collisionRadius) continue;
         const distance = pointToSegmentDistance(bot.x, bot.y, a.x, a.y, b.x, b.y);
-        if (distance < bot.radius + 12) {
+        if (distance < collisionRadius) {
           hitIds.add(bot.id);
           let dmg = applyBossDefense(bot, damage);
           dmg = redirectBulwarkDamage(bot, dmg, owner);

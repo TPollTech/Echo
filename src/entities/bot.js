@@ -69,8 +69,8 @@
 /*__ECHO_SECTION_END:0064__*/
 /*__ECHO_SECTION:0076__*/
   function collectBotMotes(bot) {
-    for (let index = motes.length - 1; index >= 0; index -= 1) {
-      const mote = motes[index];
+    const nearbyMotes = queryMotes(bot.x, bot.y, bot.radius + 8);
+    for (const mote of nearbyMotes) {
       const range = bot.radius + mote.radius + 3;
       if (distanceSq(bot.x, bot.y, mote.x, mote.y) < range * range) {
         const scoreValue = mote.type === "gold" ? 5 : mote.type === "red" ? 4 : mote.type === "violet" ? 2 : 1;
@@ -81,8 +81,7 @@
           bot.rareBoostMultiplier = LEVEL_CONFIG.rareBoostMultiplier;
         }
         gainExperience(bot, experienceValueForMote(mote.type), `mote:${mote.type}`);
-        motes.splice(index, 1);
-        motes.push(createMote());
+        replaceCollectedMote(mote);
         break;
       }
     }

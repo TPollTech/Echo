@@ -20,11 +20,11 @@
 /*__ECHO_SECTION_END:0033__*/
 /*__ECHO_SECTION:0068__*/
   function collectMotes(entity, spectral) {
-    for (let index = motes.length - 1; index >= 0; index -= 1) {
-      const mote = motes[index];
+    const maximumRange = (spectral ? 16 : player.radius) + 10 + player.pickupRadius * (spectral ? (player.phasePickupBonus || 1) : 1);
+    const nearbyMotes = [...queryMotes(entity.x, entity.y, maximumRange)];
+    for (const mote of nearbyMotes) {
       const range = (spectral ? 16 : player.radius) + mote.radius + 5 + player.pickupRadius * (spectral ? (player.phasePickupBonus || 1) : 1);
       if (distanceSq(entity.x, entity.y, mote.x, mote.y) > range * range) continue;
-      motes.splice(index, 1);
       const baseValue = mote.type === "gold" ? 7 : mote.type === "red" ? 10 : mote.type === "violet" ? 3 : 1;
       const spectralMultiplier = spectral ? 0.72 : 1;
       player.score += baseValue * spectralMultiplier * (player.scoreMultiplier || 1);
@@ -57,7 +57,7 @@
       if (player.moteHealing) player.health = clamp(player.health + (mote.type === "gold" ? 3 : mote.type === "red" ? 1.5 : 0.7) * Math.min(2.2, 1 + player.combo / 20) * player.healScale, 0, player.maxHealth);
       playCollectSound(mote.type);
       for (let i = 0; i < (mote.type === "gold" ? 7 : mote.type === "red" ? 5 : 3); i += 1) spawnParticle(mote.x, mote.y, mote.type === "gold" ? 42 : mote.type === "red" ? 0 : mote.type === "violet" ? 268 : 188, random(30, 90), 0.35);
-      motes.push(createMote());
+      replaceCollectedMote(mote);
       checkMutation();
     }
   }

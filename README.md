@@ -4,6 +4,16 @@ ECHO é uma arena em Canvas baseada em projeção espectral. O núcleo físico f
 
 ## Versão atual — 0.6.0
 
+O patch de desempenho da versão 0.6.0 melhora a execução em notebooks e celulares. A identidade visual e a jogabilidade permanecem intactas: nenhum efeito de combate, arquétipo, boss, skill, skin, telegraph ou sistema de progressão foi removido.
+
+- resolução interna adaptativa reage apenas a sobrecarga sustentada e recupera nitidez automaticamente quando há folga;
+- fragmentos usam um índice espacial, reduzindo buscas completas durante coleta e decisões da IA;
+- entidades fora da câmera deixam de executar efeitos visuais caros;
+- gradientes, cicatrizes e camadas estáticas das skills são reutilizados entre frames;
+- HUD, minimapa e soundtrack evitam atualizações redundantes;
+- abas em segundo plano e telas ociosas deixam de consumir o loop completo;
+- interfaces de toque evitam a recomposição cara de `backdrop-filter`, mantendo a mesma leitura visual.
+
 A versão 0.6 adiciona evolução dinâmica dentro da partida e amplia a identidade audiovisual do jogo.
 
 - jogador e bots possuem nível e experiência próprios durante cada run;
@@ -105,6 +115,7 @@ No console do navegador:
 - `EchoRunProgression` expõe as configurações de nível;
 - `EchoSoundtrack` mostra a biblioteca completa e a faixa atual;
 - `EchoMultiplayerLevels` expõe a conversão do score autoritativo em nível visual.
+- `__echoDebug.getState().performance` mostra tempo médio de frame, custo do render e DPR adaptativo.
 
 ## Arquitetura
 

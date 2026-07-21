@@ -129,7 +129,7 @@
         mote.x = clamp(bot.x + random(-55, 55), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
         mote.y = clamp(bot.y + random(-55, 55), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
         mote.type = i < 2 ? "gold" : i === 2 ? "red" : Math.random() > 0.45 ? "violet" : "cyan";
-        motes.push(mote);
+        appendIndexedMote(mote);
       }
     }
 
@@ -198,7 +198,7 @@
           mote.x = clamp(bot.x + random(-65, 65), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
           mote.y = clamp(bot.y + random(-65, 65), WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
           mote.type = i < 4 ? "gold" : i < 6 ? "red" : Math.random() > 0.4 ? "violet" : "cyan";
-          motes.push(mote);
+          appendIndexedMote(mote);
         }
         showToast(reward.toast, 2800);
       }

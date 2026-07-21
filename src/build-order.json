@@ -40,6 +40,10 @@
     "section": "0010"
   },
   {
+    "path": "src/core/performance.js",
+    "section": "0124"
+  },
+  {
     "path": "src/audio/audio-engine.js",
     "section": "0011"
   },
@@ -106,6 +110,10 @@
   {
     "path": "src/core/game-state.js",
     "section": "0026"
+  },
+  {
+    "path": "src/core/spatial-index.js",
+    "section": "0123"
   },
   {
     "path": "src/progression/skins.js",
