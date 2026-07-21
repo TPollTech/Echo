@@ -97,6 +97,15 @@
     return result;
   };
 
+  const finishMultiplayerWithoutStateSoundtrack = finishMultiplayer;
+  finishMultiplayer = function finishMultiplayerWithStateSoundtrack(standings = []) {
+    const rank = Math.max(1, standings.findIndex((entry) => entry.id === multiplayerPlayerId) + 1);
+    const result = finishMultiplayerWithoutStateSoundtrack(standings);
+    stopMusic();
+    scheduleStateSoundtrack(rank === 1 ? "victory-rise" : "defeat-fall", "gameover");
+    return result;
+  };
+
   const returnToMenuWithoutStateSoundtrack = returnToMenu;
   returnToMenu = function returnToMenuWithStateSoundtrack(message = "", isError = false) {
     const result = returnToMenuWithoutStateSoundtrack(message, isError);
@@ -116,6 +125,23 @@
     stateSoundtrackToken += 1;
     if (musicActive) stopMusic();
     return connectMultiplayerWithoutStateSoundtrack(roomCode);
+  };
+
+  const applyMultiplayerSnapshotWithoutSoundtrack = applyMultiplayerSnapshot;
+  applyMultiplayerSnapshot = function applyMultiplayerSnapshotWithSoundtrack(snapshot) {
+    const result = applyMultiplayerSnapshotWithoutSoundtrack(snapshot);
+    if (activeMode === "multiplayer" && state === "playing" && !musicActive) {
+      initAudio();
+      startMusic();
+    }
+    return result;
+  };
+
+  const updateMultiplayerWithoutSoundtrack = updateMultiplayer;
+  updateMultiplayer = function updateMultiplayerWithSoundtrack(dt) {
+    const result = updateMultiplayerWithoutSoundtrack(dt);
+    if (activeMode === "multiplayer" && state === "playing") updateMusic();
+    return result;
   };
 
   function enableInitialMenuSoundtrack() {
