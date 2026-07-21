@@ -13,7 +13,8 @@ const ROOT = path.resolve(__dirname, "..");
 const PUBLIC_FILES = new Set([
   "/index.html",
   "/styles.css",
-  "/game.js"
+  "/game.js",
+  "/service-worker.js"
 ]);
 const PUBLIC_DIRECTORIES = Object.freeze([
   "/core/",
@@ -28,6 +29,12 @@ const REQUIRED_BROWSER_ASSETS = Object.freeze([
   "index.html",
   "styles.css",
   "game.js",
+  "service-worker.js",
+  "assets/mobile-ui.css",
+  "assets/mobile-ux.js",
+  "assets/manifest.json",
+  "assets/icons/icon-192.svg",
+  "assets/icons/icon-512.svg",
   "core/events.js",
   "core/random.js",
   "core/runtime.js",
@@ -136,12 +143,14 @@ function serveStatic(request, response, url) {
       return;
     }
     const contentType = MIME_TYPES.get(path.extname(filePath).toLowerCase()) || "application/octet-stream";
-    response.writeHead(200, {
+    const headers = {
       "Content-Type": contentType,
       "Content-Length": stats.size,
-      "Cache-Control": "no-cache",
+      "Cache-Control": pathname === "/service-worker.js" ? "no-cache, no-store, must-revalidate" : "no-cache",
       "X-Content-Type-Options": "nosniff"
-    });
+    };
+    if (pathname === "/service-worker.js") headers["Service-Worker-Allowed"] = "/";
+    response.writeHead(200, headers);
     if (request.method === "HEAD") response.end();
     else fs.createReadStream(filePath).pipe(response);
   });
@@ -158,7 +167,7 @@ function createEchoServer(options = {}) {
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/rooms") {
-        sendJson(response, 200, { rooms: roomManager.listRooms() });
+        sendJson(response, 200, { rooms: roomManager.listRooms().length ? roomManager.listRooms() : [] });
         return;
       }
       if (request.method === "POST" && url.pathname === "/api/rooms") {

@@ -46,9 +46,68 @@
     shareUrl
   };
 
+  function ensureHeadElement(selector, create) {
+    if (!root.document || root.document.head.querySelector(selector)) return;
+    root.document.head.append(create());
+  }
+
+  function preparePwaShell() {
+    if (!root.document) return;
+
+    ensureHeadElement('link[rel="manifest"]', () => {
+      const link = root.document.createElement("link");
+      link.rel = "manifest";
+      link.href = "./assets/manifest.json";
+      return link;
+    });
+
+    ensureHeadElement('link[data-echo-mobile-ui]', () => {
+      const link = root.document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "./assets/mobile-ui.css";
+      link.dataset.echoMobileUi = "1";
+      return link;
+    });
+
+    ensureHeadElement('link[rel="apple-touch-icon"]', () => {
+      const link = root.document.createElement("link");
+      link.rel = "apple-touch-icon";
+      link.href = "./assets/icons/icon-192.svg";
+      return link;
+    });
+
+    const metaDefinitions = [
+      ["mobile-web-app-capable", "yes"],
+      ["apple-mobile-web-app-capable", "yes"],
+      ["apple-mobile-web-app-status-bar-style", "black-translucent"],
+      ["apple-mobile-web-app-title", "ECHO"]
+    ];
+    for (const [name, content] of metaDefinitions) {
+      ensureHeadElement(`meta[name="${name}"]`, () => {
+        const meta = root.document.createElement("meta");
+        meta.name = name;
+        meta.content = content;
+        return meta;
+      });
+    }
+
+    if ("serviceWorker" in root.navigator && root.location.protocol !== "file:") {
+      root.addEventListener("load", () => {
+        root.navigator.serviceWorker.register("./service-worker.js", { scope: "./" })
+          .then((registration) => {
+            if (registration.waiting) registration.waiting.postMessage({ type: "SKIP_WAITING" });
+          })
+          .catch(() => {
+            events.emit("pwa:unavailable", { reason: "service-worker-registration" });
+          });
+      }, { once: true });
+    }
+  }
+
   function loadCombatIdentity() {
     if (!root.document) return;
     const sources = [
+      "./assets/mobile-ux.js",
       "./combat/enemy-contracts.js",
       "./combat/threat-director.js",
       "./ui/accessibility.js",
@@ -66,6 +125,7 @@
     }
   }
 
+  preparePwaShell();
   loadCombatIdentity();
   events.emit("runtime:ready", { version: root.EchoCore.version, seed });
 })(window);
