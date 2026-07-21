@@ -1,14 +1,14 @@
 /* ECHO source module. Sections are assembled by src/build-order.json. */
 /*__ECHO_SECTION:0124__*/
   const PERFORMANCE_PROFILE = Object.freeze({
-    activeMinimumFrameMs: 10,
+    activeMinimumFrameMs: MOBILE_QUALITY ? 12 : 10,
     idleMinimumFrameMs: 28,
-    hudInterval: MOBILE_QUALITY ? 1 / 20 : 1 / 30,
-    slowFrameMs: 21.5,
-    recoveryFrameMs: 17.2,
-    scaleCooldownMs: 4200,
-    slowSamplesBeforeScale: 36,
-    fastSamplesBeforeScale: 300
+    hudInterval: MOBILE_QUALITY ? 1 / 15 : 1 / 30,
+    slowFrameMs: MOBILE_QUALITY ? 18 : 21.5,
+    recoveryFrameMs: MOBILE_QUALITY ? 14 : 17.2,
+    scaleCooldownMs: MOBILE_QUALITY ? 2000 : 4200,
+    slowSamplesBeforeScale: MOBILE_QUALITY ? 8 : 36,
+    fastSamplesBeforeScale: MOBILE_QUALITY ? 80 : 300
   });
 
   const nativeRenderDpr = Math.min(window.devicePixelRatio || 1, MOBILE_QUALITY ? 1.5 : 2);
@@ -16,7 +16,7 @@
     averageFrameMs: 1000 / 60,
     averageWorkMs: 0,
     dprCap: nativeRenderDpr,
-    minimumDpr: Math.min(nativeRenderDpr, MOBILE_QUALITY ? 1 : 1.25),
+    minimumDpr: Math.min(nativeRenderDpr, MOBILE_QUALITY ? 0.6 : 1.25),
     maximumDpr: nativeRenderDpr,
     slowSamples: 0,
     fastSamples: 0,
@@ -28,11 +28,12 @@
   let musicUpdateTimer = 0;
 
   function targetRenderDpr() {
-    return Math.max(renderPerformance.minimumDpr, Math.min(window.devicePixelRatio || 1, renderPerformance.dprCap));
+    const manualScale = clamp(Number(preparation?.settings?.renderScale ?? 100) / 100, 0.55, 1);
+    return Math.max(0.5, Math.min(window.devicePixelRatio || 1, renderPerformance.dprCap) * manualScale);
   }
 
   function updateAdaptiveResolution(frameMs, workMs, now) {
-    if (state !== "playing" || document.hidden) return;
+    if (state !== "playing" || document.hidden || preparation?.settings?.autoQuality === false) return;
     renderPerformance.averageFrameMs = lerp(renderPerformance.averageFrameMs, frameMs, 0.06);
     renderPerformance.averageWorkMs = lerp(renderPerformance.averageWorkMs, workMs, 0.08);
     if (now - renderPerformance.lastScaleChange < PERFORMANCE_PROFILE.scaleCooldownMs) return;
@@ -55,7 +56,7 @@
 
     if (renderPerformance.slowSamples >= PERFORMANCE_PROFILE.slowSamplesBeforeScale
       && renderPerformance.dprCap > renderPerformance.minimumDpr) {
-      renderPerformance.dprCap = Math.max(renderPerformance.minimumDpr, renderPerformance.dprCap - 0.25);
+      renderPerformance.dprCap = Math.max(renderPerformance.minimumDpr, renderPerformance.dprCap - (MOBILE_QUALITY ? 0.35 : 0.25));
       renderPerformance.slowSamples = 0;
       renderPerformance.fastSamples = 0;
       renderPerformance.lastScaleChange = now;

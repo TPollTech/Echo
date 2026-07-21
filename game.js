@@ -25,8 +25,6 @@
     mutation: document.querySelector("#mutation-screen"),
     mutationCards: document.querySelector("#mutation-cards"),
     mutationSlots: document.querySelector("#mutation-slots"),
-    skin: document.querySelector("#skin-screen"),
-    skinCards: document.querySelector("#skin-cards"),
     gameover: document.querySelector("#gameover-screen"),
     restart: document.querySelector("#restart-button"),
     score: document.querySelector("#score-value"),
@@ -87,10 +85,36 @@
     skillShopCards: document.querySelector("#skillshop-cards"),
     skillShopClose: document.querySelector("#skillshop-close"),
     skillShopButton: document.querySelector("#skillshop-button"),
+    mutationLoadoutButton: document.querySelector("#mutation-loadout-button"),
     loadoutScreen: document.querySelector("#loadout-screen"),
     loadoutSlots: document.querySelector("#loadout-slots"),
     loadoutAvailable: document.querySelector("#loadout-available"),
-    loadoutConfirm: document.querySelector("#loadout-confirm")
+    loadoutConfirm: document.querySelector("#loadout-confirm"),
+    trainingMode: document.querySelector("#training-mode"),
+    classGrid: document.querySelector("#class-grid"),
+    classDetail: document.querySelector("#class-detail"),
+    randomClass: document.querySelector("#random-class"),
+    prepSkinGrid: document.querySelector("#prep-skin-grid"),
+    prepAbilityGrid: document.querySelector("#prep-ability-grid"),
+    abilityCount: document.querySelector("#ability-count"),
+    difficulty: document.querySelector("#difficulty-select"),
+    modifier: document.querySelector("#modifier-select"),
+    classProgressGrid: document.querySelector("#class-progress-grid"),
+    challengeProgressGrid: document.querySelector("#challenge-progress-grid"),
+    preview: document.querySelector("#character-preview"),
+    summaryClass: document.querySelector("#summary-class"),
+    summarySkin: document.querySelector("#summary-skin"),
+    summaryAbilities: document.querySelector("#summary-abilities"),
+    summaryMode: document.querySelector("#summary-mode"),
+    summaryDifficulty: document.querySelector("#summary-difficulty"),
+    classSpecialButton: document.querySelector("#class-special-button"),
+    fullscreenButton: document.querySelector("#fullscreen-button"),
+    hudClassName: document.querySelector("#hud-class-name"),
+    hudClassLevel: document.querySelector("#hud-class-level"),
+    hudResourceName: document.querySelector("#hud-resource-name"),
+    hudResourceValue: document.querySelector("#hud-resource-value"),
+    hudResourceFill: document.querySelector("#hud-resource-fill"),
+    hudClassSpecial: document.querySelector("#hud-class-special")
   };
 
   const MOTE_COUNT = 330;
@@ -101,8 +125,8 @@
   const qaMode = new URLSearchParams(window.location.search).has("qa");
   const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0 && window.innerWidth < 1024);
   const MOBILE_QUALITY = isMobile;
-  const moteCount = MOBILE_QUALITY ? 140 : 330;
-  const ambientSeedCount = MOBILE_QUALITY ? 60 : 180;
+  const moteCount = MOBILE_QUALITY ? 80 : 330;
+  const ambientSeedCount = MOBILE_QUALITY ? 35 : 180;
   const names = ["LIMEN", "NARA", "VANTA", "RUÍDO", "AION", "KORA", "NULL", "SOMA", "VEGA", "MIRA", "ORFEU", "NYX", "ÍRIS", "FLUXO", "UMBRA"];
   const colors = [188, 218, 268, 302, 326, 42];
   const sectorNames = ["JARDIM NULO", "ARCO DE SOMA", "CAMPO ÍRIS", "LIMIAR VIOLETA", "POÇO DE AION", "VÉU NORTE", "DELTA ESPECTRAL", "COROA VAZIA", "MAR DE NYX"];
@@ -123,29 +147,258 @@
   const SKIN_KEY = "echo.selectedSkin";
   const SKIN_PROGRESS_KEY = "echo.skinProgress";
   let skinProgress = loadSkinProgress();
-  const skins = [
-    { id: "spectro", name: "ESPECTRO", hue: 188, description: "Frequência base", unlocked: () => true, glowIntensity: 1, trailWidth: 1, symbol: "◇" },
-    { id: "fenix", name: "FÊNIX", hue: 15, description: "Chamas eternas", unlocked: () => true, glowIntensity: 1.2, trailWidth: 1.1, symbol: "◆" },
-    { id: "sombra", name: "SOMBRA", hue: 280, description: "Aura das trevas", unlocked: () => true, glowIntensity: 0.82, trailWidth: 0.95, symbol: "●" },
-    { id: "gelo", name: "GELO", hue: 200, description: "Cristais gélidos", unlocked: () => true, glowIntensity: 1.05, trailWidth: 1, symbol: "◈" },
-    { id: "neon", name: "NEON", hue: 140, description: "Brilho sintético", unlocked: () => true, glowIntensity: 1.45, trailWidth: 1.2, symbol: "◇" },
-    { id: "sangue", name: "SANGUE", hue: 350, description: "Gotas vermelhas", unlocked: () => true, glowIntensity: 1.1, trailWidth: 1.05, symbol: "◆" },
-    { id: "dourado", name: "DOURADO", hue: 42, description: "Derrote um boss para liberar", unlocked: () => skinProgress.bossesDefeated >= 1, glowIntensity: 1.35, trailWidth: 1.12, symbol: "★" },
-    { id: "caotico", name: "CAÓTICO", hue: -1, description: "Alcance 500 pontos para liberar", unlocked: () => skinProgress.bestScore >= 500, glowIntensity: 1.25, trailWidth: 1.3, symbol: "✦" }
-  ];
+  const skins = globalThis.EchoSkinSystem.SKIN_DEFINITIONS.map((definition) => ({
+    ...definition,
+    unlocked: () => definition.unlock === "always"
+      || (definition.unlock === "boss" && skinProgress.bossesDefeated >= 1)
+      || (definition.unlock === "score-500" && skinProgress.bestScore >= 500)
+  }));
 
+  const EchoClassSystem = (() => {
+    "use strict";
+
+    const CLASS_IDS = Object.freeze([
+      "cutter", "marksman", "charger", "trapper", "defender",
+      "assassin", "controller", "summoner", "orbiter", "loader"
+    ]);
+
+    const makeClass = (definition) => Object.freeze({
+      ...definition,
+      resource: Object.freeze({ ...definition.resource }),
+      attributes: Object.freeze({ ...definition.attributes }),
+      growth: Object.freeze({ ...definition.growth }),
+      strengths: Object.freeze([...definition.strengths]),
+      weaknesses: Object.freeze([...definition.weaknesses])
+    });
+
+    const classRegistry = Object.freeze({
+      cutter: makeClass({
+        id: "cutter", name: "CORTADOR", icon: "⌁", role: "melee", difficulty: 2,
+        summary: "Transforma uma trajetória arriscada em um corte de retorno.",
+        primaryAttack: "Corte de retorno", activeAbility: "Segundo corte", passiveAbility: "Risco calculado",
+        resource: { id: "echo", name: "ECO", max: 100, color: "#45e6ff" },
+        attributes: { health: 100, speed: 205, resistance: 1, preferredRange: 250, mobility: 5 },
+        growth: { trailWidth: 0.08, range: 0.06, damage: 0.08, resourceEfficiency: 0.05 },
+        aiBehavior: "cutter", sound: 176, strengths: ["trajetória", "mobilidade"], weaknesses: ["corpo vulnerável"]
+      }),
+      marksman: makeClass({
+        id: "marksman", name: "ATIRADOR", icon: "◎", role: "long-range", difficulty: 3,
+        summary: "Carrega disparos precisos e ganha dano com a distância.",
+        primaryAttack: "Disparo carregado", activeAbility: "Disparo perfurante", passiveAbility: "Longa distância",
+        resource: { id: "focus", name: "FOCO", max: 100, color: "#72f1ff" },
+        attributes: { health: 85, speed: 185, resistance: 0.9, preferredRange: 620, mobility: 2 },
+        growth: { chargeSpeed: 0.08, projectileSize: 0.07, range: 0.08, pierce: 0.25 },
+        aiBehavior: "marksman", sound: 520, strengths: ["longo alcance", "alto dano"], weaknesses: ["combate próximo", "mira lenta"]
+      }),
+      charger: makeClass({
+        id: "charger", name: "INVESTIDOR", icon: "➤", role: "melee", difficulty: 2,
+        summary: "Investe fisicamente, empurra alvos e explode ao parar.",
+        primaryAttack: "Investida", activeAbility: "Impacto circular", passiveAbility: "Armadura cinética",
+        resource: { id: "momentum", name: "IMPULSO", max: 100, color: "#ff725e" },
+        attributes: { health: 120, speed: 195, resistance: 0.78, preferredRange: 145, mobility: 5 },
+        growth: { dashRange: 0.08, impact: 0.08, explosion: 0.07, resistance: 0.03 },
+        aiBehavior: "charger", sound: 92, strengths: ["impacto", "interrupção"], weaknesses: ["erros de alinhamento"]
+      }),
+      trapper: makeClass({
+        id: "trapper", name: "ARMADILHEIRO", icon: "⌗", role: "control", difficulty: 3,
+        summary: "Fecha rotas com armadilhas e fragmentos de médio alcance.",
+        primaryAttack: "Fragmento", activeAbility: "Armadilha lenta", passiveAbility: "Rede territorial",
+        resource: { id: "devices", name: "DISPOSITIVOS", max: 4, color: "#b792ff" },
+        attributes: { health: 92, speed: 198, resistance: 0.96, preferredRange: 380, mobility: 3 },
+        growth: { traps: 0.34, area: 0.06, duration: 0.08, damage: 0.06 },
+        aiBehavior: "trapper", sound: 262, strengths: ["controle de área", "preparação"], weaknesses: ["duelo direto"]
+      }),
+      defender: makeClass({
+        id: "defender", name: "DEFENSOR", icon: "◇", role: "defense", difficulty: 2,
+        summary: "Bloqueia pela frente e converte defesa em contra-ataque.",
+        primaryAttack: "Golpe de energia", activeAbility: "Escudo direcional", passiveAbility: "Contra-carga",
+        resource: { id: "guard", name: "GUARDA", max: 100, color: "#a88cff" },
+        attributes: { health: 135, speed: 170, resistance: 0.72, preferredRange: 125, mobility: 1 },
+        growth: { shieldArc: 0.05, duration: 0.06, block: 0.03, counter: 0.09 },
+        aiBehavior: "defender", sound: 330, strengths: ["bloqueio", "resistência"], weaknesses: ["flancos", "baixo alcance"]
+      }),
+      assassin: makeClass({
+        id: "assassin", name: "ASSASSINO", icon: "◈", role: "melee", difficulty: 4,
+        summary: "Some do campo, teleporta e executa alvos feridos.",
+        primaryAttack: "Golpe rápido", activeAbility: "Invisibilidade", passiveAbility: "Emboscada",
+        resource: { id: "shadow", name: "SOMBRA", max: 100, color: "#ef74ff" },
+        attributes: { health: 72, speed: 235, resistance: 1.12, preferredRange: 95, mobility: 5 },
+        growth: { stealth: 0.08, teleport: 0.07, ambush: 0.1, cooldown: 0.05 },
+        aiBehavior: "assassin", sound: 660, strengths: ["emboscada", "execução"], weaknesses: ["pouca vida", "combate longo"]
+      }),
+      controller: makeClass({
+        id: "controller", name: "CONTROLADOR", icon: "⊛", role: "control", difficulty: 3,
+        summary: "Agrupa inimigos e recursos em campos gravitacionais.",
+        primaryAttack: "Pulso", activeAbility: "Campo gravitacional", passiveAbility: "Coleta ampliada",
+        resource: { id: "gravity", name: "GRAVIDADE", max: 100, color: "#5ce0d2" },
+        attributes: { health: 95, speed: 190, resistance: 0.94, preferredRange: 330, mobility: 2 },
+        growth: { area: 0.08, pull: 0.08, duration: 0.07, pickup: 0.08 },
+        aiBehavior: "controller", sound: 220, strengths: ["agrupamento", "combinações"], weaknesses: ["dano direto"]
+      }),
+      summoner: makeClass({
+        id: "summoner", name: "INVOCADOR", icon: "✣", role: "control", difficulty: 4,
+        summary: "Comanda unidades auxiliares e pressiona à distância.",
+        primaryAttack: "Enviar unidade", activeAbility: "Comando de enxame", passiveAbility: "Nova unidade",
+        resource: { id: "swarm", name: "UNIDADES", max: 6, color: "#78ffba" },
+        attributes: { health: 82, speed: 188, resistance: 1.02, preferredRange: 500, mobility: 2 },
+        growth: { units: 0.34, unitDamage: 0.08, unitSpeed: 0.07, autoCollect: 0.2 },
+        aiBehavior: "summoner", sound: 392, strengths: ["pressão constante", "combate indireto"], weaknesses: ["unidades destrutíveis"]
+      }),
+      orbiter: makeClass({
+        id: "orbiter", name: "ORBITADOR", icon: "⊙", role: "long-range", difficulty: 3,
+        summary: "Administra esferas que atacam e interceptam ameaças.",
+        primaryAttack: "Lançar esfera", activeAbility: "Órbita total", passiveAbility: "Bloqueio orbital",
+        resource: { id: "orbs", name: "ESFERAS", max: 5, color: "#ffd86b" },
+        attributes: { health: 96, speed: 195, resistance: 0.92, preferredRange: 420, mobility: 3 },
+        growth: { orbs: 0.25, size: 0.06, orbitSpeed: 0.08, recovery: 0.06 },
+        aiBehavior: "orbiter", sound: 440, strengths: ["ataque e defesa", "médio alcance"], weaknesses: ["recarga das esferas"]
+      }),
+      loader: makeClass({
+        id: "loader", name: "CARREGADOR", icon: "◆", role: "long-range", difficulty: 4,
+        summary: "Transforma fragmentos azuis e roxos em munição.",
+        primaryAttack: "Disparo de fragmento", activeAbility: "Explosão armazenada", passiveAbility: "Munição por cor",
+        resource: { id: "ammo", name: "MUNIÇÃO", max: 12, color: "#45e6ff" },
+        attributes: { health: 100, speed: 192, resistance: 0.95, preferredRange: 460, mobility: 3 },
+        growth: { capacity: 0.08, damage: 0.08, efficiency: 0.05, explosion: 0.08 },
+        aiBehavior: "loader", sound: 294, strengths: ["economia de recursos", "explosão"], weaknesses: ["depende de fragmentos"]
+      })
+    });
+
+    const EQUIPPABLE_SKILLS = Object.freeze([
+      { id: "shield", name: "ESCUDO", symbol: "◇", color: "#a88cff", effect: "Bloqueia um ataque recebido por até 3 segundos.", cost: 30, cooldown: 8, compatibleClasses: CLASS_IDS },
+      { id: "explosion", name: "EXPLOSÃO", symbol: "✦", color: "#ff4fd8", effect: "Causa 18 de dano e empurra inimigos em um raio de 130.", cost: 25, cooldown: 5, compatibleClasses: CLASS_IDS },
+      { id: "heal", name: "CURA", symbol: "+", color: "#78ffba", effect: "Recupera 34 de vida do jogador imediatamente.", cost: 28, cooldown: 12, compatibleClasses: ["cutter", "trapper", "defender", "controller", "summoner", "orbiter", "loader"] },
+      { id: "pull", name: "ÍMÃ DE FRAGMENTOS", symbol: "⊛", color: "#b792ff", effect: "Puxa fragmentos em um raio de 350 para perto do jogador.", cost: 24, cooldown: 8, compatibleClasses: ["cutter", "trapper", "controller", "summoner", "orbiter"] },
+      { id: "teleport", name: "TELEPORTE", symbol: "⟿", color: "#45e6ff", effect: "Teleporta 160 de distância na direção da mira.", cost: 20, cooldown: 4, compatibleClasses: ["cutter", "marksman", "assassin", "controller", "loader"] },
+      { id: "triple-shot", name: "TIRO TRIPLO", symbol: "⋔", color: "#45e6ff", effect: "Dispara 3 projéteis em leque; cada um causa 15 de dano.", cost: 26, cooldown: 7, compatibleClasses: ["marksman", "trapper", "orbiter", "loader"] },
+      { id: "slow-trap", name: "ARMADILHA DE LENTIDÃO", symbol: "⌗", color: "#8b5cf6", effect: "Cria por 4 segundos uma área de 115 que desacelera e causa 3 de dano por acerto.", cost: 22, cooldown: 9, compatibleClasses: ["trapper", "defender", "controller"] },
+      { id: "damage-field", name: "ÁREA DE DANO", symbol: "◉", color: "#ff725e", effect: "Cria ao redor do jogador uma área de 125 que causa 5 de dano por acerto durante 4 segundos.", cost: 34, cooldown: 11, compatibleClasses: ["charger", "trapper", "controller", "summoner", "orbiter"] },
+      { id: "invisibility", name: "INVULNERABILIDADE", symbol: "◈", color: "#78ffba", effect: "Impede todo dano recebido durante 2 segundos.", cost: 32, cooldown: 12, compatibleClasses: ["cutter", "marksman", "assassin"] },
+      { id: "charge", name: "INVESTIDA", symbol: "➤", color: "#ff8a65", effect: "Avança 180 na direção da mira e causa 24 de dano aos inimigos no caminho.", cost: 28, cooldown: 7, compatibleClasses: ["cutter", "charger", "defender", "assassin"] }
+    ].map((skill) => Object.freeze({ ...skill, compatibleClasses: Object.freeze([...skill.compatibleClasses]) })));
+
+    const MUTATION_CLASS_COMPATIBILITY = Object.freeze({
+      blade: ["cutter", "charger", "assassin"], shell: ["cutter", "defender", "orbiter"], siphon: CLASS_IDS,
+      drift: ["cutter", "marksman", "charger", "assassin", "controller"], nova: ["cutter", "charger", "defender", "controller", "loader"],
+      reweave: CLASS_IDS, focus: CLASS_IDS, gravity: ["cutter", "trapper", "controller", "summoner", "loader"], resonance: CLASS_IDS,
+      afterimage: ["cutter", "assassin", "controller"], overclock: ["cutter", "marksman", "charger", "assassin", "orbiter", "loader"],
+      prism: CLASS_IDS, chain: CLASS_IDS, ghostwall: CLASS_IDS, vortex: ["cutter", "controller", "summoner"],
+      reversal: ["defender", "controller", "orbiter"], dualphase: ["cutter", "charger", "assassin"]
+    });
+
+    const CLASS_LIMITS = Object.freeze({ marksman: 2, defender: 2, assassin: 1 });
+    const CLASS_CHALLENGES = Object.freeze({
+      cutter: Object.freeze({ label: "Elimine 30 inimigos com o Cortador.", metric: "kills", target: 30, resonance: 20, skillPoints: 8 }),
+      marksman: Object.freeze({ label: "Elimine 25 inimigos com o Atirador.", metric: "kills", target: 25, resonance: 20, skillPoints: 8 }),
+      charger: Object.freeze({ label: "Elimine 35 inimigos com o Investidor.", metric: "kills", target: 35, resonance: 22, skillPoints: 8 }),
+      trapper: Object.freeze({ label: "Conclua 5 partidas com o Armadilheiro.", metric: "runs", target: 5, resonance: 18, skillPoints: 10 }),
+      defender: Object.freeze({ label: "Vença 3 partidas com o Defensor.", metric: "victories", target: 3, resonance: 25, skillPoints: 10 }),
+      assassin: Object.freeze({ label: "Elimine 40 inimigos com o Assassino.", metric: "kills", target: 40, resonance: 24, skillPoints: 9 }),
+      controller: Object.freeze({ label: "Conclua 8 partidas com o Controlador.", metric: "runs", target: 8, resonance: 22, skillPoints: 10 }),
+      summoner: Object.freeze({ label: "Elimine 30 inimigos com o Invocador.", metric: "kills", target: 30, resonance: 22, skillPoints: 10 }),
+      orbiter: Object.freeze({ label: "Vença 4 partidas com o Orbitador.", metric: "victories", target: 4, resonance: 25, skillPoints: 10 }),
+      loader: Object.freeze({ label: "Conclua 10 partidas com o Carregador.", metric: "runs", target: 10, resonance: 24, skillPoints: 12 })
+    });
+    const roleOf = (classId) => classRegistry[classId]?.role || "melee";
+    const normalizeClassId = (classId) => CLASS_IDS.includes(classId) ? classId : "cutter";
+    const getClassDefinition = (classId) => classRegistry[normalizeClassId(classId)];
+    const getClassLevel = (experience) => Math.max(1, Math.min(12, Math.floor(Math.sqrt(Math.max(0, Number(experience) || 0) / 28)) + 1));
+    const classExperienceForLevel = (level) => Math.max(0, Math.pow(Math.max(1, level) - 1, 2) * 28);
+    const getClassEvolution = (classId, level) => {
+      const definition = getClassDefinition(classId);
+      const steps = Math.max(0, Math.min(11, Math.floor(level) - 1));
+      return Object.fromEntries(Object.entries(definition.growth).map(([key, amount]) => [key, 1 + amount * steps]));
+    };
+
+    function createBalancedBotClassComposition({ botCount, playerClass = "cutter", randomFn = Math.random } = {}) {
+      const count = Math.max(0, Math.floor(Number(botCount) || 0));
+      const selected = [];
+      const counts = Object.fromEntries(CLASS_IDS.map((id) => [id, id === normalizeClassId(playerClass) ? 1 : 0]));
+      const requiredRoles = ["melee", "long-range", "control"];
+      for (let index = 0; index < count; index += 1) {
+        const missingRole = requiredRoles.find((role) => !selected.some((id) => roleOf(id) === role));
+        const candidates = CLASS_IDS.filter((id) => {
+          const limit = CLASS_LIMITS[id] ?? 2;
+          return counts[id] < limit && (!missingRole || roleOf(id) === missingRole);
+        });
+        const pool = candidates.length ? candidates : CLASS_IDS.filter((id) => counts[id] < (CLASS_LIMITS[id] ?? 2));
+        const lowest = Math.min(...pool.map((id) => counts[id]));
+        const leastUsed = pool.filter((id) => counts[id] === lowest);
+        const picked = leastUsed[Math.min(leastUsed.length - 1, Math.floor(randomFn() * leastUsed.length))] || "cutter";
+        selected.push(picked);
+        counts[picked] += 1;
+      }
+      return selected;
+    }
+
+    function compatibleSkills(classId) {
+      const normalized = normalizeClassId(classId);
+      return EQUIPPABLE_SKILLS.filter((skill) => skill.compatibleClasses.includes(normalized));
+    }
+
+    function chooseRandomClass(randomFn = Math.random) {
+      const index = Math.min(CLASS_IDS.length - 1, Math.floor(clampUnit(randomFn()) * CLASS_IDS.length));
+      return CLASS_IDS[index];
+    }
+
+    function clampUnit(value) {
+      const number = Number(value);
+      return Number.isFinite(number) ? Math.max(0, Math.min(0.999999, number)) : 0;
+    }
+
+    function sanitizeSkillLoadout(classId, requested = []) {
+      const allowed = new Set(compatibleSkills(classId).map((skill) => skill.id));
+      const unique = [...new Set(Array.isArray(requested) ? requested : [])].filter((id) => allowed.has(id)).slice(0, 4);
+      for (const skill of compatibleSkills(classId)) {
+        if (unique.length >= 4) break;
+        if (!unique.includes(skill.id)) unique.push(skill.id);
+      }
+      return unique;
+    }
+
+    const classAiRegistry = Object.freeze({
+      cutter: ({ distance, danger = 0 }) => ({ action: danger > 0.8 ? "retreat" : "cross", idealRange: 230 }),
+      marksman: ({ distance, danger = 0 }) => ({ action: distance < 280 || danger > 0.65 ? "retreat" : "charge", idealRange: 620 }),
+      charger: ({ distance, alignment = 0 }) => ({ action: distance < 420 && alignment > 0.72 ? "charge" : "align", idealRange: 135 }),
+      trapper: ({ contested = 0, traps = 0 }) => ({ action: contested > 0.45 && traps < 4 ? "trap" : "kite", idealRange: 380 }),
+      defender: ({ frontalThreat = 0, allyDanger = 0 }) => ({ action: frontalThreat > 0.35 || allyDanger > 0.7 ? "block" : "advance", idealRange: 125 }),
+      assassin: ({ targetHealth = 1, isolated = 0 }) => ({ action: targetHealth < 0.42 && isolated > 0.5 ? "ambush" : "stalk", idealRange: 90 }),
+      controller: ({ danger = 0, clustered = 0 }) => ({ action: clustered > 0.45 && danger < 0.78 ? "pull" : "reposition", idealRange: 330 }),
+      summoner: ({ units = 0, distance = 0 }) => ({ action: units > 0 && distance < 600 ? "command" : "summon", idealRange: 520 }),
+      orbiter: ({ orbs = 0, danger = 0 }) => ({ action: orbs <= 1 || danger > 0.7 ? "preserve" : "launch", idealRange: 420 }),
+      loader: ({ ammo = 0, surrounded = 0 }) => ({ action: surrounded > 0.65 && ammo > 2 ? "explode" : ammo < 3 ? "collect" : "shoot", idealRange: 460 })
+    });
+
+    function decideClassAi(classId, context = {}) {
+      return (classAiRegistry[normalizeClassId(classId)] || classAiRegistry.cutter)(context);
+    }
+
+    return Object.freeze({
+      CLASS_IDS, classRegistry, EQUIPPABLE_SKILLS, MUTATION_CLASS_COMPATIBILITY, CLASS_LIMITS, CLASS_CHALLENGES,
+      normalizeClassId, getClassDefinition, getClassLevel, classExperienceForLevel, getClassEvolution,
+      createBalancedBotClassComposition, compatibleSkills, sanitizeSkillLoadout, chooseRandomClass, classAiRegistry, decideClassAi
+    });
+  })();
+
+  const {
+    CLASS_IDS, classRegistry, EQUIPPABLE_SKILLS, MUTATION_CLASS_COMPATIBILITY, CLASS_CHALLENGES,
+    normalizeClassId, getClassDefinition, getClassLevel, classExperienceForLevel, getClassEvolution,
+    createBalancedBotClassComposition, compatibleSkills, sanitizeSkillLoadout, chooseRandomClass, decideClassAi
+  } = EchoClassSystem;
+
+  if (typeof module !== "undefined" && module.exports) module.exports = EchoClassSystem;
   const mutations = [
     {
       id: "blade",
-      name: "Lâmina de Retorno",
+      name: "Rastro Forte",
       tag: "OFENSIVA",
       symbol: "⟋",
       color: "#ff4fd8",
-      description: "O rastro rompido causa mais dano e permanece perigoso por um instante.",
+      description: "Seu rastro causa mais dano e continua ativo por mais tempo.",
       tiers: [
-        { label: "I", desc: "+40% dano de rastro, +0.28 ribbonLife" },
-        { label: "II", desc: "+60% dano de rastro, +0.42 ribbonLife" },
-        { label: "III", desc: "+85% dano de rastro, +0.55 ribbonLife, rastro persistente" }
+        { label: "I", desc: "+40% de dano e +0,28 s de duração" },
+        { label: "II", desc: "+60% de dano e +0,42 s de duração" },
+        { label: "III", desc: "+85% de dano e +0,55 s de duração" }
       ],
       apply(player, level = 1) {
         const m = [1.4, 1.6, 1.85][level - 1];
@@ -157,29 +410,29 @@
     },
     {
       id: "shell",
-      name: "Casulo Prismático",
+      name: "Proteção do Corpo",
       tag: "DEFESA",
       symbol: "◇",
       color: "#a88cff",
-      description: "Seu núcleo abandonado recebe menos dano enquanto você está projetado.",
+      description: "Seu personagem recebe menos dano enquanto você controla a projeção.",
       tiers: [
-        { label: "I", desc: "55% menos dano ao núcleo" },
-        { label: "II", desc: "65% menos dano ao núcleo" },
-        { label: "III", desc: "78% menos dano ao núcleo" }
+        { label: "I", desc: "55% menos dano recebido" },
+        { label: "II", desc: "65% menos dano recebido" },
+        { label: "III", desc: "78% menos dano recebido" }
       ],
       apply(player, level = 1) { player.shellDefense = [0.45, 0.35, 0.22][level - 1]; }
     },
     {
       id: "siphon",
-      name: "Sifão Harmônico",
+      name: "Recuperação ao Atacar",
       tag: "SUSTENTAÇÃO",
       symbol: "⌁",
       color: "#45e6ff",
-      description: "Cada inimigo atravessado devolve carga e restaura integridade.",
+      description: "Atravessar um inimigo recupera vida e energia.",
       tiers: [
-        { label: "I", desc: "Restaura carga e vida ao atravessar" },
-        { label: "II", desc: "Restaura +40% mais carga e vida" },
-        { label: "III", desc: "Restaura +80% mais carga e vida" }
+        { label: "I", desc: "Recupera vida e energia ao atravessar" },
+        { label: "II", desc: "+40% de recuperação" },
+        { label: "III", desc: "+80% de recuperação" }
       ],
       apply(player, level = 1) {
         player.siphon = true;
@@ -188,15 +441,15 @@
     },
     {
       id: "drift",
-      name: "Deriva Temporal",
+      name: "Projeção Rápida",
       tag: "MOBILIDADE",
       symbol: "≫",
       color: "#78ffba",
-      description: "A projeção se move mais rápido e consome menos carga.",
+      description: "A projeção se move mais rápido e consome menos energia.",
       tiers: [
-        { label: "I", desc: "+18% velocidade, -25% carga" },
-        { label: "II", desc: "+28% velocidade, -35% carga" },
-        { label: "III", desc: "+40% velocidade, -48% carga" }
+        { label: "I", desc: "+18% de velocidade, -25% de custo de energia" },
+        { label: "II", desc: "+28% de velocidade, -35% de custo de energia" },
+        { label: "III", desc: "+40% de velocidade, -48% de custo de energia" }
       ],
       apply(player, level = 1) {
         player.phaseSpeed *= [1.18, 1.28, 1.4][level - 1];
@@ -205,13 +458,13 @@
     },
     {
       id: "nova",
-      name: "Nova de Chegada",
+      name: "Impacto de Retorno",
       tag: "CONTROLE",
       symbol: "✦",
       color: "#ffd86b",
-      description: "Ao materializar, uma onda empurra e fere sinais próximos.",
+      description: "Ao voltar para o personagem, uma onda causa dano e empurra inimigos próximos.",
       tiers: [
-        { label: "I", desc: "Onda de dano ao materializar" },
+        { label: "I", desc: "Causa uma onda de dano ao retornar" },
         { label: "II", desc: "+50% raio da nova" },
         { label: "III", desc: "+100% raio da nova, +30% dano" }
       ],
@@ -222,11 +475,11 @@
     },
     {
       id: "reweave",
-      name: "Trama Regenerativa",
+      name: "Cura por Fragmentos",
       tag: "EVOLUÇÃO",
       symbol: "∞",
       color: "#ff8cb7",
-      description: "Fragmentos restauram integridade. Combos longos aceleram a regeneração.",
+      description: "Coletar fragmentos recupera vida.",
       tiers: [
         { label: "I", desc: "Fragmentos curam ao coletar" },
         { label: "II", desc: "+50% cura por fragmento" },
@@ -239,25 +492,25 @@
     },
     {
       id: "focus",
-      name: "Foco de Lúmen",
+      name: "Recarga Rápida",
       tag: "PRECISÃO",
       symbol: "◎",
       color: "#72f1ff",
-      description: "Rupturas recalibram mais rápido, favorecendo ataques precisos em sequência.",
+      description: "Reduz o tempo necessário para usar o ataque novamente.",
       tiers: [
-        { label: "I", desc: "-35% cooldown" },
-        { label: "II", desc: "-48% cooldown" },
-        { label: "III", desc: "-60% cooldown" }
+        { label: "I", desc: "35% menos tempo de recarga" },
+        { label: "II", desc: "48% menos tempo de recarga" },
+        { label: "III", desc: "60% menos tempo de recarga" }
       ],
       apply(player, level = 1) { player.cooldownScale *= [0.65, 0.52, 0.4][level - 1]; }
     },
     {
       id: "gravity",
-      name: "Gravidade de Íris",
+      name: "Coleta Ampliada",
       tag: "COLETA",
       symbol: "◉",
       color: "#b792ff",
-      description: "Fragmentos próximos são atraídos pelo núcleo e pelo eco projetado.",
+      description: "Aumenta a distância em que os fragmentos são coletados.",
       tiers: [
         { label: "I", desc: "+34px raio de coleta" },
         { label: "II", desc: "+52px raio de coleta" },
@@ -267,15 +520,15 @@
     },
     {
       id: "resonance",
-      name: "Fome de Ressonância",
+      name: "Recuperação por Eliminação",
       tag: "EXECUÇÃO",
       symbol: "⌾",
       color: "#ff6f91",
-      description: "Cada ruptura restaura integridade e preenche uma grande parte da carga.",
+      description: "Cada eliminação recupera vida e energia.",
       tiers: [
-        { label: "I", desc: "Rupturas restauram vida e carga" },
-        { label: "II", desc: "+50% restauração por ruptura" },
-        { label: "III", desc: "+100% restauração por ruptura" }
+        { label: "I", desc: "Eliminações recuperam vida e energia" },
+        { label: "II", desc: "+50% de recuperação por eliminação" },
+        { label: "III", desc: "+100% de recuperação por eliminação" }
       ],
       apply(player, level = 1) {
         player.killRestore = true;
@@ -284,15 +537,15 @@
     },
     {
       id: "afterimage",
-      name: "Pós-imagem Hostil",
+      name: "Rastro Duradouro",
       tag: "CONTROLE",
       symbol: "≋",
       color: "#ef74ff",
-      description: "O rastro permanece no campo por mais tempo e conserva sua zona de perigo.",
+      description: "Seu rastro permanece no campo e causa dano por mais tempo.",
       tiers: [
-        { label: "I", desc: "+0.45 ribbonLife, +0.22 linger" },
-        { label: "II", desc: "+0.65 ribbonLife, +0.35 linger" },
-        { label: "III", desc: "+0.9 ribbonLife, +0.5 linger" }
+        { label: "I", desc: "+0,45 s de rastro e +0,22 s de dano" },
+        { label: "II", desc: "+0,65 s de rastro e +0,35 s de dano" },
+        { label: "III", desc: "+0,9 s de rastro e +0,5 s de dano" }
       ],
       apply(player, level = 1) {
         player.ribbonLife += [0.45, 0.65, 0.9][level - 1];
@@ -301,11 +554,11 @@
     },
     {
       id: "overclock",
-      name: "Sobrecarga Carmesim",
+      name: "Mais Velocidade e Dano",
       tag: "RISCO",
       symbol: "ϟ",
       color: "#ff725e",
-      description: "Projeções ficam mais velozes e causam mais dano, mas consomem carga adicional.",
+      description: "A projeção fica mais rápida e forte, mas consome mais energia.",
       tiers: [
         { label: "I", desc: "+12% vel, +25% dano, +15% carga" },
         { label: "II", desc: "+20% vel, +40% dano, +12% carga" },
@@ -319,25 +572,25 @@
     },
     {
       id: "prism",
-      name: "Janela Prismática",
+      name: "Proteção ao Retornar",
       tag: "DEFESA",
       symbol: "⬡",
       color: "#7fffc8",
-      description: "Ao materializar após um ataque, você recebe uma breve janela de proteção.",
+      description: "Depois de retornar ao personagem, você fica protegido por alguns segundos.",
       tiers: [
-        { label: "I", desc: "0.7s de proteção ao materializar" },
-        { label: "II", desc: "1.0s de proteção ao materializar" },
-        { label: "III", desc: "1.4s de proteção ao materializar" }
+        { label: "I", desc: "0,7 s de proteção ao retornar" },
+        { label: "II", desc: "1 s de proteção ao retornar" },
+        { label: "III", desc: "1,4 s de proteção ao retornar" }
       ],
       apply(player, level = 1) { player.arrivalGuard = [0.7, 1.0, 1.4][level - 1]; }
     },
     {
       id: "chain",
-      name: "Corrente Viva",
+      name: "Combo de Dano",
       tag: "EXECUÇÃO",
       symbol: "⚡",
       color: "#ffe066",
-      description: "Rupturas em sequência causam dano cumulativo por combo.",
+      description: "Eliminações em sequência aumentam o dano do combo.",
       tiers: [
         { label: "I", desc: "+30% dano por combo (2s)" },
         { label: "II", desc: "+45% dano por combo (2.5s)" },
@@ -351,11 +604,11 @@
     },
     {
       id: "ghostwall",
-      name: "Muralha Fantasma",
+      name: "Segunda Chance",
       tag: "DEFESA",
       symbol: "◈",
       color: "#c8b8ff",
-      description: "Ao receber dano fatal, sobrevive com 1 HP. Ativa-se apenas uma vez por run.",
+      description: "Ao receber dano fatal, você sobrevive com 1 de vida. Ativa uma vez por partida.",
       tiers: [
         { label: "I", desc: "Sobrevive com 1 HP uma vez" },
         { label: "II", desc: "Sobrevive + onda de dano ao redor" },
@@ -369,11 +622,11 @@
     },
     {
       id: "vortex",
-      name: "Vórtice Gravitacional",
+      name: "Atração de Inimigos",
       tag: "CONTROLE",
       symbol: "⊛",
       color: "#5ce0d2",
-      description: "O eco projetado atrai inimigos próximos durante a projeção.",
+      description: "A projeção puxa inimigos próximos na sua direção.",
       tiers: [
         { label: "I", desc: "Atrai inimigos durante projeção" },
         { label: "II", desc: "+50% força de atração" },
@@ -386,7 +639,7 @@
     },
     {
       id: "reversal",
-      name: "Sifão Inverso",
+      name: "Refletir Dano",
       tag: "RISCO",
       symbol: "⊘",
       color: "#ff5a5a",
@@ -403,15 +656,15 @@
     },
     {
       id: "dualphase",
-      name: "Ressonância Dupla",
+      name: "Projeções Extras",
       tag: "MOBILIDADE",
       symbol: "⟐",
       color: "#88ddff",
-      description: "Pode projetar o eco duas vezes antes de recalibrar.",
+      description: "Permite usar a projeção mais vezes antes da recarga.",
       tiers: [
-        { label: "I", desc: "2 projeções antes de cooldown" },
-        { label: "II", desc: "3 projeções antes de cooldown" },
-        { label: "III", desc: "3 projeções, -20% cooldown no 2º uso" }
+        { label: "I", desc: "2 projeções antes da recarga" },
+        { label: "II", desc: "3 projeções antes da recarga" },
+        { label: "III", desc: "3 projeções e recarga 20% mais rápida no segundo uso" }
       ],
       apply(player, level = 1) {
         player.dualPhase = true;
@@ -420,6 +673,7 @@
       }
     }
   ];
+  for (const mutation of mutations) mutation.compatibleClasses = Object.freeze([...(MUTATION_CLASS_COMPATIBILITY[mutation.id] || CLASS_IDS)]);
 
   const synergies = [
     {
@@ -427,7 +681,7 @@
       name: "CORTINA DE LÂMINAS",
       requires: ["blade", "afterimage"],
       color: "#ff4fd8",
-      description: "Largura do rastro +50%, dano persistente dobado.",
+      description: "Aumenta a largura do rastro em 50% e dobra o dano que permanece no chão.",
       apply(player) {
         player.ribbonWidthBonus = (player.ribbonWidthBonus || 1) * 1.5;
         player.ribbonLingerDamageBonus = (player.ribbonLingerDamageBonus || 1) * 2;
@@ -438,7 +692,7 @@
       name: "DEVORADOR",
       requires: ["siphon", "resonance"],
       color: "#45e6ff",
-      description: "Kill cura 2x, sifão restaura 2x.",
+      description: "Dobra a cura recebida ao eliminar inimigos e ao absorver vida.",
       apply(player) {
         player.killRestoreHealBonus = (player.killRestoreHealBonus || 1) * 2;
         player.siphonBonus = (player.siphonBonus || 1) * 2;
@@ -449,7 +703,7 @@
       name: "MIRAGEM",
       requires: ["drift", "dualphase"],
       color: "#78ffba",
-      description: "3 projeções, velocidade +25%.",
+      description: "Permite usar três projeções e aumenta a velocidade delas em 25%.",
       apply(player) {
         player.dualPhaseCharges = 3;
         player.phaseSpeed *= 1.25;
@@ -460,7 +714,7 @@
       name: "FORTALEZA",
       requires: ["shell", "prism"],
       color: "#a88cff",
-      description: "Guarda de chegada dobada, defesa = 0.3.",
+      description: "Dobra a duração da proteção ao retornar e reduz em 70% o dano recebido.",
       apply(player) {
         player.arrivalGuard *= 2;
         player.shellDefense = Math.min(player.shellDefense, 0.3);
@@ -471,7 +725,7 @@
       name: "BURACO NEGRO",
       requires: ["nova", "vortex"],
       color: "#5ce0d2",
-      description: "Nova raio +80%, puxa inimigos antes de explodir.",
+      description: "Aumenta o alcance da explosão em 80% e puxa os inimigos antes do dano.",
       apply(player) {
         player.novaRadiusBonus = (player.novaRadiusBonus || 1) * 1.8;
         player.vortexPullBonus = (player.vortexPullBonus || 1) * 1.5;
@@ -482,17 +736,17 @@
       name: "ESPECTRO VINGATIVO",
       requires: ["ghostwall", "reversal"],
       color: "#c8b8ff",
-      description: "Ao ativar ghostwall, dano AoE devastador.",
+      description: "Ao ativar a proteção de retorno, causa uma explosão de dano ao redor do jogador.",
       apply(player) {
         player.ghostwallNova = true;
       }
     },
     {
       id: "combo-master",
-      name: "COMBO MASTER",
+      name: "MESTRE DO COMBO",
       requires: ["chain", "focus"],
       color: "#ffe066",
-      description: "Janela de chain 3s, máximo 8 stacks.",
+      description: "O combo pode continuar por 3 segundos e acumular até 8 ataques.",
       apply(player) {
         player.chainWindow = 3;
         player.chainMaxStacks = 8;
@@ -503,7 +757,7 @@
       name: "SUPERNOVA",
       requires: ["gravity", "overclock"],
       color: "#b792ff",
-      description: "Pickup radius +50% durante phase, velocidade +30%.",
+      description: "Durante a projeção, aumenta a coleta em 50% e a velocidade em 30%.",
       apply(player) {
         player.phasePickupBonus = (player.phasePickupBonus || 1) * 1.5;
         player.phaseSpeed *= 1.3;
@@ -544,7 +798,7 @@
     },
     {
       id: "tremor-deep",
-      name: "TREMOR DEEP",
+      name: "TREMOR",
       roleLabel: "COLOSSO",
       hue: 28,
       radius: 42,
@@ -554,8 +808,8 @@
         { hpThreshold: 0.15, label: "TREMOR FINAL", speed: 130, aggression: 1, radius: 48, attackDamage: 44, energy: 100, description: "Fase 3 — Terremoto total" }
       ],
       score: 1300,
-      spawnDialogue: "O TREMOR DEEP SACODE O CAMPO",
-      phaseDialogues: ["O TREMOR DEEP ERUPTE!", "O TREMOR FINAL APPROXIMA!"]
+      spawnDialogue: "O TREMOR ENTROU NO CAMPO",
+      phaseDialogues: ["O TREMOR FICOU MAIS RÁPIDO!", "O TREMOR ENTROU NA FASE FINAL!"]
     },
     {
       id: "necrostro",
@@ -566,7 +820,7 @@
       phases: [
         { hpThreshold: 1, label: "DESPERTAR", speed: 110, aggression: 0.8, radius: 32, attackDamage: 14, energy: 100, description: "Fase 1 — Cura aliados próximos" },
         { hpThreshold: 0.55, label: "NECRÓSTRO VIVO", speed: 120, aggression: 0.9, radius: 34, attackDamage: 18, energy: 100, description: "Fase 2 — Cura + escudo" },
-        { hpThreshold: 0.2, label: "DESPERTAR FINAL", speed: 145, aggression: 1, radius: 36, attackDamage: 24, energy: 100, description: "Fase 3 — Cura explosiva + enrage" }
+        { hpThreshold: 0.2, label: "DESPERTAR FINAL", speed: 145, aggression: 1, radius: 36, attackDamage: 24, energy: 100, description: "Fase 3 — Cura explosiva e ataques mais fortes" }
       ],
       score: 1000,
       spawnDialogue: "O NECRÓSTRO REANIMA OS CAÍDOS",
@@ -579,13 +833,13 @@
       hue: 240,
       radius: 36,
       phases: [
-        { hpThreshold: 1, label: "ABISMO", speed: 100, aggression: 0.85, radius: 36, attackDamage: 16, energy: 100, description: "Fase 1 — Puxa jogador e bots" },
+        { hpThreshold: 1, label: "ABISMO", speed: 100, aggression: 0.85, radius: 36, attackDamage: 16, energy: 100, description: "Fase 1 — Puxa todos os personagens" },
         { hpThreshold: 0.5, label: "VÓRTICE DUPLO", speed: 115, aggression: 0.9, radius: 38, attackDamage: 22, energy: 100, description: "Fase 2 — Vórtices orbitais" },
         { hpThreshold: 0.15, label: "ABISMO TOTAL", speed: 140, aggression: 1, radius: 40, attackDamage: 30, energy: 100, description: "Fase 3 — Gravidade reversa" }
       ],
       score: 1200,
       spawnDialogue: "O ABISMO SE ABRE",
-      phaseDialogues: ["A GRAVIDADE SE DEFORMA!", "O VÓRTICE ENGOLA TUDO!"]
+      phaseDialogues: ["O VÓRTICE AUMENTOU A FORÇA!", "O VÓRTICE ENTROU NA FASE FINAL!"]
     },
     {
       id: "cicatriz",
@@ -609,9 +863,9 @@
       hue: 45,
       radius: 26,
       phases: [
-        { hpThreshold: 1, label: "ESPELHO", speed: 135, aggression: 0.85, radius: 26, attackDamage: 13, energy: 100, description: "Fase 1 — Copia 1 mutação" },
-        { hpThreshold: 0.55, label: "MÍMICO DUPLO", speed: 150, aggression: 0.9, radius: 28, attackDamage: 18, energy: 100, description: "Fase 2 — Copia 2 mutações" },
-        { hpThreshold: 0.2, label: "O ESPELHO QUEBRA", speed: 175, aggression: 1, radius: 30, attackDamage: 26, energy: 100, description: "Fase 3 — Copia todas as mutações" }
+        { hpThreshold: 1, label: "ESPELHO", speed: 135, aggression: 0.85, radius: 26, attackDamage: 13, energy: 100, description: "Fase 1 — Copia 1 bônus" },
+        { hpThreshold: 0.55, label: "MÍMICO DUPLO", speed: 150, aggression: 0.9, radius: 28, attackDamage: 18, energy: 100, description: "Fase 2 — Copia 2 bônus" },
+        { hpThreshold: 0.2, label: "O ESPELHO QUEBRA", speed: 175, aggression: 1, radius: 30, attackDamage: 26, energy: 100, description: "Fase 3 — Copia todos os bônus" }
       ],
       score: 950,
       spawnDialogue: "O ESPELHO SE FORMA",
@@ -638,13 +892,13 @@
       hue: 280,
       radius: 30,
       phases: [
-        { hpThreshold: 1, label: "VÁCUO", speed: 125, aggression: 0.85, radius: 30, attackDamage: 15, energy: 100, description: "Fase 1 — Silencia mutações" },
-        { hpThreshold: 0.5, label: "SILENCIADOR ATIVO", speed: 140, aggression: 0.9, radius: 32, attackDamage: 20, energy: 100, description: "Fase 2 — Silêncio frequente + debuff" },
+        { hpThreshold: 1, label: "VÁCUO", speed: 125, aggression: 0.85, radius: 30, attackDamage: 15, energy: 100, description: "Fase 1 — Desativa bônus" },
+        { hpThreshold: 0.5, label: "SILENCIADOR ATIVO", speed: 140, aggression: 0.9, radius: 32, attackDamage: 20, energy: 100, description: "Fase 2 — Desativa bônus com mais frequência" },
         { hpThreshold: 0.15, label: "O VÁCUO ABSOLUTO", speed: 160, aggression: 1, radius: 34, attackDamage: 28, energy: 100, description: "Fase 3 — Silêncio permanente" }
       ],
       score: 1050,
-      spawnDialogue: "O SILENCIADOR AMORTECE O SINAL",
-      phaseDialogues: ["O VÁCUO ENGOLA TUDO!", "O SILÊNCIO É ABSOLUTO!"]
+      spawnDialogue: "O SILENCIADOR ENTROU NA ARENA",
+      phaseDialogues: ["OS BÔNUS SERÃO BLOQUEADOS COM MAIS FREQUÊNCIA!", "OS BÔNUS FORAM BLOQUEADOS!"]
     }
   ];
 
@@ -657,14 +911,14 @@
   let screenShake = 0;
   let flash = 0;
   const PERFORMANCE_PROFILE = Object.freeze({
-    activeMinimumFrameMs: 10,
+    activeMinimumFrameMs: MOBILE_QUALITY ? 12 : 10,
     idleMinimumFrameMs: 28,
-    hudInterval: MOBILE_QUALITY ? 1 / 20 : 1 / 30,
-    slowFrameMs: 21.5,
-    recoveryFrameMs: 17.2,
-    scaleCooldownMs: 4200,
-    slowSamplesBeforeScale: 36,
-    fastSamplesBeforeScale: 300
+    hudInterval: MOBILE_QUALITY ? 1 / 15 : 1 / 30,
+    slowFrameMs: MOBILE_QUALITY ? 18 : 21.5,
+    recoveryFrameMs: MOBILE_QUALITY ? 14 : 17.2,
+    scaleCooldownMs: MOBILE_QUALITY ? 2000 : 4200,
+    slowSamplesBeforeScale: MOBILE_QUALITY ? 8 : 36,
+    fastSamplesBeforeScale: MOBILE_QUALITY ? 80 : 300
   });
 
   const nativeRenderDpr = Math.min(window.devicePixelRatio || 1, MOBILE_QUALITY ? 1.5 : 2);
@@ -672,7 +926,7 @@
     averageFrameMs: 1000 / 60,
     averageWorkMs: 0,
     dprCap: nativeRenderDpr,
-    minimumDpr: Math.min(nativeRenderDpr, MOBILE_QUALITY ? 1 : 1.25),
+    minimumDpr: Math.min(nativeRenderDpr, MOBILE_QUALITY ? 0.6 : 1.25),
     maximumDpr: nativeRenderDpr,
     slowSamples: 0,
     fastSamples: 0,
@@ -684,11 +938,12 @@
   let musicUpdateTimer = 0;
 
   function targetRenderDpr() {
-    return Math.max(renderPerformance.minimumDpr, Math.min(window.devicePixelRatio || 1, renderPerformance.dprCap));
+    const manualScale = clamp(Number(preparation?.settings?.renderScale ?? 100) / 100, 0.55, 1);
+    return Math.max(0.5, Math.min(window.devicePixelRatio || 1, renderPerformance.dprCap) * manualScale);
   }
 
   function updateAdaptiveResolution(frameMs, workMs, now) {
-    if (state !== "playing" || document.hidden) return;
+    if (state !== "playing" || document.hidden || preparation?.settings?.autoQuality === false) return;
     renderPerformance.averageFrameMs = lerp(renderPerformance.averageFrameMs, frameMs, 0.06);
     renderPerformance.averageWorkMs = lerp(renderPerformance.averageWorkMs, workMs, 0.08);
     if (now - renderPerformance.lastScaleChange < PERFORMANCE_PROFILE.scaleCooldownMs) return;
@@ -711,7 +966,7 @@
 
     if (renderPerformance.slowSamples >= PERFORMANCE_PROFILE.slowSamplesBeforeScale
       && renderPerformance.dprCap > renderPerformance.minimumDpr) {
-      renderPerformance.dprCap = Math.max(renderPerformance.minimumDpr, renderPerformance.dprCap - 0.25);
+      renderPerformance.dprCap = Math.max(renderPerformance.minimumDpr, renderPerformance.dprCap - (MOBILE_QUALITY ? 0.35 : 0.25));
       renderPerformance.slowSamples = 0;
       renderPerformance.fastSamples = 0;
       renderPerformance.lastScaleChange = now;
@@ -731,6 +986,9 @@
   let audioContext = null;
   let muted = false;
   let masterVolume = 0.7;
+  let musicVolume = 0.7;
+  let sfxVolume = 0.8;
+  let interfaceVolume = 0.7;
   let musicActive = false;
   let musicLayers = {};
   let screenShakeEnabled = true;
@@ -751,6 +1009,11 @@
   let multiplayerPlayerId = "";
   let multiplayerSocket = null;
   let multiplayerSnapshot = null;
+  let multiplayerHasInitialSnapshot = false;
+  let multiplayerMoteRevision = 0;
+  let networkInputSequence = 0;
+  let networkPingTimer = 0;
+  let networkPingMs = 0;
   let playerUpgrades = { core: 0, charge: 0, calibration: 0, collection: 0, regeneration: 0 };
   let playerResonance = 0;
   let pendingResonance = 0;
@@ -764,18 +1027,18 @@
 
   const CHALLENGES_KEY = "echo.challenges";
   const challengePool = [
-    { id: "kill20", name: "DESTRUIÇÃO MÍNIMA", description: "Elimine 20 inimigos em uma run", goal: 20, stat: "kills", reward: 25 },
-    { id: "kill50", name: "ABATE EM MASSA", description: "Elimine 50 inimigos em uma run", goal: 50, stat: "kills", reward: 60 },
-    { id: "score1500", name: "FRAGMENTOS ABUNDANTES", description: "Alcance 1500 pontos em uma run", goal: 1500, stat: "score", reward: 30 },
-    { id: "score5000", name: "ACÚMULO EXTREMO", description: "Alcance 5000 pontos em uma run", goal: 5000, stat: "score", reward: 80 },
+    { id: "kill20", name: "PRIMEIRAS ELIMINAÇÕES", description: "Elimine 20 inimigos em uma partida", goal: 20, stat: "kills", reward: 25 },
+    { id: "kill50", name: "50 ELIMINAÇÕES", description: "Elimine 50 inimigos em uma partida", goal: 50, stat: "kills", reward: 60 },
+    { id: "score1500", name: "COLETOR", description: "Alcance 1500 pontos em uma partida", goal: 1500, stat: "score", reward: 30 },
+    { id: "score5000", name: "PONTUAÇÃO ALTA", description: "Alcance 5000 pontos em uma partida", goal: 5000, stat: "score", reward: 80 },
     { id: "combo10", name: "FLUXO CONTÍNUO", description: "Atinja combo x10", goal: 10, stat: "maxCombo", reward: 20 },
     { id: "combo20", name: "COMBO INDOMÁVEL", description: "Atinja combo x20", goal: 20, stat: "maxCombo", reward: 50 },
-    { id: "bossKill", name: "CAÇADOR DE COROAS", description: "Derrote o boss", goal: 1, stat: "bossDefeated", reward: 40 },
-    { id: "bossSpeed", name: "EXECUÇÃO RÁPIDA", description: "Derrote o boss em menos de 90s", goal: 1, stat: "bossSpeedKill", reward: 70 },
+    { id: "bossKill", name: "CHEFE DERROTADO", description: "Derrote o chefe da partida", goal: 1, stat: "bossDefeated", reward: 40 },
+    { id: "bossSpeed", name: "VITÓRIA RÁPIDA", description: "Derrote o chefe em menos de 90 segundos", goal: 1, stat: "bossSpeedKill", reward: 70 },
     { id: "time5", name: "SOBREVIVENTE", description: "Sobreviva 5 minutos", goal: 300, stat: "runTime", reward: 30 },
     { id: "time10", name: "RESISTÊNCIA", description: "Sobreviva 10 minutos", goal: 600, stat: "runTime", reward: 65 },
-    { id: "redMote5", name: "RISCO CALCULADO", description: "Colete 5 motes vermelhas em uma run", goal: 5, stat: "redMotes", reward: 20 },
-    { id: "noHitBoss", name: "PERFEIÇÃO", description: "Derrote o boss sem tomar dano na fase final", goal: 1, stat: "noHitBoss", reward: 100 }
+    { id: "redMote5", name: "FRAGMENTOS VERMELHOS", description: "Colete 5 fragmentos vermelhos em uma partida", goal: 5, stat: "redMotes", reward: 20 },
+    { id: "noHitBoss", name: "SEM DANO", description: "Derrote o chefe sem receber dano na fase final", goal: 1, stat: "noHitBoss", reward: 100 }
   ];
   let activeChallenges = [];
   let runStats = { kills: 0, score: 0, maxCombo: 0, bossDefeated: 0, bossSpeedKill: 0, runTime: 0, redMotes: 0, noHitBoss: 0 };
@@ -824,7 +1087,7 @@
         ch.completed = true;
         newCompletion = true;
         pendingResonance += ch.reward;
-        showToast(`DESAFIO CONCLUÍDO: ${ch.name} (+${ch.reward} ressonância)`, 2800);
+        showToast(`DESAFIO CONCLUÍDO: ${ch.name} (+${ch.reward} CRÉDITOS)`, 2800);
         sound(523, 0.3, "triangle", 0.05);
         setTimeout(() => sound(659, 0.25, "sine", 0.04), 100);
         setTimeout(() => sound(784, 0.2, "sine", 0.035), 200);
@@ -858,23 +1121,16 @@
   let runModifiers = [];
 
   const modifierPool = [
-    { id: "glass-cannon", name: "CANHÃO DE CRISTAL", description: "Dano x1.5, mas HP máximo -30%.", symbol: "◇", color: "#ff4fd8", bonusResonance: 15, apply(p) { p.trailDamage *= 1.5; p.maxHealth = Math.floor(p.maxHealth * 0.7); p.health = Math.min(p.health, p.maxHealth); } },
-    { id: "vampiric", name: "INSTINTO VAMPIRO", description: "Cura por kill x2, regen passiva -50%.", symbol: "♦", color: "#ff557a", bonusResonance: 10, apply(p) { p.killRestoreHealBonus = (p.killRestoreHealBonus || 1) * 2; } },
-    { id: "glass-boot", name: "PASSOS DE CRISTAL", description: "Velocidade de phase +30%, energia drena -20%.", symbol: "△", color: "#45e6ff", bonusResonance: 10, apply(p) { p.phaseSpeed *= 1.3; p.phaseDrain *= 0.8; } },
-    { id: "magnetic", name: "CORPO MAGNÉTICO", description: "Raio de coleta x2, motes atraídos.", symbol: "◎", color: "#78ffba", bonusResonance: 12, apply(p) { p.pickupRadius *= 2; } },
-    { id: "fortified", name: "FORTALECIDO", description: "HP +40%, dano -20%.", symbol: "□", color: "#a88cff", bonusResonance: 12, apply(p) { p.maxHealth = Math.floor(p.maxHealth * 1.4); p.health = p.maxHealth; p.trailDamage *= 0.8; } },
-    { id: "overclocked", name: "SOBRECARGA", description: "Cooldown -40%, energia drena +30%.", symbol: "⚡", color: "#ffe066", bonusResonance: 15, apply(p) { p.cooldownScale *= 0.6; p.phaseDrain *= 1.3; } },
-    { id: "risk-reward", name: "RISCO E RECOMPENSA", description: "Score x1.5, HP máximo -20%.", symbol: "⬡", color: "#5ce0d2", bonusResonance: 20, apply(p) { p.scoreMultiplier = 1.5; p.maxHealth = Math.floor(p.maxHealth * 0.8); p.health = Math.min(p.health, p.maxHealth); } },
-    { id: "glass-trail", name: "Rastro DE CRISTAL", description: "Dano do rastro x2, mas rastro dura 40% menos.", symbol: "⟋", color: "#c8b8ff", bonusResonance: 18, apply(p) { p.trailDamage *= 2; p.ribbonLife *= 0.6; p.trailLinger *= 0.6; } },
-    { id: "berserker", name: "BERSERKER", description: "Dano +30% abaixo de 50% HP.", symbol: "☣", color: "#ff8c42", bonusResonance: 12, apply(p) { p.berserkerBonus = 1.3; } }
+    { id: "glass-cannon", name: "ATAQUE ARRISCADO", description: "Causa 50% mais dano, mas reduz a vida máxima em 30%.", symbol: "◇", color: "#ff4fd8", bonusResonance: 15, apply(p) { p.trailDamage *= 1.5; p.maxHealth = Math.floor(p.maxHealth * 0.7); p.health = Math.min(p.health, p.maxHealth); } },
+    { id: "vampiric", name: "CURA POR ELIMINAÇÃO", description: "Dobra a vida recuperada ao eliminar um inimigo.", symbol: "♦", color: "#ff557a", bonusResonance: 10, apply(p) { p.killRestoreHealBonus = (p.killRestoreHealBonus || 1) * 2; } },
+    { id: "glass-boot", name: "PROJEÇÃO EFICIENTE", description: "Move 30% mais rápido na projeção e gasta 20% menos energia.", symbol: "△", color: "#45e6ff", bonusResonance: 10, apply(p) { p.phaseSpeed *= 1.3; p.phaseDrain *= 0.8; } },
+    { id: "magnetic", name: "COLETA AMPLIADA", description: "Dobra a distância usada para atrair e coletar fragmentos.", symbol: "◎", color: "#78ffba", bonusResonance: 12, apply(p) { p.pickupRadius *= 2; } },
+    { id: "fortified", name: "MAIS RESISTÊNCIA", description: "Aumenta a vida máxima em 40%, mas reduz o dano em 20%.", symbol: "□", color: "#a88cff", bonusResonance: 12, apply(p) { p.maxHealth = Math.floor(p.maxHealth * 1.4); p.health = p.maxHealth; p.trailDamage *= 0.8; } },
+    { id: "overclocked", name: "RECARGA RÁPIDA", description: "Reduz o tempo de recarga em 40%, mas aumenta o gasto de energia em 30%.", symbol: "⚡", color: "#ffe066", bonusResonance: 15, apply(p) { p.cooldownScale *= 0.6; p.phaseDrain *= 1.3; } },
+    { id: "risk-reward", name: "MAIS PONTOS", description: "Aumenta os pontos recebidos em 50%, mas reduz a vida máxima em 20%.", symbol: "⬡", color: "#5ce0d2", bonusResonance: 20, apply(p) { p.scoreMultiplier = 1.5; p.maxHealth = Math.floor(p.maxHealth * 0.8); p.health = Math.min(p.health, p.maxHealth); } },
+    { id: "glass-trail", name: "RASTRO FORTE", description: "Dobra o dano do rastro, mas reduz sua duração em 40%.", symbol: "⟋", color: "#c8b8ff", bonusResonance: 18, apply(p) { p.trailDamage *= 2; p.ribbonLife *= 0.6; p.trailLinger *= 0.6; } },
+    { id: "berserker", name: "ÚLTIMO ESFORÇO", description: "Causa 30% mais dano enquanto estiver abaixo de 50% de vida.", symbol: "☣", color: "#ff8c42", bonusResonance: 12, apply(p) { p.berserkerBonus = 1.3; } }
   ];
-
-  let pendingModifierChoices = [];
-
-  function generateModifierChoices() {
-    const shuffled = [...modifierPool].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, 3);
-  }
 
   function applyModifiers() {
     for (const mod of runModifiers) {
@@ -882,81 +1138,881 @@
     }
   }
 
-  function showModifierScreen() {
-    pendingModifierChoices = generateModifierChoices();
-    state = "modifier";
-    ui.start.classList.add("is-hidden");
-    const overlay = document.getElementById("modifier-screen");
-    overlay.classList.remove("is-hidden");
-    const cards = document.getElementById("modifier-cards");
-    cards.replaceChildren();
-    for (const mod of pendingModifierChoices) {
-      const btn = document.createElement("button");
-      btn.className = "modifier-card";
-      btn.type = "button";
-      btn.style.setProperty("--mod-color", mod.color);
-      btn.innerHTML = `
-        <span class="modifier-symbol">${mod.symbol}</span>
-        <h3>${mod.name}</h3>
-        <p>${mod.description}</p>
-        <span class="modifier-bonus">+${mod.bonusResonance} ressonância</span>
-        <b aria-hidden="true">↗</b>
-      `;
-      btn.addEventListener("click", () => selectModifier(mod));
-      cards.append(btn);
+  let classProjectiles = [];
+  let classTraps = [];
+  let classFields = [];
+  let classMinions = [];
+  let classDamageNumbers = [];
+  let selectedClassId = normalizeClassId(localStorage.getItem("echo.class") || "cutter");
+  let classSpecialCooldown = 0;
+  let lastClassLevel = 1;
+
+  function applyEntityClass(entity, classId, preserveHealthRatio = false) {
+    const definition = getClassDefinition(classId);
+    const oldMaxHealth = entity.maxHealth || definition.attributes.health;
+    const healthRatio = preserveHealthRatio ? clamp((entity.health || oldMaxHealth) / oldMaxHealth, 0, 1) : 1;
+    const isPlayerEntity = entity.id === "player";
+    const upgradeHealth = isPlayerEntity ? playerUpgrades.core * 5 : 0;
+    const upgradeEnergy = isPlayerEntity ? playerUpgrades.charge * 10 : 0;
+    entity.classId = definition.id;
+    entity.className = definition.name;
+    entity.classDefinition = definition;
+    entity.roleLabel = entity.boss ? entity.roleLabel : definition.name;
+    entity.maxHealth = definition.attributes.health + upgradeHealth;
+    entity.health = entity.maxHealth * healthRatio;
+    entity.maxEnergy = 100 + upgradeEnergy;
+    entity.energy = clamp(entity.energy ?? entity.maxEnergy, 0, entity.maxEnergy);
+    entity.moveSpeed = definition.attributes.speed;
+    entity.damageTakenScale = definition.attributes.resistance;
+    entity.preferredRange = definition.attributes.preferredRange;
+    entity.classResource = definition.resource.max;
+    entity.classResourceMax = definition.resource.max;
+    entity.classResourceName = definition.resource.name;
+    entity.classExperience = Math.max(0, entity.classExperience || 0);
+    entity.classLevel = getClassLevel(entity.classExperience);
+    entity.classCooldown = 0;
+    entity.classActionTimer = 0;
+    entity.classCharge = 0;
+    entity.classCharging = false;
+    entity.classShieldTimer = 0;
+    entity.classShieldAngle = 0;
+    entity.classCounterCharge = 0;
+    entity.classStealthTimer = 0;
+    entity.classAmbushReady = false;
+    entity.classDashHitIds = new Set();
+    entity.classOrbTimer = 0;
+    return entity;
+  }
+
+  function resetClassCombat() {
+    classProjectiles = [];
+    classTraps = [];
+    classFields = [];
+    classMinions = [];
+    classDamageNumbers = [];
+    classSpecialCooldown = 0;
+    lastClassLevel = 1;
+    applyEntityClass(player, selectedClassId);
+    lastClassLevel = player.classLevel;
+  }
+
+  function targetAngle(entity = player) {
+    const target = entity === player ? worldTarget() : { x: entity.targetX, y: entity.targetY };
+    const directAngle = Math.atan2(target.y - entity.y, target.x - entity.x);
+    if (entity !== player || activeMode === "multiplayer") return directAngle;
+    const assist = clamp(Number(preparation?.settings?.aimAssist || 0) / 100, 0, 1);
+    if (assist <= 0) return directAngle;
+    let best = null;
+    let bestScore = Infinity;
+    for (const bot of bots) {
+      if (bot.dead) continue;
+      const angle = Math.atan2(bot.y - player.y, bot.x - player.x);
+      const delta = Math.abs(Math.atan2(Math.sin(angle - directAngle), Math.cos(angle - directAngle)));
+      const distance = Math.hypot(bot.x - player.x, bot.y - player.y);
+      const score = delta * 680 + distance * 0.12;
+      if (delta < 0.3 && score < bestScore) { best = angle; bestScore = score; }
     }
-    const skipBtn = document.createElement("button");
-    skipBtn.className = "modifier-card modifier-skip";
-    skipBtn.type = "button";
-    skipBtn.innerHTML = `<span class="modifier-symbol">∅</span><h3>SEM MODIFICADOR</h3><p>Jogue sem alterações.</p><b aria-hidden="true">↗</b>`;
-    skipBtn.addEventListener("click", () => selectModifier(null));
-    cards.append(skipBtn);
-    sound(262, 0.4, "sine", 0.03);
-    setTimeout(() => sound(392, 0.35, "sine", 0.025), 80);
+    return best == null ? directAngle : directAngle + Math.atan2(Math.sin(best - directAngle), Math.cos(best - directAngle)) * assist * 0.7;
   }
 
-  function selectModifier(mod) {
-    runModifiers = mod ? [mod] : [];
-    document.getElementById("modifier-screen").classList.add("is-hidden");
-    if (mod) {
-      pendingResonance += mod.bonusResonance;
-      showToast(`MODIFICADOR: ${mod.name} (+${mod.bonusResonance} ressonância)`, 2000);
+  function classDamageTarget(target, amount, owner, sourceX, sourceY, knockback = 150) {
+    if (!target || target.dead) return false;
+    if (target === player) {
+      const before = player.health;
+      damagePlayer(amount, sourceX, sourceY);
+      return player.health < before;
     }
-    startSoloGame();
-  }
-
-  function showSkinScreen() {
-    state = "skin-select";
-    ui.start.classList.add("is-hidden");
-    ui.skin.classList.remove("is-hidden");
-    ui.skinCards.replaceChildren();
-    const selectedId = getSelectedSkin().id;
-    for (const skin of skins) {
-      const locked = !skin.unlocked();
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `skin-card${selectedId === skin.id ? " is-selected" : ""}`;
-      button.disabled = locked;
-      button.style.setProperty("--skin-hue", String(skin.hue < 0 ? 188 : skin.hue));
-      button.innerHTML = `
-        <span class="skin-preview"><i></i><b>${skin.symbol}</b></span>
-        <h3>${skin.name}</h3>
-        <p>${skin.description}</p>
-        <span class="skin-state">${locked ? "BLOQUEADO" : selectedId === skin.id ? "SELECIONADO" : "DISPONÍVEL"}</span>
-      `;
-      if (!locked) button.addEventListener("click", () => selectSkin(skin));
-      ui.skinCards.append(button);
+    const before = target.health;
+    damageBot(target, amount, owner, sourceX, sourceY);
+    if (target.health < before && knockback > 0) {
+      const dx = target.x - sourceX;
+      const dy = target.y - sourceY;
+      const distance = Math.hypot(dx, dy) || 1;
+      target.vx += (dx / distance) * knockback;
+      target.vy += (dy / distance) * knockback;
     }
-    sound(330, 0.25, "sine", 0.03);
+    return target.health < before;
   }
 
-  function selectSkin(skin) {
-    localStorage.setItem(SKIN_KEY, skin.id);
-    ui.skin.classList.add("is-hidden");
-    showToast(`FREQUÊNCIA VISUAL: ${skin.name}`, 1500);
-    showModifierScreen();
+  function spawnDamageNumber(x, y, amount, hue = 188) {
+    if (!preparation?.settings?.showDamage) return;
+    classDamageNumbers.push({ x, y, amount: Math.max(1, Math.round(amount)), hue, life: 0.72, maxLife: 0.72 });
+    if (classDamageNumbers.length > 24) classDamageNumbers.shift();
   }
 
+  function damageInRadius(owner, x, y, radius, damage, knockback = 220) {
+    let hits = 0;
+    const targets = owner === player ? bots : [player];
+    for (const target of targets) {
+      if (!target || target.dead || target.respawnTimer > 0) continue;
+      const distance = Math.hypot(target.x - x, target.y - y);
+      if (distance > radius + target.radius) continue;
+      if (classDamageTarget(target, damage, owner, x, y, knockback)) hits += 1;
+    }
+    spawnWave(x, y, owner?.hue ?? 188, radius, 0.55);
+    return hits;
+  }
+
+  function spawnClassProjectile(owner, angle, options = {}) {
+    const speed = options.speed || 620;
+    const projectile = {
+      id: `${owner.id || "entity"}-${Math.random().toString(36).slice(2, 8)}`,
+      owner,
+      x: owner.x + Math.cos(angle) * (owner.radius + 8),
+      y: owner.y + Math.sin(angle) * (owner.radius + 8),
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      radius: options.radius || 6,
+      damage: options.damage || 16,
+      life: options.life || 1.2,
+      hue: options.hue ?? owner.hue,
+      pierce: options.pierce || 0,
+      slow: options.slow || 0,
+      explosive: options.explosive || 0,
+      homing: options.homing || 0,
+      hitIds: new Set()
+    };
+    classProjectiles.push(projectile);
+    return projectile;
+  }
+
+  function meleeArc(owner, range, damage, arc = Math.PI * 0.72) {
+    const angle = targetAngle(owner);
+    let hits = 0;
+    const targets = owner === player ? bots : [player];
+    for (const target of targets) {
+      if (!target || target.dead) continue;
+      const dx = target.x - owner.x;
+      const dy = target.y - owner.y;
+      const distance = Math.hypot(dx, dy);
+      const delta = Math.abs(Math.atan2(Math.sin(Math.atan2(dy, dx) - angle), Math.cos(Math.atan2(dy, dx) - angle)));
+      if (distance <= range + target.radius && delta <= arc / 2 && classDamageTarget(target, damage, owner, owner.x, owner.y, 190)) hits += 1;
+    }
+    spawnWave(owner.x, owner.y, owner.hue, range, 0.3);
+    return hits;
+  }
+
+  function beginMarksman(owner) {
+    if (owner.classCooldown > 0 || owner.classResource < 8) return;
+    owner.classCharging = true;
+    owner.classCharge = 0;
+  }
+
+  function releaseMarksman(owner) {
+    if (!owner.classCharging) return;
+    owner.classCharging = false;
+    const evolution = getClassEvolution("marksman", owner.classLevel);
+    const charge = clamp(owner.classCharge, 0.12, 1);
+    const angle = targetAngle(owner);
+    const distanceBonus = 1 + Math.min(0.65, Math.hypot((owner.targetX || owner.x) - owner.x, (owner.targetY || owner.y) - owner.y) / 1000);
+    spawnClassProjectile(owner, angle, {
+      speed: (520 + charge * 520) * evolution.range,
+      damage: (14 + charge * 42) * distanceBonus,
+      radius: (4 + charge * 7) * evolution.projectileSize,
+      life: 0.9 + charge * 0.9
+    });
+    owner.classResource = Math.max(0, owner.classResource - (8 + charge * 18));
+    owner.classCooldown = 0.3;
+    sound(410 + charge * 260, 0.18, "triangle", 0.04);
+  }
+
+  function performDash(owner, distanceScale = 1) {
+    if (owner.classCooldown > 0 || owner.classResource < 18) return false;
+    const evolution = getClassEvolution("charger", owner.classLevel);
+    const angle = targetAngle(owner);
+    owner.classActionTimer = 0.3 * distanceScale * evolution.dashRange;
+    owner.classDashAngle = angle;
+    owner.classDashHitIds = new Set();
+    owner.classResource -= 18;
+    owner.classCooldown = 0.75;
+    owner.hitTimer = Math.max(owner.hitTimer, 0.25);
+    spawnWave(owner.x, owner.y, owner.hue, 68, 0.35);
+    return true;
+  }
+
+  function placeTrap(owner, slow = 0.48) {
+    if (owner.classResource < 1) return false;
+    const limit = Math.floor(getClassDefinition("trapper").resource.max * getClassEvolution("trapper", owner.classLevel).traps);
+    const owned = classTraps.filter((trap) => trap.owner === owner);
+    if (owned.length >= limit) owned[0].life = 0;
+    classTraps.push({ owner, x: owner.x, y: owner.y, radius: 72, damage: 22, life: 12, armed: 0.55, slow, hue: owner.hue });
+    owner.classResource -= 1;
+    owner.classCooldown = 0.4;
+    sound(245, 0.16, "square", 0.025);
+    return true;
+  }
+
+  function activateShield(owner) {
+    if (owner.classResource < 18 || owner.classCooldown > 0) return false;
+    owner.classShieldTimer = 2.4 * getClassEvolution("defender", owner.classLevel).duration;
+    owner.classShieldAngle = targetAngle(owner);
+    owner.classResource -= 18;
+    owner.classCooldown = 0.65;
+    spawnWave(owner.x, owner.y, owner.hue, 96, 0.45);
+    return true;
+  }
+
+  function activateStealth(owner) {
+    if (owner.classResource < 24 || owner.classCooldown > 0) return false;
+    const evolution = getClassEvolution("assassin", owner.classLevel);
+    owner.classStealthTimer = 2.6 * evolution.stealth;
+    owner.classAmbushReady = true;
+    owner.classResource -= 24;
+    owner.classCooldown = 1;
+    const angle = targetAngle(owner);
+    const distance = 145 * evolution.teleport;
+    owner.x = clamp(owner.x + Math.cos(angle) * distance, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+    owner.y = clamp(owner.y + Math.sin(angle) * distance, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+    burst(owner.x, owner.y, owner.hue, 12);
+    return true;
+  }
+
+  function createGravityField(owner) {
+    if (owner.classResource < 30 || owner.classCooldown > 0) return false;
+    const evolution = getClassEvolution("controller", owner.classLevel);
+    const target = owner === player ? worldTarget() : { x: owner.targetX, y: owner.targetY };
+    classFields.push({ owner, type: "gravity", x: target.x, y: target.y, radius: 150 * evolution.area, strength: 390 * evolution.pull, damage: 5, life: 3.2 * evolution.duration, hue: owner.hue, tick: 0 });
+    owner.classResource -= 30;
+    owner.classCooldown = 0.8;
+    return true;
+  }
+
+  function summonUnit(owner, command = false) {
+    const evolution = getClassEvolution("summoner", owner.classLevel);
+    const limit = Math.max(2, Math.floor(2 * evolution.units));
+    const owned = classMinions.filter((minion) => minion.owner === owner && minion.life > 0);
+    if (!command && owned.length >= limit) return false;
+    if (!command) {
+      classMinions.push({ owner, x: owner.x, y: owner.y, vx: 0, vy: 0, radius: 6, life: 18, health: 28, attackTimer: 0, frenzy: 0, hue: owner.hue });
+      owner.classResource = Math.min(owner.classResourceMax, owned.length + 1);
+      return true;
+    }
+    for (const minion of owned) minion.frenzy = 3;
+    return owned.length > 0;
+  }
+
+  function launchOrb(owner, all = false) {
+    const count = Math.floor(owner.classResource);
+    if (count < 1) return false;
+    const shots = all ? count : 1;
+    const base = targetAngle(owner);
+    for (let index = 0; index < shots; index += 1) {
+      const angle = all ? base + index * TAU / shots : base;
+      spawnClassProjectile(owner, angle, { speed: 540, damage: 20, radius: 8, life: 1.4, explosive: all ? 42 : 0 });
+    }
+    owner.classResource -= shots;
+    owner.classCooldown = all ? 1 : 0.35;
+    return true;
+  }
+
+  function fireLoader(owner) {
+    if (owner.classResource < 1 || owner.classCooldown > 0) return false;
+    const violet = (owner.violetAmmo || 0) > 0;
+    if (violet) owner.violetAmmo -= 1;
+    else owner.blueAmmo = Math.max(0, (owner.blueAmmo || 0) - 1);
+    owner.classResource = Math.max(0, (owner.blueAmmo || 0) + (owner.violetAmmo || 0));
+    spawnClassProjectile(owner, targetAngle(owner), { speed: 650, damage: violet ? 31 : 18, radius: violet ? 8 : 5, life: 1.3, explosive: violet ? 68 : 0 });
+    owner.lastAmmoType = violet ? "violet" : "blue";
+    owner.classCooldown = 0.24;
+    return true;
+  }
+
+  function reverseCutterPath(owner) {
+    const points = owner.lastCutterPath;
+    if (!points || points.length < 2 || owner.classResource < 28) return false;
+    const reverse = [...points].reverse().map((point) => ({ ...point }));
+    const hitIds = damageAlongPath(reverse, owner.trailDamage * 0.72, owner);
+    ribbons.push({ points: reverse, hue: (owner.hue + 42) % 360, life: 0.48, maxLife: 0.48, width: 9, hitIds });
+    owner.classResource -= 28;
+    return true;
+  }
+
+  const classControllerRegistry = Object.freeze({
+    cutter: {
+      primaryStart: () => beginCutterPhase(), primaryEnd: (cancelled) => endCutterPhase(cancelled),
+      special: () => reverseCutterPath(player)
+    },
+    marksman: {
+      primaryStart: () => beginMarksman(player), primaryEnd: (cancelled) => cancelled ? (player.classCharging = false) : releaseMarksman(player),
+      special: () => {
+        if (player.classResource < 32) return false;
+        spawnClassProjectile(player, targetAngle(), { speed: 980, damage: 38, radius: 7, life: 1.7, pierce: 5 });
+        player.classResource -= 32;
+        return true;
+      }
+    },
+    charger: {
+      primaryStart: () => performDash(player), primaryEnd: () => {},
+      special: () => player.classResource >= 34 && (player.classResource -= 34, damageInRadius(player, player.x, player.y, 150, 30), true)
+    },
+    trapper: {
+      primaryStart: () => player.classCooldown <= 0 && (spawnClassProjectile(player, targetAngle(), { speed: 560, damage: 13, radius: 5, life: 1 }), player.classCooldown = 0.3),
+      primaryEnd: () => {}, special: () => placeTrap(player)
+    },
+    defender: {
+      primaryStart: () => player.classCooldown <= 0 && (meleeArc(player, 108, 16 + player.classCounterCharge), player.classCounterCharge = 0, player.classCooldown = 0.48),
+      primaryEnd: () => {}, special: () => activateShield(player)
+    },
+    assassin: {
+      primaryStart: () => {
+        if (player.classCooldown > 0) return;
+        const multiplier = player.classAmbushReady ? 2.15 : 1;
+        meleeArc(player, 92, 24 * multiplier, Math.PI * 0.55);
+        player.classAmbushReady = false;
+        player.classStealthTimer = 0;
+        player.classCooldown = 0.32;
+      },
+      primaryEnd: () => {}, special: () => activateStealth(player)
+    },
+    controller: {
+      primaryStart: () => player.classCooldown <= 0 && (meleeArc(player, 145, 12, TAU), player.classCooldown = 0.5),
+      primaryEnd: () => {}, special: () => createGravityField(player)
+    },
+    summoner: {
+      primaryStart: () => player.classCooldown <= 0 && (summonUnit(player), player.classCooldown = 0.7),
+      primaryEnd: () => {}, special: () => summonUnit(player, true)
+    },
+    orbiter: {
+      primaryStart: () => launchOrb(player), primaryEnd: () => {}, special: () => launchOrb(player, true)
+    },
+    loader: {
+      primaryStart: () => fireLoader(player), primaryEnd: () => {},
+      special: () => {
+        const ammo = player.classResource;
+        if (ammo < 2) return false;
+        player.blueAmmo = 0; player.violetAmmo = 0; player.classResource = 0;
+        damageInRadius(player, player.x, player.y, 105 + ammo * 7, 12 + ammo * 4);
+        return true;
+      }
+    }
+  });
+
+  function beginClassPrimary() {
+    if (state !== "playing") return;
+    classControllerRegistry[player.classId]?.primaryStart?.();
+  }
+
+  function endClassPrimary(cancelled = false) {
+    classControllerRegistry[player.classId]?.primaryEnd?.(cancelled);
+  }
+
+  function useClassSpecial() {
+    if (state !== "playing" || classSpecialCooldown > 0) return;
+    if (activeMode === "multiplayer") {
+      if (multiplayerSocket?.readyState === WebSocket.OPEN) multiplayerSocket.send(JSON.stringify({ type: "class_special" }));
+      classSpecialCooldown = 0.35;
+      return;
+    }
+    const used = classControllerRegistry[player.classId]?.special?.();
+    if (used !== false) {
+      classSpecialCooldown = 1.1 * player.cooldownScale;
+      sound(player.classDefinition.sound, 0.22, "triangle", 0.04);
+      if (preparation.settings.vibration && navigator.vibrate) navigator.vibrate(22);
+      updateClassHud();
+    }
+  }
+
+  function grantClassExperience(amount) {
+    if (!player || activeMode === "multiplayer") return;
+    player.classExperience += Math.max(0, amount || 0);
+  }
+
+  function updateClassProgression() {
+    const nextLevel = getClassLevel(player.classExperience + player.score * 0.35);
+    if (nextLevel === player.classLevel) return;
+    player.classLevel = nextLevel;
+    const definition = player.classDefinition;
+    const evolution = getClassEvolution(player.classId, nextLevel);
+    player.radius = 18 * (1 + (nextLevel - 1) * 0.025);
+    player.moveSpeed = definition.attributes.speed * (1 + Math.min(0.12, (nextLevel - 1) * 0.01));
+    if (player.classId === "cutter") {
+      player.ribbonWidthBonus = evolution.trailWidth;
+      player.trailDamage = 34 * evolution.damage;
+      player.phaseDrain = 29 / evolution.resourceEfficiency;
+    }
+    if (nextLevel > lastClassLevel) {
+      showToast(`${definition.name} // NÍVEL ${nextLevel}`, 1600);
+      spawnWave(player.x, player.y, player.hue, 120, 0.7);
+      sound(definition.sound * 1.25, 0.3, "triangle", 0.035);
+    }
+    lastClassLevel = nextLevel;
+  }
+
+  function updatePlayerClass(dt) {
+    classSpecialCooldown = Math.max(0, classSpecialCooldown - dt);
+    player.classCooldown = Math.max(0, (player.classCooldown || 0) - dt);
+    player.classShieldTimer = Math.max(0, (player.classShieldTimer || 0) - dt);
+    player.classStealthTimer = Math.max(0, (player.classStealthTimer || 0) - dt);
+    if (player.classStealthTimer > 0) player.hitTimer = Math.max(player.hitTimer, 0.08);
+    if (player.classCharging) {
+      const evolution = getClassEvolution("marksman", player.classLevel);
+      player.classCharge = Math.min(1, player.classCharge + dt * 0.72 * evolution.chargeSpeed);
+      player.classResource = Math.max(0, player.classResource - dt * 2);
+      if (player.classResource <= 0) releaseMarksman(player);
+    }
+    if (player.classActionTimer > 0) {
+      player.classActionTimer -= dt;
+      const speed = 840;
+      player.vx = Math.cos(player.classDashAngle) * speed;
+      player.vy = Math.sin(player.classDashAngle) * speed;
+      player.x = clamp(player.x + player.vx * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+      player.y = clamp(player.y + player.vy * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+      for (const bot of bots) {
+        if (bot.dead || player.classDashHitIds.has(bot.id)) continue;
+        if (Math.hypot(bot.x - player.x, bot.y - player.y) < bot.radius + player.radius + 9) {
+          player.classDashHitIds.add(bot.id);
+          classDamageTarget(bot, 27, player, player.x, player.y, 360);
+        }
+      }
+      if (player.classActionTimer <= 0) damageInRadius(player, player.x, player.y, 88, 12);
+    }
+    const regen = { cutter: 15, marksman: 14, charger: 18, trapper: 0.16, defender: 16, assassin: 18, controller: 15, summoner: 0.08, orbiter: 0.32, loader: 0 }[player.classId] || 12;
+    if (!player.classCharging && player.classId !== "loader") player.classResource = Math.min(player.classResourceMax, player.classResource + regen * dt);
+    if (player.classId === "summoner") player.classResource = classMinions.filter((minion) => minion.owner === player && minion.life > 0).length;
+    updateClassProgression();
+  }
+  function closestClassTarget(owner, x, y, maximum = Infinity) {
+    const targets = owner === player ? bots.filter((bot) => !bot.dead) : [player];
+    let closest = null;
+    let closestDistance = maximum;
+    for (const target of targets) {
+      if (!target || target.dead || target.respawnTimer > 0) continue;
+      const distance = Math.hypot(target.x - x, target.y - y);
+      if (distance < closestDistance) {
+        closest = target;
+        closestDistance = distance;
+      }
+    }
+    return closest;
+  }
+
+  function updateClassProjectiles(dt) {
+    for (let index = classProjectiles.length - 1; index >= 0; index -= 1) {
+      const projectile = classProjectiles[index];
+      projectile.life -= dt;
+      if (projectile.life <= 0) {
+        classProjectiles.splice(index, 1);
+        continue;
+      }
+      if (projectile.homing > 0) {
+        const target = closestClassTarget(projectile.owner, projectile.x, projectile.y, 520);
+        if (target) {
+          const speed = Math.hypot(projectile.vx, projectile.vy);
+          const desired = Math.atan2(target.y - projectile.y, target.x - projectile.x);
+          const current = Math.atan2(projectile.vy, projectile.vx);
+          const delta = Math.atan2(Math.sin(desired - current), Math.cos(desired - current));
+          const angle = current + clamp(delta, -projectile.homing * dt, projectile.homing * dt);
+          projectile.vx = Math.cos(angle) * speed;
+          projectile.vy = Math.sin(angle) * speed;
+        }
+      }
+      projectile.x += projectile.vx * dt;
+      projectile.y += projectile.vy * dt;
+      if (projectile.x < WORLD_MARGIN || projectile.x > WORLD_SIZE - WORLD_MARGIN || projectile.y < WORLD_MARGIN || projectile.y > WORLD_SIZE - WORLD_MARGIN) {
+        if (projectile.explosive) damageInRadius(projectile.owner, projectile.x, projectile.y, projectile.explosive, projectile.damage * 0.55);
+        classProjectiles.splice(index, 1);
+        continue;
+      }
+      const targets = projectile.owner === player ? bots : [player];
+      for (const target of targets) {
+        if (!target || target.dead || projectile.hitIds.has(target.id)) continue;
+        if (Math.hypot(target.x - projectile.x, target.y - projectile.y) > target.radius + projectile.radius) continue;
+        projectile.hitIds.add(target.id);
+        classDamageTarget(target, projectile.damage, projectile.owner, projectile.x, projectile.y, 90);
+        if (projectile.slow > 0 && target !== player) target.classSlowTimer = Math.max(target.classSlowTimer || 0, projectile.slow);
+        if (projectile.explosive) damageInRadius(projectile.owner, projectile.x, projectile.y, projectile.explosive, projectile.damage * 0.55);
+        burst(projectile.x, projectile.y, projectile.hue, 6);
+        if (projectile.pierce > 0) projectile.pierce -= 1;
+        else {
+          projectile.life = 0;
+          break;
+        }
+      }
+      if (projectile.life <= 0) classProjectiles.splice(index, 1);
+    }
+  }
+
+  function updateClassTraps(dt) {
+    for (let index = classTraps.length - 1; index >= 0; index -= 1) {
+      const trap = classTraps[index];
+      trap.life -= dt;
+      trap.armed -= dt;
+      if (trap.life <= 0) {
+        if (trap.owner?.classId === "trapper") trap.owner.classResource = Math.min(trap.owner.classResourceMax, trap.owner.classResource + 1);
+        classTraps.splice(index, 1);
+        continue;
+      }
+      if (trap.armed > 0) continue;
+      const target = closestClassTarget(trap.owner, trap.x, trap.y, trap.radius + 28);
+      if (!target) continue;
+      classDamageTarget(target, trap.damage, trap.owner, trap.x, trap.y, 120);
+      if (target !== player) {
+        target.classSlowTimer = 2.8;
+        target.speed *= trap.slow;
+      } else {
+        player.vx *= trap.slow;
+        player.vy *= trap.slow;
+      }
+      spawnWave(trap.x, trap.y, trap.hue, trap.radius, 0.6);
+      trap.life = 0;
+    }
+  }
+
+  function updateClassFields(dt) {
+    for (let index = classFields.length - 1; index >= 0; index -= 1) {
+      const field = classFields[index];
+      field.life -= dt;
+      field.tick -= dt;
+      if (field.life <= 0) {
+        classFields.splice(index, 1);
+        continue;
+      }
+      const targets = field.owner === player ? bots : [player];
+      for (const target of targets) {
+        if (!target || target.dead) continue;
+        const dx = field.x - target.x;
+        const dy = field.y - target.y;
+        const distance = Math.hypot(dx, dy) || 1;
+        if (distance > field.radius + target.radius) continue;
+        if (field.type === "gravity") {
+          const pull = field.strength * (1 - Math.min(1, distance / field.radius)) * dt;
+          target.vx += (dx / distance) * pull;
+          target.vy += (dy / distance) * pull;
+        }
+        if (field.type === "slow" && target !== player) {
+          target.classSlowTimer = Math.max(target.classSlowTimer || 0, 0.22);
+          target.vx *= 0.62;
+          target.vy *= 0.62;
+        }
+        if (field.tick <= 0 && field.damage > 0) classDamageTarget(target, field.damage, field.owner, field.x, field.y, 0);
+      }
+      if (field.owner === player && field.type === "gravity") {
+        for (const mote of motes) {
+          const dx = field.x - mote.x;
+          const dy = field.y - mote.y;
+          const distance = Math.hypot(dx, dy) || 1;
+          if (distance < field.radius * 1.35) {
+            mote.x += (dx / distance) * field.strength * 0.55 * dt;
+            mote.y += (dy / distance) * field.strength * 0.55 * dt;
+          }
+        }
+      }
+      if (field.tick <= 0) field.tick = 0.42;
+    }
+  }
+
+  function updateClassMinions(dt) {
+    for (let index = classMinions.length - 1; index >= 0; index -= 1) {
+      const minion = classMinions[index];
+      minion.life -= dt;
+      minion.attackTimer -= dt;
+      minion.frenzy = Math.max(0, minion.frenzy - dt);
+      if (minion.life <= 0 || minion.health <= 0 || minion.owner?.dead) {
+        classMinions.splice(index, 1);
+        continue;
+      }
+      const target = closestClassTarget(minion.owner, minion.x, minion.y, 850);
+      if (target) {
+        const speed = 235 * (minion.frenzy > 0 ? 1.55 : 1);
+        const desired = { x: minion.x, y: minion.y, vx: minion.vx, vy: minion.vy };
+        steerVelocity(desired, target.x, target.y, speed, dt, 7);
+        minion.vx = desired.vx;
+        minion.vy = desired.vy;
+        minion.x += minion.vx * dt;
+        minion.y += minion.vy * dt;
+        if (Math.hypot(target.x - minion.x, target.y - minion.y) < target.radius + 16 && minion.attackTimer <= 0) {
+          classDamageTarget(target, 8 * (minion.frenzy > 0 ? 1.65 : 1), minion.owner, minion.x, minion.y, 35);
+          minion.attackTimer = minion.frenzy > 0 ? 0.42 : 0.75;
+        }
+      } else {
+        const angle = runTime * 1.4 + index * 1.7;
+        minion.x = lerp(minion.x, minion.owner.x + Math.cos(angle) * 48, dt * 3);
+        minion.y = lerp(minion.y, minion.owner.y + Math.sin(angle) * 48, dt * 3);
+      }
+    }
+  }
+
+  function updateClassCombat(dt) {
+    updatePlayerClass(dt);
+    updateClassProjectiles(dt);
+    updateClassTraps(dt);
+    updateClassFields(dt);
+    updateClassMinions(dt);
+    for (let index = classDamageNumbers.length - 1; index >= 0; index -= 1) {
+      const number = classDamageNumbers[index];
+      number.life -= dt;
+      number.y -= 24 * dt;
+      if (number.life <= 0) classDamageNumbers.splice(index, 1);
+    }
+    for (const bot of bots) {
+      if ((bot.classSlowTimer || 0) > 0) {
+        bot.classSlowTimer -= dt;
+        if (bot.classSlowTimer <= 0 && bot.classDefinition) bot.speed = bot.classDefinition.attributes.speed;
+      }
+    }
+  }
+
+  function drawClassCombat(time) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (const field of classFields) {
+      if (!visible(field.x, field.y, field.radius)) continue;
+      const point = toScreen(field.x, field.y);
+      const radius = field.radius * camera.zoom;
+      const pulse = 0.85 + Math.sin(time * 0.006) * 0.08;
+      const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, radius);
+      gradient.addColorStop(0, hsl(field.hue, 90, 60, 0.14));
+      gradient.addColorStop(0.72, hsl(field.hue, 88, 48, 0.07));
+      gradient.addColorStop(1, "transparent");
+      ctx.fillStyle = gradient;
+      ctx.beginPath(); ctx.arc(point.x, point.y, radius * pulse, 0, TAU); ctx.fill();
+      ctx.strokeStyle = hsl(field.hue, 94, 70, 0.42);
+      ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(point.x, point.y, radius * pulse, 0, TAU); ctx.stroke();
+    }
+    for (const trap of classTraps) {
+      if (!visible(trap.x, trap.y, trap.radius)) continue;
+      const point = toScreen(trap.x, trap.y);
+      const radius = trap.radius * camera.zoom;
+      ctx.strokeStyle = hsl(trap.hue, 90, 68, trap.armed > 0 ? 0.22 : 0.62);
+      ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.arc(point.x, point.y, radius, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+      for (let marker = 0; marker < 3; marker += 1) {
+        const angle = time * 0.001 + marker * TAU / 3;
+        ctx.fillStyle = hsl(trap.hue, 95, 72, 0.8);
+        ctx.beginPath(); ctx.arc(point.x + Math.cos(angle) * radius * 0.72, point.y + Math.sin(angle) * radius * 0.72, 2.5, 0, TAU); ctx.fill();
+      }
+    }
+    for (const projectile of classProjectiles) {
+      if (!visible(projectile.x, projectile.y, 30)) continue;
+      const point = toScreen(projectile.x, projectile.y);
+      ctx.shadowColor = hsl(projectile.hue, 96, 64, 0.9);
+      ctx.shadowBlur = MOBILE_QUALITY ? 0 : 14;
+      ctx.fillStyle = hsl(projectile.hue, 96, 72, 0.92);
+      ctx.beginPath(); ctx.arc(point.x, point.y, projectile.radius * camera.zoom, 0, TAU); ctx.fill();
+      ctx.strokeStyle = hsl(projectile.hue, 90, 60, 0.35);
+      ctx.beginPath(); ctx.moveTo(point.x, point.y); ctx.lineTo(point.x - projectile.vx * 0.028 * camera.zoom, point.y - projectile.vy * 0.028 * camera.zoom); ctx.stroke();
+    }
+    for (const minion of classMinions) {
+      if (!visible(minion.x, minion.y, 30)) continue;
+      const point = toScreen(minion.x, minion.y);
+      ctx.fillStyle = hsl(minion.hue, 92, 70, 0.9);
+      ctx.beginPath(); ctx.arc(point.x, point.y, minion.radius * camera.zoom, 0, TAU); ctx.fill();
+      ctx.strokeStyle = hsl(minion.hue, 94, 64, 0.45);
+      ctx.beginPath(); ctx.arc(point.x, point.y, (minion.radius + 5 + Math.sin(time * 0.008) * 2) * camera.zoom, 0, TAU); ctx.stroke();
+    }
+    ctx.restore();
+
+    if (preparation.settings.showDamage) {
+      ctx.save(); ctx.textAlign = "center"; ctx.font = "700 11px Inter, sans-serif";
+      for (const number of classDamageNumbers) {
+        const point = toScreen(number.x, number.y);
+        ctx.fillStyle = hsl(number.hue, 95, 72, clamp(number.life / number.maxLife, 0, 1));
+        ctx.fillText(`-${number.amount}`, point.x, point.y);
+      }
+      ctx.restore();
+    }
+
+    if (player.classCharging) {
+      const origin = toScreen(player.x, player.y);
+      ctx.save();
+      ctx.strokeStyle = hsl(player.hue, 95, 72, 0.28 + player.classCharge * 0.5);
+      ctx.lineWidth = 1 + player.classCharge * 2;
+      ctx.setLineDash([8, 7]);
+      ctx.beginPath(); ctx.moveTo(origin.x, origin.y); ctx.lineTo(pointer.x, pointer.y); ctx.stroke();
+      ctx.setLineDash([]); ctx.restore();
+    }
+
+    if (player.classShieldTimer > 0) {
+      const point = toScreen(player.x, player.y);
+      ctx.save(); ctx.translate(point.x, point.y); ctx.rotate(player.classShieldAngle);
+      ctx.strokeStyle = hsl(player.hue, 96, 76, 0.78); ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.arc(0, 0, (player.radius + 14) * camera.zoom, -0.85, 0.85); ctx.stroke(); ctx.restore();
+    }
+
+    if (player.classId === "orbiter") {
+      const count = Math.floor(player.classResource);
+      const point = toScreen(player.x, player.y);
+      ctx.save();
+      for (let index = 0; index < count; index += 1) {
+        const angle = time * 0.0024 + index * TAU / Math.max(1, count);
+        const radius = (player.radius + 24) * camera.zoom;
+        ctx.fillStyle = hsl(player.hue + index * 12, 94, 72, 0.88);
+        ctx.beginPath(); ctx.arc(point.x + Math.cos(angle) * radius, point.y + Math.sin(angle) * radius, 5 * camera.zoom, 0, TAU); ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+  function initializeBotClass(bot, classId) {
+    if (!bot || bot.boss) return bot;
+    applyEntityClass(bot, classId || "cutter");
+    bot.baseSpeed = bot.classDefinition.attributes.speed;
+    bot.speed = bot.baseSpeed;
+    bot.classThinkTimer = random(0.2, 0.7);
+    bot.roleLabel = `${bot.classDefinition.name} · LV ${bot.classLevel}`;
+    bot.classResource = bot.classResourceMax;
+    if (bot.classId === "loader") {
+      bot.blueAmmo = 8;
+      bot.violetAmmo = 2;
+      bot.classResource = 10;
+    }
+    return bot;
+  }
+
+  function nearestBotClassTarget(bot) {
+    let target = player;
+    let distance = Math.hypot(player.x - bot.x, player.y - bot.y);
+    for (const candidate of bots) {
+      if (candidate === bot || candidate.dead || candidate.faction === bot.faction || candidate.boss) continue;
+      const candidateDistance = Math.hypot(candidate.x - bot.x, candidate.y - bot.y);
+      if (candidateDistance < distance) {
+        target = candidate;
+        distance = candidateDistance;
+      }
+    }
+    return { target, distance };
+  }
+
+  function botAlignment(bot, target) {
+    const velocityLength = Math.hypot(bot.vx, bot.vy);
+    if (velocityLength < 5) return 0.5;
+    const targetLength = Math.hypot(target.x - bot.x, target.y - bot.y) || 1;
+    return clamp((bot.vx * (target.x - bot.x) + bot.vy * (target.y - bot.y)) / (velocityLength * targetLength), -1, 1) * 0.5 + 0.5;
+  }
+
+  function performBotClassAction(bot, target, decision) {
+    if (bot.classCooldown > 0 || bot.cooldown > 0 || bot.respawnTimer > 0) return false;
+    bot.targetX = target.x;
+    bot.targetY = target.y;
+    if (bot.classId === "cutter") {
+      if (!bot.phasing && bot.energy > 44) beginBotPhase(bot, target);
+      return true;
+    }
+    if (bot.classId === "marksman") {
+      if (decision.action === "charge") {
+        spawnClassProjectile(bot, Math.atan2(target.y - bot.y, target.x - bot.x), { speed: 760, damage: 18, radius: 6, life: 1.5, pierce: bot.classLevel >= 7 ? 1 : 0 });
+        bot.classCooldown = 1.8;
+      }
+      return true;
+    }
+    if (bot.classId === "charger") {
+      if (decision.action === "charge") performDash(bot, 0.8);
+      return true;
+    }
+    if (bot.classId === "trapper") {
+      if (decision.action === "trap") placeTrap(bot, 0.55);
+      else spawnClassProjectile(bot, Math.atan2(target.y - bot.y, target.x - bot.x), { speed: 470, damage: 9, radius: 5, life: 1.15, slow: 0.4 });
+      bot.classCooldown = 1.25;
+      return true;
+    }
+    if (bot.classId === "defender") {
+      if (decision.action === "block") activateShield(bot);
+      else meleeArc(bot, 105, 13 + bot.classCounterCharge);
+      bot.classCooldown = 1.1;
+      return true;
+    }
+    if (bot.classId === "assassin") {
+      if (decision.action === "ambush" && bot.classStealthTimer <= 0) activateStealth(bot);
+      else if (Math.hypot(target.x - bot.x, target.y - bot.y) < 125) {
+        meleeArc(bot, 100, bot.classAmbushReady ? 28 : 15, Math.PI * 0.65);
+        bot.classAmbushReady = false;
+        bot.classStealthTimer = 0;
+      }
+      bot.classCooldown = 0.85;
+      return true;
+    }
+    if (bot.classId === "controller") {
+      if (decision.action === "pull") createGravityField(bot);
+      else meleeArc(bot, 140, 9, TAU);
+      bot.classCooldown = 1.4;
+      return true;
+    }
+    if (bot.classId === "summoner") {
+      summonUnit(bot, decision.action === "command");
+      bot.classCooldown = 1.6;
+      return true;
+    }
+    if (bot.classId === "orbiter") {
+      if (decision.action === "launch") launchOrb(bot, false);
+      bot.classCooldown = 1.15;
+      return true;
+    }
+    if (bot.classId === "loader") {
+      if (decision.action === "explode") {
+        damageInRadius(bot, bot.x, bot.y, 125, 19);
+        bot.classResource = Math.max(0, bot.classResource - 3);
+      } else if (decision.action === "shoot") fireLoader(bot);
+      bot.classCooldown = 1.1;
+      return true;
+    }
+    return false;
+  }
+
+  function updateBotClassAi(bot, dt) {
+    if (!bot.classId || bot.boss || bot.dead) return false;
+    bot.classCooldown = Math.max(0, (bot.classCooldown || 0) - dt);
+    bot.classShieldTimer = Math.max(0, (bot.classShieldTimer || 0) - dt);
+    bot.classStealthTimer = Math.max(0, (bot.classStealthTimer || 0) - dt);
+    if (bot.classId === "assassin") bot.stealthed = bot.classStealthTimer > 0;
+    bot.classThinkTimer -= dt;
+    bot.classExperience = Math.max(bot.classExperience || 0, bot.score || 0);
+    bot.classLevel = getClassLevel(bot.classExperience);
+    bot.radius = 17 * (1 + (bot.classLevel - 1) * 0.022);
+    bot.roleLabel = `${bot.classDefinition.name} · LV ${bot.classLevel}`;
+    if (bot.classActionTimer > 0) {
+      bot.classActionTimer -= dt;
+      bot.vx = Math.cos(bot.classDashAngle) * 710;
+      bot.vy = Math.sin(bot.classDashAngle) * 710;
+      const { target } = nearestBotClassTarget(bot);
+      if (target && !bot.classDashHitIds.has(target.id) && Math.hypot(target.x - bot.x, target.y - bot.y) < target.radius + bot.radius + 10) {
+        bot.classDashHitIds.add(target.id);
+        classDamageTarget(target, 20, bot, bot.x, bot.y, 280);
+      }
+      if (bot.classActionTimer <= 0) damageInRadius(bot, bot.x, bot.y, 72, 8);
+    }
+    if (bot.classResource < bot.classResourceMax && !["loader", "summoner"].includes(bot.classId)) {
+      const regen = bot.classId === "trapper" || bot.classId === "orbiter" ? 0.22 : 12;
+      bot.classResource = Math.min(bot.classResourceMax, bot.classResource + regen * dt);
+    }
+    if (bot.classId === "loader" && bot.classResource < 3) {
+      bot.blueAmmo = Math.min(8, (bot.blueAmmo || 0) + dt * 0.35);
+      bot.classResource = (bot.blueAmmo || 0) + (bot.violetAmmo || 0);
+    }
+    if (bot.classThinkTimer > 0) return true;
+    bot.classThinkTimer = random(0.28, 0.7);
+    const { target, distance } = nearestBotClassTarget(bot);
+    if (!target) return true;
+    const nearbyEnemies = bots.filter((candidate) => candidate !== bot && !candidate.dead && candidate.faction !== bot.faction && Math.hypot(candidate.x - bot.x, candidate.y - bot.y) < 220).length;
+    const decision = decideClassAi(bot.classId, {
+      distance,
+      danger: clamp((1 - bot.health / bot.maxHealth) + nearbyEnemies * 0.16, 0, 1),
+      alignment: botAlignment(bot, target),
+      contested: nearbyEnemies / 3,
+      traps: classTraps.filter((trap) => trap.owner === bot).length,
+      frontalThreat: distance < 280 ? 0.8 : 0.2,
+      allyDanger: 0.3,
+      targetHealth: target.health / target.maxHealth,
+      isolated: nearbyEnemies <= 1 ? 0.9 : 0.3,
+      clustered: nearbyEnemies / 3,
+      units: classMinions.filter((minion) => minion.owner === bot).length,
+      orbs: bot.classResource,
+      ammo: bot.classResource,
+      surrounded: nearbyEnemies / 3
+    });
+    const dx = bot.x - target.x;
+    const dy = bot.y - target.y;
+    const length = Math.hypot(dx, dy) || 1;
+    if (["retreat", "kite", "preserve", "reposition", "collect", "stalk"].includes(decision.action)) {
+      bot.targetX = clamp(bot.x + (dx / length) * 260, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+      bot.targetY = clamp(bot.y + (dy / length) * 260, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+    } else if (distance > decision.idealRange * 1.12) {
+      bot.targetX = target.x;
+      bot.targetY = target.y;
+    } else if (distance < decision.idealRange * 0.72 && bot.classId !== "charger") {
+      bot.targetX = clamp(bot.x + (dx / length) * 180, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+      bot.targetY = clamp(bot.y + (dy / length) * 180, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+    }
+    performBotClassAction(bot, target, decision);
+    return true;
+  }
   const pointer = {
     x: width * 0.66,
     y: height * 0.5,
@@ -1084,10 +2140,12 @@
   }
 
   function getSelectedSkin() {
-    const savedSkinId = localStorage.getItem(SKIN_KEY) || "spectro";
+    const migrations = { spectro: "azul-neon", neon: "verde-toxico", sangue: "vermelho", fenix: "vermelho", caotico: "arco-iris" };
+    const storedSkinId = localStorage.getItem(SKIN_KEY);
+    const savedSkinId = migrations[storedSkinId] || storedSkinId || "azul-neon";
     const selected = skins.find((skin) => skin.id === savedSkinId && skin.unlocked());
     if (selected) return selected;
-    localStorage.setItem(SKIN_KEY, "spectro");
+    localStorage.setItem(SKIN_KEY, "azul-neon");
     return skins[0];
   }
 
@@ -1139,7 +2197,7 @@
     player.silencedTimer = 0;
     player.damageDebuff = 1;
     ui.mutationSlots.classList.remove("is-silenced");
-    showToast("MUTAÇÕES RESTAURADAS", 1500);
+    showToast("BÔNUS RESTAURADOS", 1500);
     checkMutation();
   }
 
@@ -1147,9 +2205,9 @@
     const maxHealth = 100 + playerUpgrades.core * 5;
     const maxEnergy = 100 + playerUpgrades.charge * 10;
     const activeSkin = getSelectedSkin();
-    return {
+    const entity = {
       id: "player",
-      name: "Viajante",
+      name: "Jogador",
       x: WORLD_SIZE / 2,
       y: WORLD_SIZE / 2,
       vx: 0,
@@ -1222,6 +2280,7 @@
       overloadActive: false,
       overloadTimer: 0
     };
+    return applyEntityClass(entity, selectedClassId);
   }
 
   function createBot(index, options = {}) {
@@ -1231,7 +2290,7 @@
     const faction = Math.floor(Math.random() * 3);
     const factionHueBase = [15, 200, 280];
     const baseSpeed = archetype.speed * random(0.94, 1.06);
-    return {
+    const bot = {
       id: `bot-${index}-${Math.random().toString(36).slice(2, 7)}`,
       name: names[index % names.length],
       archetype: archetype.id,
@@ -1280,6 +2339,7 @@
       baseSpeed,
       ...options
     };
+    return applyDifficultyToBot(initializeBotClass(bot, options.classId || "cutter"));
   }
 
   function createBoss(templateId = null) {
@@ -1337,7 +2397,8 @@
     player = createPlayer();
     player.name = sanitizeName(ui.name.value);
     player.hitTimer = 1.2;
-    bots = Array.from({ length: BOT_COUNT }, (_, index) => createBot(index));
+    const botClasses = createBalancedBotClassComposition({ botCount: BOT_COUNT, playerClass: selectedClassId });
+    bots = Array.from({ length: BOT_COUNT }, (_, index) => createBot(index, { classId: botClasses[index] }));
     motes = Array.from({ length: moteCount }, (_, index) => createMote(index < 90));
     rebuildMoteSpatialIndex();
     particles = [];
@@ -1361,6 +2422,7 @@
     lastRunSaved = false;
     screenShake = 0;
     flash = 0;
+    resetClassCombat();
     mutationPending = false;
     updateMutationSlots();
     initSkills();
@@ -1381,7 +2443,7 @@
     const now = audioContext.currentTime;
     const oscillator = new OscillatorNode(audioContext, { type, frequency });
     const gain = new GainNode(audioContext);
-    gain.gain.setValueAtTime(Math.max(0.0001, volume * masterVolume), now);
+    gain.gain.setValueAtTime(Math.max(0.0001, volume * masterVolume * sfxVolume), now);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
     oscillator.connect(gain).connect(destination || audioContext.destination);
     oscillator.start(now);
@@ -1657,7 +2719,7 @@
     feedback.gain.value = 0.16;
     wet.gain.value = 0.16;
     master.gain.setValueAtTime(0.0001, now);
-    master.gain.exponentialRampToValueAtTime(Math.max(0.0001, masterVolume * 0.55), now + 0.8);
+    master.gain.exponentialRampToValueAtTime(Math.max(0.0001, masterVolume * musicVolume * 0.55), now + 0.8);
 
     input.connect(filter).connect(compressor).connect(master).connect(audioContext.destination);
     echoInput.connect(delay);
@@ -1730,7 +2792,7 @@
       0.92
     );
     const targetTempo = isBoss ? 104 : 86 + Math.min(12, stage * 4);
-    const targetGain = muted ? 0.0001 : Math.max(0.0001, masterVolume * 0.55);
+    const targetGain = muted ? 0.0001 : Math.max(0.0001, masterVolume * musicVolume * 0.55);
     const now = audioContext.currentTime;
 
     musicLayers.intensity = intensity;
@@ -1779,17 +2841,21 @@
   }
 
   function setSelectedMode(mode) {
-    selectedMode = mode === "multiplayer" ? "multiplayer" : "solo";
+    selectedMode = ["solo", "multiplayer", "training"].includes(mode) ? mode : "solo";
     const multiplayer = selectedMode === "multiplayer";
-    ui.soloMode.classList.toggle("is-selected", !multiplayer);
+    const training = selectedMode === "training";
+    ui.soloMode.classList.toggle("is-selected", selectedMode === "solo");
     ui.multiplayerMode.classList.toggle("is-selected", multiplayer);
-    ui.soloMode.setAttribute("aria-pressed", String(!multiplayer));
+    ui.trainingMode?.classList.toggle("is-selected", training);
+    ui.soloMode.setAttribute("aria-pressed", String(selectedMode === "solo"));
     ui.multiplayerMode.setAttribute("aria-pressed", String(multiplayer));
+    ui.trainingMode?.setAttribute("aria-pressed", String(training));
     ui.multiplayerFields.classList.toggle("is-hidden", !multiplayer);
     ui.start.classList.toggle("is-multiplayer", multiplayer);
-    ui.startSubmit.querySelector("span").textContent = multiplayer ? "ENTRAR NA SALA" : "INICIAR RUN SOLO";
+    ui.startSubmit.querySelector("span").textContent = multiplayer ? "ENTRAR NA SALA" : "JOGAR";
     setStartStatus();
     if (multiplayer) refreshRooms();
+    if (typeof savePreparation === "function") savePreparation({ server: false });
   }
 
   async function requestJson(path, options = {}) {
@@ -1805,10 +2871,11 @@
   async function loadProfile() {
     try {
       const profile = await requestJson(`/api/profile?name=${encodeURIComponent(sanitizeName(ui.name.value))}`);
-      ui.profileSummary.innerHTML = `<strong>RECORDE SOLO ${profile.solo.best_score}</strong> · ${profile.solo.runs} RUNS · <strong>${profile.multiplayer.total_kills} RUPTURAS ONLINE</strong> · <strong style="color:#ffd86b">${profile.resonance} ♦</strong> · <strong style="color:#45e6ff">${profile.skillPoints} ◈</strong>`;
+      ui.profileSummary.innerHTML = `<strong>RECORDE SOLO: ${profile.solo.best_score}</strong> · ${profile.solo.runs} PARTIDAS SOLO · <strong>${profile.multiplayer.total_kills} ELIMINAÇÕES ONLINE</strong> · <strong style="color:#ffd86b">${profile.resonance} CRÉDITOS</strong> · <strong style="color:#45e6ff">${profile.skillPoints} PONTOS DE HABILIDADE</strong>`;
       playerSkillPoints = profile.skillPoints || 0;
       playerOwnedMutations = profile.ownedMutations || {};
       playerLoadout = profile.loadout || [null, null, null, null];
+      applyServerPreparation(profile.preferences, profile.classProgress);
     } catch {
       ui.profileSummary.textContent = "Inicie com npm start para ativar banco local e multiplayer.";
     }
@@ -1841,9 +2908,9 @@
   }
 
   const UPGRADE_META = {
-    core: { name: "NÚCLEO", symbol: "♥", description: "+5 vida máxima por nível", color: "#ff4fd8" },
-    charge: { name: "CARGA", symbol: "⚡", description: "+10 energia máxima por nível", color: "#45e6ff" },
-    calibration: { name: "CALIBRAÇÃO", symbol: "◎", description: "-8% cooldown base por nível", color: "#78ffba" },
+    core: { name: "VIDA", symbol: "♥", description: "+5 de vida máxima por nível", color: "#ff4fd8" },
+    charge: { name: "ENERGIA", symbol: "⚡", description: "+10 de energia máxima por nível", color: "#45e6ff" },
+    calibration: { name: "RECARGA", symbol: "◎", description: "Habilidades recarregam 8% mais rápido por nível", color: "#78ffba" },
     collection: { name: "COLETA", symbol: "◉", description: "+5px raio de coleta por nível", color: "#b792ff" },
     regeneration: { name: "REGENERAÇÃO", symbol: "∞", description: "+0.3 HP/s passivo por nível", color: "#ff8cb7" }
   };
@@ -1868,7 +2935,7 @@
         <h3>${meta.name}</h3>
         <p>${meta.description}</p>
         <div class="level-bar">${Array.from({ length: 5 }, (_, i) => `<div class="level-pip${i < level ? " is-filled" : ""}" style="--pip-color:${meta.color}"></div>`).join("")}</div>
-        <span class="cost">${isMaxed ? "MÁXIMO" : `${cost} ♦`}</span>
+        <span class="cost">${isMaxed ? "MÁXIMO" : `${cost} CRÉDITOS`}</span>
       `;
       if (!isMaxed && canAfford) {
         card.addEventListener("click", () => purchaseUpgrade(type));
@@ -1911,7 +2978,7 @@
       } else if (!isMaxed) {
         cost = SKILL_UPGRADE_COSTS[i][level - 1];
         canAfford = playerSkillPoints >= cost;
-        action = `UPGRADE NÍVEL ${["I", "II", "III"][level]}`;
+        action = `MELHORAR PARA O NÍVEL ${["I", "II", "III"][level]}`;
       }
       const card = document.createElement("button");
       card.type = "button";
@@ -1923,7 +2990,7 @@
         <h3>${mutation.name}</h3>
         <p>${isOwned ? mutation.tiers[level - 1]?.desc || mutation.description : mutation.description}</p>
         <div class="level-bar">${Array.from({ length: 3 }, (_, i) => `<div class="level-pip${i < level ? " is-filled" : ""}" style="--pip-color:${mutation.color}"></div>`).join("")}</div>
-        <span class="cost">${isMaxed ? "MÁXIMO" : `${cost} ◈`}</span>
+        <span class="cost">${isMaxed ? "MÁXIMO" : `${cost} PONTOS`}</span>
       `;
       if (!isMaxed && canAfford) {
         card.addEventListener("click", () => purchaseSkillMutation(mutation.id));
@@ -1956,7 +3023,7 @@
         body: JSON.stringify({ name: sanitizeName(ui.name.value), slots: playerLoadout })
       });
       playerLoadout = data.loadout;
-      showToast("LOADOUT SALVA", 1200);
+      showToast("BÔNUS SALVOS", 1200);
     } catch (e) {
       showToast(e.message, 2000);
     }
@@ -1995,12 +3062,12 @@
           slot.innerHTML = `
             <span class="mutation-symbol" aria-hidden="true">${mutation.symbol}</span>
             <strong>${mutation.name}</strong>
-            <small>NÍVEL ${["I", "II", "III"][level - 1]} — ATIVA NO ${MUTATION_THRESHOLDS[i]}</small>
+            <small>NÍVEL ${["I", "II", "III"][level - 1]} — ATIVA AOS ${MUTATION_THRESHOLDS[i]} PONTOS</small>
             <button class="loadout-remove" data-slot="${i}" type="button">✕</button>
           `;
         }
       } else {
-        slot.innerHTML = `<span class="slot-empty">SLOT ${i + 1}</span><small>SCORE ${MUTATION_THRESHOLDS[i]}</small>`;
+        slot.innerHTML = `<span class="slot-empty">SLOT ${i + 1}</span><small>ATIVA AOS ${MUTATION_THRESHOLDS[i]} PONTOS</small>`;
       }
       ui.loadoutSlots.append(slot);
     }
@@ -2044,7 +3111,7 @@
       ui.loadoutAvailable.append(card);
     }
     if (ownedIds.length === 0) {
-      ui.loadoutAvailable.innerHTML = `<p style="color:rgba(205,197,220,0.5);text-align:center;grid-column:1/-1;padding:20px">NENHUMA HABILIDADE DESBLOQUEADA. VISITE A LOJA DE HABILIDADES.</p>`;
+      ui.loadoutAvailable.innerHTML = `<p style="color:rgba(205,197,220,0.5);text-align:center;grid-column:1/-1;padding:20px">NENHUM BÔNUS DESBLOQUEADO. VOLTE E ABRA “DESBLOQUEAR BÔNUS”.</p>`;
     }
   }
 
@@ -2054,7 +3121,7 @@
     try {
       const payload = await requestJson("/api/rooms");
       if (!payload.rooms.length) {
-        ui.roomList.textContent = "Nenhuma sala ativa. Crie a primeira ressonância.";
+        ui.roomList.textContent = "Nenhuma sala ativa. Crie a primeira sala.";
         return;
       }
       for (const room of payload.rooms) {
@@ -2098,7 +3165,7 @@
     const socket = new WebSocket(`${protocol}//${location.host}/ws`);
     multiplayerSocket = socket;
     socket.addEventListener("open", () => {
-      socket.send(JSON.stringify({ type: "join", roomCode: code, name: sanitizeName(ui.name.value) }));
+      socket.send(JSON.stringify({ type: "join", roomCode: code, name: sanitizeName(ui.name.value), classId: selectedClassId, skinId: getSelectedSkin().id, skillIds: selectedSkillIds }));
     });
     socket.addEventListener("message", (event) => {
       const message = JSON.parse(event.data);
@@ -2111,6 +3178,11 @@
         activeMode = "multiplayer";
         multiplayerRoomCode = message.roomCode;
         multiplayerPlayerId = message.playerId;
+        multiplayerHasInitialSnapshot = false;
+        multiplayerMoteRevision = 0;
+        networkInputSequence = 0;
+        networkPingTimer = 0;
+        networkPingMs = 0;
         resetWorld();
         bots = [];
         motes = [];
@@ -2124,6 +3196,10 @@
         initAudio();
       }
       if (message.type === "snapshot") applyMultiplayerSnapshot(message);
+      if (message.type === "pong") {
+        const roundTrip = performance.now() - Number(message.clientTime);
+        if (Number.isFinite(roundTrip) && roundTrip >= 0 && roundTrip < 10_000) networkPingMs = networkPingMs ? lerp(networkPingMs, roundTrip, 0.25) : roundTrip;
+      }
       if (message.type === "system" && state === "playing") showToast(message.message, 1300);
       if (message.type === "match_end") finishMultiplayer(message.standings);
     });
@@ -2137,16 +3213,42 @@
     socket.addEventListener("error", () => setStartStatus("Não foi possível abrir o WebSocket local.", true));
   }
 
-  function mergeNetworkEntity(current, incoming) {
+  function applyNetworkSkin(entity) {
+    const skin = skins.find((entry) => entry.id === entity.skinId);
+    if (!skin) return entity;
+    entity.hue = skin.hue;
+    entity.skinGlow = skin.glowIntensity;
+    entity.skinTrail = skin.trailWidth;
+    return entity;
+  }
+
+  function mergeNetworkEntity(current, incoming, isLocal = false) {
     const entity = current || { ...incoming, x: incoming.x, y: incoming.y };
+    const currentPose = current ? { x: entity.x, y: entity.y, vx: entity.vx, vy: entity.vy } : null;
     entity.networkX = incoming.x;
     entity.networkY = incoming.y;
     entity.networkVx = incoming.vx;
     entity.networkVy = incoming.vy;
-    Object.assign(entity, incoming, { x: entity.x, y: entity.y, vx: entity.vx || incoming.vx, vy: entity.vy || incoming.vy });
+    Object.assign(entity, incoming);
+    if (currentPose && isLocal) Object.assign(entity, currentPose);
+    else if (currentPose) Object.assign(entity, { x: currentPose.x, y: currentPose.y, vx: currentPose.vx || incoming.vx, vy: currentPose.vy || incoming.vy });
     entity.dead = incoming.respawnTimer > 0;
     entity.hitTimer = 0;
-    return entity;
+    return applyNetworkSkin(entity);
+  }
+
+  function applyMoteSnapshot(snapshot) {
+    if (Array.isArray(snapshot.motes)) {
+      motes = snapshot.motes;
+    } else if (Array.isArray(snapshot.moteChanges) && snapshot.moteChanges.length) {
+      const moteById = new Map(motes.map((mote) => [mote.id, mote]));
+      for (const change of snapshot.moteChanges) {
+        moteById.delete(change.removeId);
+        if (change.add?.id) moteById.set(change.add.id, change.add);
+      }
+      motes = [...moteById.values()];
+    }
+    multiplayerMoteRevision = Number(snapshot.moteRevision) || multiplayerMoteRevision;
   }
 
   function applyMultiplayerSnapshot(snapshot) {
@@ -2154,13 +3256,25 @@
     multiplayerRemaining = snapshot.remaining;
     runTime = snapshot.elapsed;
     const incomingPlayer = snapshot.players.find((entry) => entry.id === multiplayerPlayerId);
-    if (incomingPlayer) player = mergeNetworkEntity(player.id === incomingPlayer.id ? player : null, incomingPlayer);
+    if (incomingPlayer) {
+      player = mergeNetworkEntity(player, incomingPlayer, multiplayerHasInitialSnapshot);
+      if (!multiplayerHasInitialSnapshot) {
+        player.x = incomingPlayer.x;
+        player.y = incomingPlayer.y;
+        player.vx = incomingPlayer.vx;
+        player.vy = incomingPlayer.vy;
+        multiplayerHasInitialSnapshot = true;
+      }
+    }
     const existingBots = new Map(bots.map((bot) => [bot.id, bot]));
     bots = snapshot.players
       .filter((entry) => entry.id !== multiplayerPlayerId)
       .map((entry) => mergeNetworkEntity(existingBots.get(entry.id), entry));
-    motes = snapshot.motes;
+    applyMoteSnapshot(snapshot);
     ribbons = snapshot.ribbons.map((ribbon) => ({ ...ribbon, points: ribbon.points.map((point) => ({ ...point })) }));
+    classProjectiles = (snapshot.projectiles || []).map((projectile) => ({ ...projectile, hitIds: new Set() }));
+    classTraps = (snapshot.traps || []).map((trap) => ({ ...trap }));
+    classFields = (snapshot.fields || []).map((field) => ({ ...field }));
     updateLeaderboard();
     updateHud();
   }
@@ -2174,6 +3288,7 @@
     bossDefeatedThisRun = false;
     loadUpgrades().then(() => {
       resetWorld();
+      applySelectedDifficulty();
       applyModifiers();
       captureMutationBaseline(player);
       initAudio();
@@ -2185,7 +3300,7 @@
       ui.gameover.classList.add("is-hidden");
       pointer.x = width * 0.66;
       pointer.y = height * 0.5;
-      showToast("SINAL ESTABILIZADO — SEGURE ESPAÇO PARA PROJETAR", 2600);
+      showToast("PARTIDA INICIADA — SEGURE ESPAÇO PARA ATACAR", 2600);
       sound(146, 0.6, "sine", 0.055);
       setTimeout(() => sound(293, 0.4, "sine", 0.035), 110);
     });
@@ -2203,7 +3318,11 @@
     pendingResonance = Math.floor(player.score / 10) + player.kills * 2 + bossBonus;
     if (runModifiers.length > 0) pendingResonance += runModifiers[0].bonusResonance;
     pendingSkillPoints = Math.floor(player.score / 8) + Math.floor(player.kills * 1.5) + (bossDefeatedThisRun ? 15 : 0);
-    ui.gameoverKicker.innerHTML = `<span></span> ${victory ? "PROTOCOLO CONCLUÍDO" : "SINAL INTERROMPIDO"}`;
+    if (randomClassBonus) {
+      pendingResonance = Math.ceil(pendingResonance * 1.05);
+      pendingSkillPoints = Math.ceil(pendingSkillPoints * 1.05);
+    }
+    ui.gameoverKicker.innerHTML = `<span></span> ${victory ? "VITÓRIA" : "PARTIDA ENCERRADA"}`;
     ui.gameoverKicker.classList.toggle("danger", !victory);
     const modifierLabel = runModifiers.length > 0 ? ` [${runModifiers[0].name}]` : "";
     ui.gameoverTitle.textContent = victory ? "A COROA FOI ROMPIDA." : "VOCÊ DEIXOU UM ECO.";
@@ -2229,7 +3348,7 @@
     const self = standings.find((entry) => entry.id === multiplayerPlayerId) || player;
     ui.gameoverKicker.innerHTML = `<span></span> PARTIDA ENCERRADA // SALA ${multiplayerRoomCode}`;
     ui.gameoverKicker.classList.toggle("danger", rank !== 1);
-    ui.gameoverTitle.textContent = rank === 1 ? "RESSONÂNCIA DOMINANTE." : `${rank}º LUGAR REGISTRADO.`;
+    ui.gameoverTitle.textContent = rank === 1 ? "VOCÊ VENCEU!" : `${rank}º LUGAR.`;
     ui.gameoverCopy.textContent = "O resultado foi persistido no banco local do servidor.";
     ui.finalTimeLabel.textContent = "POSIÇÃO";
     ui.finalScore.textContent = Math.floor(self.score || 0).toString();
@@ -2240,7 +3359,7 @@
   }
 
   function saveRun({ mode, outcome, bossDefeated = false }) {
-    if (lastRunSaved || mode !== "solo") return;
+    if (lastRunSaved || mode !== "solo" || activeMode === "training") return;
     lastRunSaved = true;
     requestJson("/api/runs", {
       method: "POST",
@@ -2251,9 +3370,12 @@
         kills: player.kills,
         durationMs: Math.floor(runTime * 1000),
         outcome,
-        bossDefeated
+        bossDefeated,
+        classId: player.classId,
+        difficulty: selectedDifficulty,
+        rewardMultiplier: randomClassBonus ? 1.05 : 1
       })
-    }).then(() => loadProfile()).catch(() => showToast("RUN NÃO FOI SALVA // INICIE PELO SERVIDOR LOCAL", 2600));
+    }).then(() => loadProfile()).catch(() => showToast("A PARTIDA NÃO FOI SALVA // INICIE PELO SERVIDOR LOCAL", 2600));
   }
 
   function returnToMenu(message = "", isError = false) {
@@ -2269,9 +3391,7 @@
     ui.pause.classList.add("is-hidden");
     ui.gameover.classList.add("is-hidden");
     ui.mutation.classList.add("is-hidden");
-    ui.skin?.classList.add("is-hidden");
     ui.loadoutScreen?.classList.add("is-hidden");
-    document.getElementById("modifier-screen")?.classList.add("is-hidden");
     ui.start.classList.remove("is-hidden");
     document.body.classList.remove("is-playing");
     setStartStatus(message, isError);
@@ -2287,14 +3407,17 @@
   }
 
   function beginPhase() {
-    if (state !== "playing" || mutationPending || player.phasing || player.cooldown > 0 || player.energy < 12) return;
-    if (player.dualPhase && player.dualPhaseUsed >= player.dualPhaseCharges) return;
     if (activeMode === "multiplayer") {
-      if (multiplayerSocket?.readyState === WebSocket.OPEN) multiplayerSocket.send(JSON.stringify({ type: "phase_begin" }));
+      if (multiplayerSocket?.readyState === WebSocket.OPEN) multiplayerSocket.send(JSON.stringify({ type: "primary_begin" }));
       ui.mobilePhase.classList.add("is-active");
-      sound(220, 0.2, "sine", 0.025);
       return;
     }
+    beginClassPrimary();
+  }
+
+  function beginCutterPhase() {
+    if (state !== "playing" || mutationPending || player.phasing || player.cooldown > 0 || player.energy < 12) return;
+    if (player.dualPhase && player.dualPhaseUsed >= player.dualPhaseCharges) return;
     player.phasing = true;
     player.phase = {
       x: player.x,
@@ -2314,9 +3437,13 @@
   function endPhase(cancelled = false) {
     if (activeMode === "multiplayer") {
       ui.mobilePhase.classList.remove("is-active");
-      if (!cancelled && multiplayerSocket?.readyState === WebSocket.OPEN) multiplayerSocket.send(JSON.stringify({ type: "phase_end" }));
+      if (!cancelled && multiplayerSocket?.readyState === WebSocket.OPEN) multiplayerSocket.send(JSON.stringify({ type: "primary_end" }));
       return;
     }
+    endClassPrimary(cancelled);
+  }
+
+  function endCutterPhase(cancelled = false) {
     if (!player.phasing || !player.phase) return;
     const phase = player.phase;
     player.phasing = false;
@@ -2487,7 +3614,7 @@
   }
 
   function damagePlayer(amount, x, y) {
-    if (activeMode !== "solo" || state !== "playing" || player.hitTimer > 0) return;
+    if (!["solo", "training"].includes(activeMode) || state !== "playing" || player.hitTimer > 0) return;
     if (player.barrierActive) {
       player.barrierActive = false;
       player.barrierTimer = 0;
@@ -2499,6 +3626,17 @@
     }
     const multiplier = player.phasing ? player.shellDefense : 1;
     let applied = amount * multiplier;
+    if (player.classId === "defender") {
+      applied *= player.damageTakenScale || 1;
+      if (player.classShieldTimer > 0) {
+        const incoming = Math.atan2(y - player.y, x - player.x);
+        const delta = Math.abs(Math.atan2(Math.sin(incoming - player.classShieldAngle), Math.cos(incoming - player.classShieldAngle)));
+        if (delta < Math.PI * 0.55) {
+          player.classCounterCharge = Math.min(24, (player.classCounterCharge || 0) + applied * 0.45);
+          applied *= 0.22;
+        }
+      }
+    }
 
     if (player.reversal) {
       const reflected = applied * 0.3;
@@ -2539,6 +3677,12 @@
     sound(82, 0.2, "square", 0.055);
 
     if (player.health <= 0) {
+      if (activeMode === "training") {
+        player.health = player.maxHealth;
+        player.hitTimer = 1.2;
+        showToast("TREINO // JOGADOR REINICIADO", 1200);
+        return;
+      }
       if (player.ghostWall && !player.ghostWallUsed) {
         player.ghostWallUsed = true;
         player.health = 1;
@@ -2577,6 +3721,7 @@
     let finalDamage = applyBossDefense(bot, amount);
     finalDamage = redirectBulwarkDamage(bot, finalDamage, attacker);
     bot.health -= Math.max(1, finalDamage);
+    spawnDamageNumber(bot.x, bot.y - bot.radius, finalDamage, bot.hue);
     bot.hitTimer = 0.22;
     const dx = bot.x - x;
     const dy = bot.y - y;
@@ -2588,151 +3733,108 @@
     if (bot.health <= 0) killBot(bot, attacker);
   }
 
-  const SKILL_DEFS = [
-    {
-      id: "pulse",
-      name: "PULSO",
-      symbol: "◉",
-      color: "#ff4fd8",
-      description: "Explosão radial ao redor do núcleo. Afasta e fere inimigos.",
-      cooldown: 5,
-      energyCost: 25,
-      execute(player) {
-        const radius = 130;
-        let hit = false;
-        for (const bot of bots) {
-          if (bot.dead) continue;
-          const dx = bot.x - player.x;
-          const dy = bot.y - player.y;
-          const dist = Math.hypot(dx, dy) || 1;
-          if (dist < radius + bot.radius) {
-            const dmg = 18 + player.score * 0.02;
-            bot.health -= dmg;
-            bot.vx += (dx / dist) * 280;
-            bot.vy += (dy / dist) * 280;
-            bot.hitTimer = 0.2;
-            hit = true;
-            if (bot.boss) checkBossPhase(bot);
-            if (bot.health <= 0) killBot(bot, player);
-          }
-        }
-        spawnWave(player.x, player.y, player.hue, radius, 0.6);
-        burst(player.x, player.y, player.hue, 20);
-        sound(82, 0.3, "triangle", 0.06);
-        if (hit) sound(110, 0.2, "sawtooth", 0.04);
-        return true;
-      }
+  const ACTIVE_SKILL_EXECUTORS = Object.freeze({
+    shield(owner) {
+      owner.barrierActive = true;
+      owner.barrierTimer = 3;
+      spawnWave(owner.x, owner.y, 270, 100, 0.7);
+      burst(owner.x, owner.y, 270, 10);
+      sound(330, 0.35, "triangle", 0.04);
+      showToast("ESCUDO ATIVO POR 3 SEGUNDOS", 1500);
+      return true;
     },
-    {
-      id: "blink",
-      name: "BLINK",
-      symbol: "⟿",
-      color: "#45e6ff",
-      description: "Teleporta curta distância na direção do cursor.",
-      cooldown: 4,
-      energyCost: 20,
-      execute(player) {
-        const angle = Math.atan2(pointer.y - height / 2, pointer.x - width / 2);
-        const dist = 160;
-        const nx = clamp(player.x + Math.cos(angle) * dist, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-        const ny = clamp(player.y + Math.sin(angle) * dist, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
-        burst(player.x, player.y, player.hue, 12);
-        player.x = nx;
-        player.y = ny;
-        burst(player.x, player.y, player.hue, 14);
-        spawnWave(player.x, player.y, player.hue, 80, 0.45);
-        sound(520, 0.18, "sine", 0.04);
-        camera.x = player.x;
-        camera.y = player.y;
-        return true;
-      }
+    explosion(owner) {
+      const hits = damageInRadius(owner, owner.x, owner.y, 130, 18, 280);
+      burst(owner.x, owner.y, owner.hue, 20);
+      sound(hits ? 110 : 82, 0.3, "triangle", 0.06);
+      return true;
     },
-    {
-      id: "barrier",
-      name: "BARRERA",
-      symbol: "◇",
-      color: "#a88cff",
-      description: "Escudo que bloqueia o próximo dano recebido por3s.",
-      cooldown: 8,
-      energyCost: 30,
-      execute(player) {
-        player.barrierActive = true;
-        player.barrierTimer = 3;
-        spawnWave(player.x, player.y, 270, 100, 0.7);
-        burst(player.x, player.y, 270, 10);
-        sound(330, 0.35, "triangle", 0.04);
-        showToast("BARRERA ATIVA // 3s", 1500);
-        return true;
-      }
+    heal(owner) {
+      owner.health = Math.min(owner.maxHealth, owner.health + 34);
+      spawnWave(owner.x, owner.y, 145, 92, 0.55);
+      burst(owner.x, owner.y, 145, 10);
+      sound(520, 0.22, "sine", 0.035);
+      return true;
     },
-    {
-      id: "overload",
-      name: "SOBRECARGA",
-      symbol: "ϟ",
-      color: "#ff725e",
-      description: "Próximo ataque causa3x de dano. Dura5s ou até atacar.",
-      cooldown: 10,
-      energyCost: 35,
-      execute(player) {
-        player.overloadActive = true;
-        player.overloadTimer = 5;
-        player.trailDamage *= 3;
-        burst(player.x, player.y, 0, 16);
-        sound(146, 0.4, "sawtooth", 0.05);
-        showToast("SOBRECARGA // PRÓXIMO GOLPE x3", 1800);
-        return true;
+    pull(owner) {
+      const magnetRadius = 350;
+      let pulled = 0;
+      for (const mote of motes) {
+        const dx = mote.x - owner.x;
+        const dy = mote.y - owner.y;
+        const distance = Math.hypot(dx, dy);
+        if (distance >= magnetRadius || distance <= 5) continue;
+        const strength = Math.min(200, distance * 0.72);
+        mote.x -= dx / distance * strength;
+        mote.y -= dy / distance * strength;
+        pulled += 1;
       }
+      if (pulled > 0) rebuildMoteSpatialIndex();
+      spawnWave(owner.x, owner.y, 268, magnetRadius * 0.6, 0.5);
+      burst(owner.x, owner.y, 268, 8);
+      sound(440, 0.2, "sine", 0.035);
+      if (pulled > 0) showToast(`${pulled} FRAGMENTOS PUXADOS`, 1200);
+      return true;
     },
-    {
-      id: "magnet",
-      name: "IMÃ",
-      symbol: "⊛",
-      color: "#b792ff",
-      description: "Atrai todos os fragmentos próximos (raio 350).",
-      cooldown: 6,
-      energyCost: 15,
-      execute(player) {
-        const magnetRadius = 350;
-        let pulled = 0;
-        for (const mote of motes) {
-          const dx = mote.x - player.x;
-          const dy = mote.y - player.y;
-          const dist = Math.hypot(dx, dy);
-          if (dist < magnetRadius && dist > 5) {
-            mote.x -= (dx / dist) * 200;
-            mote.y -= (dy / dist) * 200;
-            pulled += 1;
-          }
-        }
-        if (pulled > 0) rebuildMoteSpatialIndex();
-        spawnWave(player.x, player.y, 268, magnetRadius * 0.6, 0.5);
-        burst(player.x, player.y, 268, 8);
-        sound(440, 0.2, "sine", 0.035);
-        if (pulled > 0) showToast(`${pulled} FRAGMENTOS ATRAÍDOS`, 1200);
-        return true;
-      }
+    teleport(owner) {
+      const angle = targetAngle(owner);
+      const oldX = owner.x; const oldY = owner.y;
+      owner.x = clamp(owner.x + Math.cos(angle) * 160, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+      owner.y = clamp(owner.y + Math.sin(angle) * 160, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+      burst(oldX, oldY, owner.hue, 12);
+      burst(owner.x, owner.y, owner.hue, 14);
+      spawnWave(owner.x, owner.y, owner.hue, 80, 0.45);
+      sound(520, 0.18, "sine", 0.04);
+      camera.x = owner.x; camera.y = owner.y;
+      return true;
     },
-    {
-      id: "phase-walk",
-      name: "CAMINHO ETÉREO",
-      symbol: "⟿",
-      color: "#78ffba",
-      description: "2s de invulnerabilidade + 40% mais velocidade.",
-      cooldown: 12,
-      energyCost: 40,
-      execute(player) {
-        player.hitTimer = Math.max(player.hitTimer, 2);
-        player.phaseSpeed *= 1.4;
-        player.ghostWallUsed = false;
-        spawnWave(player.x, player.y, 150, 110, 0.8);
-        burst(player.x, player.y, 150, 14);
-        sound(660, 0.3, "sine", 0.04);
-        showToast("CAMINHO ETÉREO // 2s INVULNERÁVEL", 1500);
-        setTimeout(() => { player.phaseSpeed /= 1.4; }, 2000);
-        return true;
-      }
+    "triple-shot"(owner) {
+      const angle = targetAngle(owner);
+      [-0.18, 0, 0.18].forEach((offset) => spawnClassProjectile(owner, angle + offset, { damage: 15, speed: 620 }));
+      sound(640, 0.16, "triangle", 0.035);
+      return true;
+    },
+    "slow-trap"(owner) {
+      classFields.push({ owner, type: "slow", x: owner.x, y: owner.y, radius: 115, strength: 0, damage: 3, life: 4, hue: owner.hue, tick: 0 });
+      spawnWave(owner.x, owner.y, owner.hue, 115, 0.6);
+      return true;
+    },
+    "damage-field"(owner) {
+      classFields.push({ owner, type: "damage", x: owner.x, y: owner.y, radius: 125, strength: 0, damage: 5, life: 4, hue: owner.hue, tick: 0 });
+      spawnWave(owner.x, owner.y, owner.hue, 125, 0.6);
+      return true;
+    },
+    invisibility(owner) {
+      owner.hitTimer = Math.max(owner.hitTimer, 2);
+      spawnWave(owner.x, owner.y, 150, 110, 0.8);
+      burst(owner.x, owner.y, 150, 14);
+      sound(660, 0.3, "sine", 0.04);
+      showToast("INVULNERÁVEL POR 2 SEGUNDOS", 1500);
+      return true;
+    },
+    charge(owner) {
+      const angle = targetAngle(owner);
+      const start = { x: owner.x, y: owner.y };
+      const end = {
+        x: clamp(owner.x + Math.cos(angle) * 180, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN),
+        y: clamp(owner.y + Math.sin(angle) * 180, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN)
+      };
+      damageAlongPath([start, end], 24, owner);
+      owner.x = end.x; owner.y = end.y;
+      owner.vx = Math.cos(angle) * 220; owner.vy = Math.sin(angle) * 220;
+      ribbons.push({ points: [start, end], hue: owner.hue, life: 0.35, maxLife: 0.35, width: 8, hitIds: new Set() });
+      burst(owner.x, owner.y, owner.hue, 14);
+      sound(126, 0.22, "sawtooth", 0.04);
+      return true;
     }
-  ];
+  });
+
+  function resolveEquippedSkill(skillId) {
+    const meta = EQUIPPABLE_SKILLS.find((skill) => skill.id === skillId);
+    const execute = ACTIVE_SKILL_EXECUTORS[skillId];
+    if (!meta || !execute) return null;
+    return { ...meta, energyCost: meta.cost, description: meta.effect, execute };
+  }
 
   let activeSkills = [];
   let skillCooldowns = [];
@@ -2741,8 +3843,7 @@
   const skillHudBaseCache = new Map();
 
   function initSkills() {
-    const pool = [...SKILL_DEFS].sort(() => Math.random() - 0.5);
-    activeSkills = pool.slice(0, skillSlots);
+    activeSkills = selectedSkillIds.slice(0, skillSlots).map(resolveEquippedSkill).filter(Boolean);
     skillCooldowns = activeSkills.map(() => 0);
     skillHudLayoutKey = activeSkills.map((skill) => skill?.id || "empty").join(":");
     skillHudBaseCache.clear();
@@ -2750,11 +3851,11 @@
 
   function useSkill(index) {
     if (index < 0 || index >= activeSkills.length) return;
-    if (state !== "playing" || activeMode !== "solo") return;
+    if (state !== "playing" || !["solo", "training"].includes(activeMode)) return;
     const skill = activeSkills[index];
     if (!skill || skillCooldowns[index] > 0) return;
     if (player.energy < skill.energyCost) {
-      showToast("CARGA INSUFICIENTE", 1000);
+      showToast("ENERGIA INSUFICIENTE", 1000);
       return;
     }
     player.energy -= skill.energyCost;
@@ -2763,26 +3864,17 @@
   }
 
   function updateSkills(dt) {
-    for (let i = 0; i < skillCooldowns.length; i++) {
-      if (skillCooldowns[i] > 0) skillCooldowns[i] = Math.max(0, skillCooldowns[i] - dt);
+    for (let index = 0; index < skillCooldowns.length; index += 1) {
+      if (skillCooldowns[index] > 0) skillCooldowns[index] = Math.max(0, skillCooldowns[index] - dt);
     }
     if (player.barrierActive && player.barrierTimer > 0) {
       player.barrierTimer -= dt;
-      if (player.barrierTimer <= 0) {
-        player.barrierActive = false;
-      }
-    }
-    if (player.overloadActive && player.overloadTimer > 0) {
-      player.overloadTimer -= dt;
-      if (player.overloadTimer <= 0) {
-        player.overloadActive = false;
-        player.trailDamage /= 3;
-      }
+      if (player.barrierTimer <= 0) player.barrierActive = false;
     }
   }
 
   function drawSkillHud() {
-    if (state !== "playing" || activeMode !== "solo") return;
+    if (state !== "playing" || !["solo", "training"].includes(activeMode)) return;
     const slotW = 50;
     const gap = 6;
     const panelPad = 10;
@@ -2790,9 +3882,9 @@
     const startX = width / 2 - totalW / 2;
     const y = height - 82;
     let readyMask = 0;
-    for (let i = 0; i < activeSkills.length; i++) {
-      const skill = activeSkills[i];
-      if (skill && skillCooldowns[i] <= 0 && player.energy >= skill.energyCost) readyMask |= 1 << i;
+    for (let index = 0; index < activeSkills.length; index += 1) {
+      const skill = activeSkills[index];
+      if (skill && skillCooldowns[index] <= 0 && player.energy >= skill.energyCost) readyMask |= 1 << index;
     }
 
     const cacheKey = `${skillHudLayoutKey}:${readyMask}`;
@@ -2802,63 +3894,44 @@
     if (!base) {
       const scale = 2;
       base = document.createElement("canvas");
-      base.width = panelWidth * scale;
-      base.height = panelHeight * scale;
+      base.width = panelWidth * scale; base.height = panelHeight * scale;
       const baseContext = base.getContext("2d");
-      baseContext.scale(scale, scale);
-      baseContext.textAlign = "center";
+      baseContext.scale(scale, scale); baseContext.textAlign = "center";
       baseContext.fillStyle = "rgba(11,9,24,0.45)";
-      baseContext.beginPath();
-      baseContext.roundRect(0, 0, panelWidth, panelHeight, 10);
-      baseContext.fill();
-      for (let i = 0; i < activeSkills.length; i++) {
-        const skill = activeSkills[i];
+      baseContext.beginPath(); baseContext.roundRect(0, 0, panelWidth, panelHeight, 10); baseContext.fill();
+      for (let index = 0; index < activeSkills.length; index += 1) {
+        const skill = activeSkills[index];
         if (!skill) continue;
-        const localX = panelPad + i * (slotW + gap);
-        const localY = panelPad;
-        const ready = Boolean(readyMask & (1 << i));
+        const localX = panelPad + index * (slotW + gap); const localY = panelPad;
+        const ready = Boolean(readyMask & (1 << index));
         baseContext.fillStyle = ready ? "rgba(11,9,24,0.85)" : "rgba(11,9,24,0.65)";
-        baseContext.beginPath();
-        baseContext.roundRect(localX, localY, slotW, slotW, 6);
-        baseContext.fill();
-        baseContext.strokeStyle = ready ? skill.color : "rgba(132,105,202,0.25)";
-        baseContext.lineWidth = ready ? 2 : 1;
-        baseContext.beginPath();
-        baseContext.roundRect(localX, localY, slotW, slotW, 6);
-        baseContext.stroke();
-        baseContext.fillStyle = ready ? skill.color : "rgba(205,197,220,0.25)";
-        baseContext.font = "600 17px Inter, sans-serif";
+        baseContext.beginPath(); baseContext.roundRect(localX, localY, slotW, slotW, 6); baseContext.fill();
+        baseContext.strokeStyle = ready ? skill.color : "rgba(132,105,202,0.25)"; baseContext.lineWidth = ready ? 2 : 1;
+        baseContext.beginPath(); baseContext.roundRect(localX, localY, slotW, slotW, 6); baseContext.stroke();
+        baseContext.fillStyle = ready ? skill.color : "rgba(205,197,220,0.25)"; baseContext.font = "600 17px Inter, sans-serif";
         baseContext.fillText(skill.symbol, localX + slotW / 2, localY + slotW / 2 + 1);
-        baseContext.fillStyle = "rgba(255,255,255,0.5)";
-        baseContext.font = "700 9px Inter, sans-serif";
-        baseContext.fillText(`[${i + 1}]`, localX + slotW / 2, localY + slotW - 4);
-        baseContext.fillStyle = ready ? "rgba(255,255,255,0.65)" : "rgba(205,197,220,0.25)";
-        baseContext.font = "500 8px Inter, sans-serif";
+        baseContext.fillStyle = "rgba(255,255,255,0.5)"; baseContext.font = "700 9px Inter, sans-serif";
+        baseContext.fillText(`[${index + 1}]`, localX + slotW / 2, localY + slotW - 4);
+        baseContext.fillStyle = ready ? "rgba(255,255,255,0.65)" : "rgba(205,197,220,0.25)"; baseContext.font = "500 8px Inter, sans-serif";
         baseContext.fillText(skill.name, localX + slotW / 2, localY + slotW + 12);
-        baseContext.fillStyle = ready ? "rgba(255,255,255,0.35)" : "rgba(205,197,220,0.15)";
-        baseContext.font = "400 7px Inter, sans-serif";
-        baseContext.fillText(`${skill.energyCost}⚡`, localX + slotW / 2, localY + slotW + 22);
+        baseContext.fillStyle = ready ? "rgba(255,255,255,0.35)" : "rgba(205,197,220,0.15)"; baseContext.font = "400 7px Inter, sans-serif";
+        baseContext.fillText(`${skill.energyCost} EN`, localX + slotW / 2, localY + slotW + 22);
       }
       skillHudBaseCache.set(cacheKey, base);
     }
 
     ctx.drawImage(base, startX - panelPad, y - panelPad, panelWidth, panelHeight);
-    ctx.save();
-    ctx.textAlign = "center";
-    for (let i = 0; i < activeSkills.length; i++) {
-      const skill = activeSkills[i];
+    ctx.save(); ctx.textAlign = "center";
+    for (let index = 0; index < activeSkills.length; index += 1) {
+      const skill = activeSkills[index];
       if (!skill) continue;
-      const x = startX + i * (slotW + gap);
-      const cd = skillCooldowns[i];
-      if (cd > 0) {
-        const cdRatio = cd / skill.cooldown;
-        ctx.fillStyle = `rgba(255,79,216,${0.2 * cdRatio})`;
-        ctx.beginPath();
-        ctx.roundRect(x, y + slotW * (1 - cdRatio), slotW, slotW * cdRatio, [0, 0, 6, 6]);
-        ctx.fill();
-        ctx.fillStyle = "rgba(255,255,255,0.7)";
-        ctx.font = "600 11px Inter, sans-serif";
-        ctx.fillText(`${cd.toFixed(1)}`, x + slotW / 2, y + slotW / 2 + 12);
+      const x = startX + index * (slotW + gap); const cooldown = skillCooldowns[index];
+      if (cooldown > 0) {
+        const ratio = cooldown / skill.cooldown;
+        ctx.fillStyle = `rgba(255,79,216,${0.2 * ratio})`;
+        ctx.beginPath(); ctx.roundRect(x, y + slotW * (1 - ratio), slotW, slotW * ratio, [0, 0, 6, 6]); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.font = "600 11px Inter, sans-serif";
+        ctx.fillText(`${cooldown.toFixed(1)}`, x + slotW / 2, y + slotW / 2 + 12);
       }
     }
     ctx.restore();
@@ -2961,7 +4034,7 @@
         player.health = clamp(player.health + 9 * killBonus, 0, player.maxHealth);
         player.energy = clamp(player.energy + 24 * killBonus, 0, player.maxEnergy);
       }
-      showToast(`RUPTURA CONFIRMADA // ${bot.name}`, 1200);
+      showToast(`INIMIGO ELIMINADO // ${bot.name}`, 1200);
       sound(420, 0.25, "triangle", 0.055);
       setTimeout(() => sound(630, 0.22, "sine", 0.035), 70);
     } else if (owner && owner !== player && !owner.dead && !bot.prismaIllusion) {
@@ -2990,9 +4063,9 @@
       const bossRewards = {
         "coroa-vazia": { motes: 20, bonusScore: 150, toast: "A COROA VAZIA FOI ROMPIDA // RECOMPENSA COLETADA" },
         "espectro-decisivo": { motes: 22, bonusScore: 180, toast: "O ESPECTRO DECISIVO SE DISSOLVE // RECOMPENSA COLETADA" },
-        "tremor-deep": { motes: 24, bonusScore: 200, toast: "O TREMOR DEEP CESOU // RECOMPENSA COLETADA" },
+        "tremor-deep": { motes: 24, bonusScore: 200, toast: "TREMOR DERROTADO // RECOMPENSA COLETADA" },
         "necrostro": { motes: 18, bonusScore: 160, toast: "O NECRÓSTRO RETORNA AO SILÊNCIO // RECOMPENSA COLETADA" },
-        "vortice": { motes: 20, bonusScore: 190, toast: "O VÓRVICE COLAPSOU // RECOMPENSA COLETADA" },
+        "vortice": { motes: 20, bonusScore: 190, toast: "VÓRTICE DERROTADO // RECOMPENSA COLETADA" },
         "cicatriz": { motes: 18, bonusScore: 170, toast: "A CICATRIZ SAROU // RECOMPENSA COLETADA" },
         "mimico": { motes: 16, bonusScore: 155, toast: "O ESPELHO QUEBROU // RECOMPENSA COLETADA" },
         "prisma": { motes: 22, bonusScore: 210, toast: "OS FRAGMENTOS SE DISPERSARAM // RECOMPENSA COLETADA" },
@@ -3098,7 +4171,7 @@
     bots.push(anchor);
     source.silenceAnchorId = anchor.id;
     silencePlayer(Number.POSITIVE_INFINITY, true);
-    showToast("ROMPA A ÂNCORA PARA RECUPERAR AS MUTAÇÕES", 2800);
+    showToast("DESTRUA A ÂNCORA PARA RECUPERAR SEUS BÔNUS", 2800);
     return anchor;
   }
 
@@ -3514,7 +4587,7 @@
         spawnWave(player.x, player.y, 280, 140, 0.7);
         burst(player.x, player.y, 280, 16);
         sound(82, 0.3, "sawtooth", 0.05);
-        showToast(permanent ? "SILÊNCIO ABSOLUTO — ROMPA A ÂNCORA" : "SILENCIADO — MUTAÇÕES DESATIVADAS", 2200);
+        showToast(permanent ? "BÔNUS BLOQUEADOS — DESTRUA A ÂNCORA" : "BÔNUS DESATIVADOS TEMPORARIAMENTE", 2200);
         bot.cooldown = silenceInterval;
         bot.energy -= 30;
       }
@@ -3544,7 +4617,7 @@
 
   function respawnBot(bot) {
     if (bot.boss) return;
-    const fresh = createBot(Math.floor(Math.random() * names.length));
+    const fresh = createBot(Math.floor(Math.random() * names.length), { classId: bot.classId });
     Object.assign(bot, fresh, { id: bot.id });
   }
 
@@ -3553,7 +4626,8 @@
   }
 
   function spawnParticle(x, y, hue, speed = 100, life = 0.5) {
-    const maxParticles = MOBILE_QUALITY ? 60 : 200;
+    const density = clamp(Number(preparation?.settings?.particles ?? 100) / 100, 0.2, 1);
+    const maxParticles = Math.round((MOBILE_QUALITY ? 35 : 200) * density);
     if (particles.length >= maxParticles) return;
     const angle = Math.random() * TAU;
     particles.push({
@@ -3569,14 +4643,16 @@
   }
 
   function burst(x, y, hue, count) {
-    const limit = MOBILE_QUALITY ? Math.ceil(count * 0.5) : count;
+    const density = clamp(Number(preparation?.settings?.particles ?? 100) / 100, 0.2, 1);
+    const limit = Math.ceil((MOBILE_QUALITY ? count * 0.3 : count) * density);
     for (let i = 0; i < limit; i += 1) spawnParticle(x, y, hue, random(80, 260), random(0.28, 0.8));
   }
 
   function worldTarget() {
+    const sensitivity = clamp(Number(preparation?.settings?.sensitivity ?? 100) / 100, 0.5, 1.5);
     return {
-      x: camera.x + (pointer.x - width / 2) / camera.zoom,
-      y: camera.y + (pointer.y - height / 2) / camera.zoom
+      x: camera.x + (pointer.x - width / 2) * sensitivity / camera.zoom,
+      y: camera.y + (pointer.y - height / 2) * sensitivity / camera.zoom
     };
   }
 
@@ -3592,7 +4668,7 @@
     player.comboTimer -= dt;
     if (player.comboTimer <= 0) player.combo = 0;
 
-    if (player.skinId === "caotico") player.hue = (runTime * 52) % 360;
+    if (player.skinId === "arco-iris") player.hue = (runTime * 52) % 360;
 
     if (player.silenced && !player.silencePermanent) {
       player.silencedTimer -= dt;
@@ -3642,7 +4718,9 @@
       if (player.energy <= 0) endPhase();
     } else {
       const growthSpeed = (player.levelSpeedScale || 1) * (player.rareBoostTimer > 0 ? 1.06 : 1);
-      steerVelocity(player, target.x, target.y, 205 * growthSpeed, dt, 6.1);
+      const classSpeed = player.moveSpeed || 205;
+      const aimingScale = player.classId === "marksman" && player.classCharging ? 0.58 : 1;
+      steerVelocity(player, target.x, target.y, classSpeed * growthSpeed * aimingScale, dt, 6.1);
       player.x = clamp(player.x + player.vx * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
       player.y = clamp(player.y + player.vy * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
       player.energy = Math.min(player.maxEnergy, player.energy + 13 * dt);
@@ -3661,6 +4739,12 @@
       const baseValue = mote.type === "gold" ? 7 : mote.type === "red" ? 10 : mote.type === "violet" ? 3 : 1;
       const spectralMultiplier = spectral ? 0.72 : 1;
       player.score += baseValue * spectralMultiplier * (player.scoreMultiplier || 1);
+      grantClassExperience(baseValue * (spectral ? 0.65 : 1));
+      if (player.classId === "loader") {
+        if (mote.type === "violet") player.violetAmmo = Math.min(4, (player.violetAmmo || 0) + 1);
+        else player.blueAmmo = Math.min(8, (player.blueAmmo || 0) + 1);
+        player.classResource = (player.blueAmmo || 0) + (player.violetAmmo || 0);
+      }
       player.energy = clamp(player.energy + baseValue * (spectral ? 1.5 : 0.8), 0, player.maxEnergy);
       if (mote.type === "violet") {
         player.rareBoostTimer = LEVEL_CONFIG.rareBoostDuration;
@@ -3704,13 +4788,14 @@
       if (nextMutationId) {
         const ownedLevel = (playerOwnedMutations || {})[nextMutationId] || 1;
         const mutation = mutations.find((m) => m.id === nextMutationId);
-        if (mutation) {
+        if (mutation?.compatibleClasses.includes(player.classId)) {
           mutationPending = true;
           window.setTimeout(() => chooseMutation(mutation, ownedLevel), 180);
           return;
         }
       }
-      player.nextMutationIndex += 1;
+      mutationPending = true;
+      window.setTimeout(showMutationChoice, 180);
     }
   }
 
@@ -3718,7 +4803,10 @@
     if (activeMode !== "solo" || state !== "playing") return;
     state = "mutating";
     endPhase();
-    const available = mutations.filter((mutation) => !player.mutations.includes(mutation.id));
+    const owned = Object.keys(playerOwnedMutations || {});
+    const available = mutations.filter((mutation) => !player.mutations.includes(mutation.id)
+      && mutation.compatibleClasses.includes(player.classId)
+      && (owned.length === 0 || owned.includes(mutation.id)));
     const choices = available.sort(() => Math.random() - 0.5).slice(0, 3);
     ui.mutationCards.replaceChildren();
     for (const mutation of choices) {
@@ -3928,6 +5016,7 @@
       bot.hitTimer = Math.max(0, bot.hitTimer - dt);
       bot.thinkTimer -= dt;
       bot.energy = Math.min(100, bot.energy + 8 * dt);
+      const classHandled = updateBotClassAi(bot, dt);
       const behavior = getEnemyBehavior(bot);
       behavior.beforeMovement?.(bot, dt);
 
@@ -4017,7 +5106,7 @@
 
       runBossMechanic(bot, dt);
 
-      if (behavior.phaseAttack !== false && !bot.stealthed && !(bot.boss && bot.bossPhaseTransitioning)) {
+      if (!classHandled && behavior.phaseAttack !== false && !bot.stealthed && !(bot.boss && bot.bossPhaseTransitioning)) {
         if (bot.factionTarget && !bot.factionTarget.dead && bot.cooldown <= 0 && bot.energy > 45 && bot.aggression > 0.5) {
           const distToTarget = Math.hypot(bot.x - bot.factionTarget.x, bot.y - bot.factionTarget.y);
           if (distToTarget < attackRange) {
@@ -4319,9 +5408,11 @@
     setTextIfChanged(ui.charge, `${energy}%`);
     setStyleIfChanged(ui.chargeFill, "width", energyPercent);
     setCustomPropertyIfChanged(ui.abilityRing, "--charge", energyPercent);
+    updateClassHud();
 
     if (activeMode === "multiplayer") {
-      setTextIfChanged(ui.sector, `SALA ${multiplayerRoomCode} // ${formatTime(multiplayerRemaining)}`);
+      const pingLabel = networkPingMs > 0 ? ` // PING ${Math.round(networkPingMs)} ms` : "";
+      setTextIfChanged(ui.sector, `SALA ${multiplayerRoomCode} // ${formatTime(multiplayerRemaining)}${pingLabel}`);
     } else {
       const sectorX = clamp(Math.floor(player.x / (WORLD_SIZE / 3)), 0, 2);
       const sectorY = clamp(Math.floor(player.y / (WORLD_SIZE / 3)), 0, 2);
@@ -4348,6 +5439,22 @@
       }
     } else {
       toggleClassIfChanged(ui.bossBar, "is-hidden", true);
+    }
+  }
+
+  function updateClassHud() {
+    if (!player?.classDefinition) return;
+    const resourceMax = Math.max(1, player.classResourceMax || 1);
+    const resource = clamp(player.classResource || 0, 0, resourceMax);
+    setTextIfChanged(ui.hudClassName, player.className);
+    setTextIfChanged(ui.hudClassLevel, preparation?.settings?.showLevel === false ? "" : `LV ${player.classLevel || 1}`);
+    setTextIfChanged(ui.hudResourceName, player.classResourceName);
+    setTextIfChanged(ui.hudResourceValue, `${Math.round(resource)}/${Math.round(resourceMax)}`);
+    setStyleIfChanged(ui.hudResourceFill, "width", `${resource / resourceMax * 100}%`);
+    setTextIfChanged(ui.hudClassSpecial, player.classDefinition.activeAbility);
+    if (ui.classSpecialButton) {
+      ui.classSpecialButton.disabled = classSpecialCooldown > 0;
+      ui.classSpecialButton.style.setProperty("--class-color", player.classDefinition.resource.color);
     }
   }
 
@@ -4423,18 +5530,35 @@
     if (!multiplayerSnapshot) return;
     runTime += dt;
     multiplayerRemaining = Math.max(0, multiplayerRemaining - dt);
-    const blend = 1 - Math.exp(-16 * dt);
-    for (const entity of [player, ...bots]) {
-      if (Number.isFinite(entity.networkX)) entity.x = lerp(entity.x, entity.networkX, blend);
-      if (Number.isFinite(entity.networkY)) entity.y = lerp(entity.y, entity.networkY, blend);
-      if (Number.isFinite(entity.networkVx)) entity.vx = lerp(entity.vx || 0, entity.networkVx, blend);
-      if (Number.isFinite(entity.networkVy)) entity.vy = lerp(entity.vy || 0, entity.networkVy, blend);
+    const target = worldTarget();
+    if (player.respawnTimer <= 0 && !player.phasing) {
+      steerVelocity(player, target.x, target.y, player.moveSpeed || 205, dt, 6.1);
+      player.x = clamp(player.x + player.vx * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+      player.y = clamp(player.y + player.vy * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
+    }
+    const localError = Math.hypot((player.networkX || player.x) - player.x, (player.networkY || player.y) - player.y);
+    const localBlend = localError > 180 ? 1 : 1 - Math.exp(-9 * dt);
+    if (Number.isFinite(player.networkX)) player.x = lerp(player.x, player.networkX, localBlend);
+    if (Number.isFinite(player.networkY)) player.y = lerp(player.y, player.networkY, localBlend);
+    const remoteBlend = 1 - Math.exp(-22 * dt);
+    for (const entity of bots) {
+      if (Number.isFinite(entity.networkX)) entity.x = lerp(entity.x, entity.networkX, remoteBlend);
+      if (Number.isFinite(entity.networkY)) entity.y = lerp(entity.y, entity.networkY, remoteBlend);
+      if (Number.isFinite(entity.networkVx)) entity.vx = lerp(entity.vx || 0, entity.networkVx, remoteBlend);
+      if (Number.isFinite(entity.networkVy)) entity.vy = lerp(entity.vy || 0, entity.networkVy, remoteBlend);
     }
     networkInputTimer -= dt;
     if (networkInputTimer <= 0 && multiplayerSocket?.readyState === WebSocket.OPEN) {
-      networkInputTimer = 1 / 20;
-      const target = worldTarget();
-      multiplayerSocket.send(JSON.stringify({ type: "input", targetX: target.x, targetY: target.y }));
+      networkInputTimer = 1 / 30;
+      if (multiplayerSocket.bufferedAmount < 16_384) {
+        networkInputSequence += 1;
+        multiplayerSocket.send(JSON.stringify({ type: "input", sequence: networkInputSequence, targetX: target.x, targetY: target.y, moteRevision: multiplayerMoteRevision }));
+      }
+    }
+    networkPingTimer -= dt;
+    if (networkPingTimer <= 0 && multiplayerSocket?.readyState === WebSocket.OPEN) {
+      networkPingTimer = 1;
+      multiplayerSocket.send(JSON.stringify({ type: "ping", clientTime: performance.now() }));
     }
     updateEffects(dt);
     updateCamera(dt);
@@ -4444,16 +5568,18 @@
   function update(dt) {
     if (state !== "playing") return;
     if (activeMode === "multiplayer") {
+      classSpecialCooldown = Math.max(0, classSpecialCooldown - dt);
       updateMultiplayer(dt);
       return;
     }
     runTime += dt;
     runStats.runTime = runTime;
     updatePlayer(dt);
+    updateClassCombat(dt);
     updateBotProgression(dt);
     updateBots(dt);
     updateSkills(dt);
-    updateSoloDirector();
+    if (activeMode !== "training") updateSoloDirector();
     updateEffects(dt);
     updateCamera(dt);
     musicUpdateTimer -= dt;
@@ -4703,16 +5829,94 @@
       if (index === 0) ctx.moveTo(screen.x, screen.y);
       else ctx.lineTo(screen.x, screen.y);
     });
-    ctx.strokeStyle = hsl(ribbonHue, 94, 64, alpha * 0.22);
-    ctx.lineWidth = taperWidth * 2.8 * camera.zoom;
-    ctx.stroke();
-    ctx.strokeStyle = hsl(ribbonHue, 95, 74, alpha * 0.78);
-    ctx.lineWidth = taperWidth * 0.7 * camera.zoom;
-    ctx.stroke();
-    if (!MOBILE_QUALITY) {
+    if (MOBILE_QUALITY) {
+      ctx.strokeStyle = hsl(ribbonHue, 94, 64, alpha * 0.8);
+      ctx.lineWidth = taperWidth * 1.4 * camera.zoom;
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = hsl(ribbonHue, 94, 64, alpha * 0.22);
+      ctx.lineWidth = taperWidth * 2.8 * camera.zoom;
+      ctx.stroke();
+      ctx.strokeStyle = hsl(ribbonHue, 95, 74, alpha * 0.78);
+      ctx.lineWidth = taperWidth * 0.7 * camera.zoom;
+      ctx.stroke();
       ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.65})`;
       ctx.lineWidth = 1.2 * camera.zoom;
       ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawPlayerSkin(entity, radius, renderHue, time) {
+    const skin = skins.find((entry) => entry.id === entity.skinId) || skins[0];
+    const style = skin?.style || "electric";
+    const motion = time * 0.001;
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.rotate(motion * 0.72);
+    if (style === "electric") {
+      ctx.strokeStyle = hsl(renderHue, 98, 76, 0.82); ctx.lineWidth = 1.8;
+      for (let side = 0; side < 2; side += 1) {
+        ctx.beginPath();
+        for (let step = 0; step <= 5; step += 1) {
+          const angle = side * Math.PI + step * 0.24 - 0.62;
+          const reach = radius * (1.3 + (step % 2) * 0.18);
+          const x = Math.cos(angle) * reach; const y = Math.sin(angle) * reach;
+          if (step === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+    } else if (style === "violet") {
+      for (let band = 0; band < 3; band += 1) {
+        ctx.rotate(TAU / 3); ctx.strokeStyle = hsl(renderHue + band * 8, 92, 74, 0.6); ctx.lineWidth = 1.4 + band * 0.35;
+        ctx.beginPath(); ctx.arc(0, 0, radius * (1.25 + band * 0.14), -0.85, 0.88); ctx.stroke();
+      }
+    } else if (style === "ember") {
+      ctx.strokeStyle = hsl(renderHue, 98, 68, 0.78); ctx.lineWidth = 2;
+      for (let flame = 0; flame < 5; flame += 1) {
+        const angle = flame * TAU / 5;
+        ctx.save(); ctx.rotate(angle); ctx.beginPath(); ctx.moveTo(radius * 0.85, 0);
+        ctx.quadraticCurveTo(radius * 1.35, -radius * 0.5, radius * (1.65 + Math.sin(motion * 5 + flame) * 0.12), 0);
+        ctx.quadraticCurveTo(radius * 1.28, radius * 0.18, radius * 0.85, 0); ctx.stroke(); ctx.restore();
+      }
+    } else if (style === "champion") {
+      ctx.strokeStyle = hsl(renderHue, 98, 75, 0.84); ctx.fillStyle = hsl(renderHue, 98, 72, 0.9); ctx.lineWidth = 1.7;
+      ctx.beginPath(); ctx.moveTo(-radius * 0.72, -radius * 1.12); ctx.lineTo(-radius * 0.38, -radius * 1.62);
+      ctx.lineTo(0, -radius * 1.18); ctx.lineTo(radius * 0.38, -radius * 1.62); ctx.lineTo(radius * 0.72, -radius * 1.12); ctx.stroke();
+      for (let spark = 0; spark < 3; spark += 1) { ctx.beginPath(); ctx.arc((spark - 1) * radius * 0.55, -radius * (1.45 + (spark % 2) * 0.22), 1.8, 0, TAU); ctx.fill(); }
+    } else if (style === "ice") {
+      ctx.strokeStyle = hsl(renderHue, 96, 84, 0.8); ctx.lineWidth = 1.35;
+      for (let shard = 0; shard < 6; shard += 1) {
+        ctx.rotate(TAU / 6); ctx.beginPath(); ctx.moveTo(radius * 0.82, 0); ctx.lineTo(radius * 1.62, -radius * 0.2); ctx.lineTo(radius * 1.42, radius * 0.22); ctx.closePath(); ctx.stroke();
+      }
+    } else if (style === "shadow") {
+      ctx.strokeStyle = hsl(renderHue, 88, 66, 0.5); ctx.lineWidth = 2;
+      for (let wisp = 0; wisp < 4; wisp += 1) {
+        ctx.rotate(TAU / 4); ctx.beginPath(); ctx.moveTo(radius * 0.72, 0);
+        ctx.bezierCurveTo(radius * 1.1, -radius * 0.7, radius * 1.7, radius * 0.35, radius * 1.9, -radius * 0.18); ctx.stroke();
+      }
+    } else if (style === "prism") {
+      for (let color = 0; color < 7; color += 1) {
+        const angle = color * TAU / 7; const orbit = radius * (1.35 + 0.12 * Math.sin(motion * 4 + color));
+        ctx.fillStyle = hsl((time * 0.05 + color * 51) % 360, 96, 70, 0.9);
+        ctx.beginPath(); ctx.arc(Math.cos(angle) * orbit, Math.sin(angle) * orbit, 2.2 + color % 2, 0, TAU); ctx.fill();
+      }
+    } else if (style === "pearl") {
+      ctx.strokeStyle = "rgba(232,244,255,.78)"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(0, 0, radius * 1.45, -2.6, -0.2); ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,.9)";
+      for (let bead = 0; bead < 4; bead += 1) { const angle = bead * TAU / 4; ctx.beginPath(); ctx.arc(Math.cos(angle) * radius * 1.34, Math.sin(angle) * radius * 1.34, 1.8, 0, TAU); ctx.fill(); }
+    } else if (style === "eclipse") {
+      ctx.globalCompositeOperation = "source-over"; ctx.strokeStyle = "rgba(165,132,255,.58)"; ctx.lineWidth = 2.2; ctx.setLineDash([radius * 0.65, radius * 0.25]);
+      ctx.beginPath(); ctx.arc(0, 0, radius * 1.48, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = "rgba(3,2,8,.55)"; ctx.beginPath(); ctx.arc(radius * 0.18, -radius * 0.08, radius * 0.78, 0, TAU); ctx.fill();
+    } else if (style === "toxic") {
+      ctx.strokeStyle = hsl(renderHue, 94, 70, 0.72); ctx.fillStyle = hsl(renderHue, 92, 64, 0.46); ctx.lineWidth = 1.2;
+      for (let bubble = 0; bubble < 6; bubble += 1) {
+        const angle = bubble * TAU / 6; const orbit = radius * (1.22 + (bubble % 3) * 0.2); const size = 2 + (bubble % 3);
+        ctx.beginPath(); ctx.arc(Math.cos(angle) * orbit, Math.sin(angle) * orbit, size, 0, TAU); ctx.fill(); ctx.stroke();
+      }
     }
     ctx.restore();
   }
@@ -4743,6 +5947,27 @@
       gradient.addColorStop(0, hsl(hue, 95, 72, spectral ? 0.42 : 0.34));
       gradient.addColorStop(0.35, hsl(hue, 85, 55, spectral ? 0.14 : 0.1));
       gradient.addColorStop(1, hsl(hue, 80, 40, 0));
+      spriteContext.fillStyle = gradient;
+      spriteContext.fillRect(0, 0, logicalSize, logicalSize);
+      return sprite;
+    });
+  }
+
+  function entityLowHealthAuraSprite(hue) {
+    const key = `aura-low:${Number(hue).toFixed(2)}`;
+    return cacheEntityGradientSprite(key, () => {
+      const logicalSize = 144;
+      const sprite = document.createElement("canvas");
+      sprite.width = logicalSize * 2;
+      sprite.height = logicalSize * 2;
+      const spriteContext = sprite.getContext("2d");
+      spriteContext.scale(2, 2);
+      const center = logicalSize / 2;
+      const radius = logicalSize / 2;
+      const gradient = spriteContext.createRadialGradient(center, center, radius * 0.048, center, center, radius);
+      gradient.addColorStop(0, hsl(0, 95, 55, 0.42));
+      gradient.addColorStop(0.35, hsl(0, 85, 55, 0.1));
+      gradient.addColorStop(1, hsl(0, 80, 40, 0));
       spriteContext.fillStyle = gradient;
       spriteContext.fillRect(0, 0, logicalSize, logicalSize);
       return sprite;
@@ -4780,9 +6005,9 @@
     const healthRatio = clamp(entity.health / (entity.maxHealth || 100), 0, 1);
     const pulse = 1 + Math.sin(time * 0.004 + entity.x) * 0.035;
     const isLowHealth = !isPlayer && !spectral && healthRatio < 0.3 && healthRatio > 0;
-    const renderHue = isPlayer && entity.skinId === "caotico" ? (time * 0.05) % 360 : entity.hue;
+    const renderHue = isPlayer && entity.skinId === "arco-iris" ? (time * 0.05) % 360 : entity.hue;
     const glow = isPlayer ? entity.skinGlow || 1 : 1;
-    const cacheGradient = !(isPlayer && entity.skinId === "caotico");
+    const cacheGradient = !(isPlayer && entity.skinId === "arco-iris");
 
     if (!isPlayer && !spectral && entity.archetype === "sniper" && entity.sniperAimTimer > 0) {
       const aimPoint = toScreen(entity.sniperAimX, entity.sniperAimY);
@@ -4818,13 +6043,13 @@
       ctx.shadowBlur = (spectral ? 24 : 16) * glow;
     }
 
-    if (!MOBILE_QUALITY || isPlayer) {
+    if (!MOBILE_QUALITY) {
       const auraRadius = (isLowHealth ? radius * 2.8 : radius * 2.1) * glow;
-      const auraAlpha = isLowHealth ? 0.42 + Math.sin(time * 0.008) * 0.18 : spectral ? 0.42 : 0.34;
-      if (!isLowHealth && cacheGradient) {
-        const auraSprite = entityAuraSprite(renderHue, spectral);
+      if (cacheGradient) {
+        const auraSprite = isLowHealth ? entityLowHealthAuraSprite(renderHue) : entityAuraSprite(renderHue, spectral);
         ctx.drawImage(auraSprite, -auraRadius, -auraRadius, auraRadius * 2, auraRadius * 2);
       } else {
+        const auraAlpha = isLowHealth ? 0.42 + Math.sin(time * 0.008) * 0.18 : spectral ? 0.42 : 0.34;
         const aura = ctx.createRadialGradient(0, 0, radius * 0.1, 0, 0, auraRadius);
         aura.addColorStop(0, hsl(isLowHealth ? 0 : renderHue, 95, isLowHealth ? 55 : 72, auraAlpha));
         aura.addColorStop(0.35, hsl(isLowHealth ? 0 : renderHue, 85, 55, spectral ? 0.14 : 0.1));
@@ -4883,45 +6108,7 @@
       ctx.fill();
     }
 
-    if (isPlayer && !spectral && !MOBILE_QUALITY) {
-      const skinId = entity.skinId;
-      ctx.save();
-      ctx.rotate(time * 0.0012);
-      if (skinId === "fenix" || skinId === "sangue") {
-        const count = skinId === "fenix" ? 6 : 4;
-        for (let index = 0; index < count; index += 1) {
-          const angle = index * TAU / count;
-          const distance = radius * (1.35 + 0.18 * Math.sin(time * 0.006 + index));
-          ctx.fillStyle = hsl(renderHue + index * 5, 95, 62, 0.58);
-          ctx.beginPath();
-          ctx.arc(Math.cos(angle) * distance, Math.sin(angle) * distance, skinId === "fenix" ? 2.2 : 1.7, 0, TAU);
-          ctx.fill();
-        }
-      } else if (skinId === "gelo") {
-        ctx.strokeStyle = hsl(renderHue, 95, 78, 0.62);
-        for (let index = 0; index < 6; index += 1) {
-          const angle = index * TAU / 6;
-          ctx.beginPath();
-          ctx.moveTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
-          ctx.lineTo(Math.cos(angle) * radius * 1.55, Math.sin(angle) * radius * 1.55);
-          ctx.stroke();
-        }
-      } else if (skinId === "neon" || skinId === "dourado" || skinId === "caotico") {
-        ctx.strokeStyle = hsl(renderHue, 96, 70, 0.72);
-        ctx.lineWidth = skinId === "neon" ? 2.3 : 1.5;
-        ctx.beginPath();
-        ctx.arc(0, 0, radius * 1.45, 0, TAU);
-        ctx.stroke();
-      } else if (skinId === "sombra") {
-        ctx.strokeStyle = hsl(280, 80, 55, 0.38);
-        ctx.setLineDash([2, 6]);
-        ctx.beginPath();
-        ctx.arc(0, 0, radius * 1.7, 0, TAU);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-      ctx.restore();
-    }
+    if (!MOBILE_QUALITY && isPlayer && !spectral) drawPlayerSkin(entity, radius, renderHue, time);
 
     if (!isPlayer && !spectral && entity.faction != null && !entity.boss && !entity.bossClone) {
       const factionHues = [15, 200, 280];
@@ -4933,10 +6120,12 @@
     }
 
     ctx.fillStyle = "rgba(255,255,255,0.9)";
-    if (!MOBILE_QUALITY) ctx.shadowBlur = 12;
-    ctx.beginPath();
-    ctx.arc(-radius * 0.18, -radius * 0.2, Math.max(1.4, radius * 0.12), 0, TAU);
-    ctx.fill();
+    if (!MOBILE_QUALITY) {
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(-radius * 0.18, -radius * 0.2, Math.max(1.4, radius * 0.12), 0, TAU);
+      ctx.fill();
+    }
     ctx.restore();
 
     if (!spectral) {
@@ -4952,7 +6141,7 @@
         ctx.fillStyle = isPlayer ? "rgba(222,250,255,0.9)" : "rgba(205,197,220,0.72)";
         ctx.fillText(entity.name, point.x, point.y - radius - 15);
       }
-      if (!isPlayer && (healthRatio < 0.99 || entity.boss)) {
+      if (!MOBILE_QUALITY && !isPlayer && (healthRatio < 0.99 || entity.boss)) {
         const barWidth = entity.boss ? 74 : 32;
         ctx.fillStyle = "rgba(255,255,255,0.1)";
         ctx.fillRect(point.x - barWidth / 2, point.y + radius + 10, barWidth, 2);
@@ -5176,15 +6365,15 @@
         ctx.restore();
       }
       if (bot.prismaIllusion) {
-        drawEntity(bot, false, false, time, { alpha: 0.22 });
+        drawEntity(bot, bot.isBot === false, false, time, { alpha: 0.22 });
         continue;
       }
       if (bot.archetype === "phantom" && bot.stealthed) {
         if (bot.phasing && bot.phase) {
           drawRibbon(bot.phase, true, bot.hue, 4);
-          drawEntity(bot, false, true, time, { x: bot.phase.x, y: bot.phase.y, alpha: 0.3 });
+          drawEntity(bot, bot.isBot === false, true, time, { x: bot.phase.x, y: bot.phase.y, alpha: 0.3 });
         } else {
-          drawEntity(bot, false, false, time, { alpha: 0.25 });
+          drawEntity(bot, bot.isBot === false, false, time, { alpha: 0.25 });
         }
         continue;
       }
@@ -5218,9 +6407,9 @@
       if (bot.phasing && bot.phase) {
         drawRibbon(bot.phase, true, bot.hue, 6);
         drawShell(bot, time);
-        drawEntity(bot, false, true, time, { x: bot.phase.x, y: bot.phase.y });
+        drawEntity(bot, bot.isBot === false, true, time, { x: bot.phase.x, y: bot.phase.y });
       } else {
-        drawEntity(bot, false, false, time);
+        drawEntity(bot, bot.isBot === false, false, time);
       }
     }
   }
@@ -5286,16 +6475,17 @@
       ctx.arc(pointX, pointY, wave.radius * camera.zoom, 0, TAU);
       ctx.stroke();
     }
-    for (const particle of particles) {
-      if (!visible(particle.x, particle.y, 10)) continue;
-      const pointX = (particle.x - camera.x) * camera.zoom + width / 2;
-      const pointY = (particle.y - camera.y) * camera.zoom + height / 2;
-      const alpha = clamp(particle.life / particle.maxLife, 0, 1);
-      ctx.fillStyle = hsl(particle.hue, 95, 70, alpha * 0.8);
-      if (!MOBILE_QUALITY) ctx.shadowColor = hsl(particle.hue, 95, 62, alpha);
-      ctx.beginPath();
-      ctx.arc(pointX, pointY, particle.radius * alpha * camera.zoom, 0, TAU);
-      ctx.fill();
+    if (particles.length > 0) {
+      for (const particle of particles) {
+        if (!visible(particle.x, particle.y, 10)) continue;
+        const pointX = (particle.x - camera.x) * camera.zoom + width / 2;
+        const pointY = (particle.y - camera.y) * camera.zoom + height / 2;
+        const alpha = clamp(particle.life / particle.maxLife, 0, 1);
+        ctx.fillStyle = hsl(particle.hue, 95, 70, alpha * 0.8);
+        ctx.beginPath();
+        ctx.arc(pointX, pointY, particle.radius * alpha * camera.zoom, 0, TAU);
+        ctx.fill();
+      }
     }
     ctx.restore();
   }
@@ -5475,6 +6665,7 @@
     drawScars();
     drawMotes(time);
     drawEffects();
+    drawClassCombat(time);
     drawBots(time);
     drawPlayer(time);
     ctx.restore();
@@ -5495,9 +6686,11 @@
       return;
     }
     const elapsed = now - previousTime;
-    const minimumFrameMs = state === "playing"
+    const profileMinimum = state === "playing"
       ? PERFORMANCE_PROFILE.activeMinimumFrameMs
       : PERFORMANCE_PROFILE.idleMinimumFrameMs;
+    const fpsLimit = clamp(Number(preparation?.settings?.fps || 60), 30, 120);
+    const minimumFrameMs = Math.max(profileMinimum, 1000 / fpsLimit - 0.35);
     if (elapsed < minimumFrameMs) {
       requestAnimationFrame(frame);
       return;
@@ -5556,7 +6749,8 @@
   ui.startForm.addEventListener("submit", (event) => {
     event.preventDefault();
     if (selectedMode === "multiplayer") connectMultiplayer(ui.roomCode.value);
-    else showLoadoutScreen();
+    else if (selectedMode === "training") startTrainingGame();
+    else startSoloGame();
   });
 
   ui.restart.addEventListener("click", () => {
@@ -5574,11 +6768,13 @@
   if (ui.workshopButton) ui.workshopButton.addEventListener("click", openWorkshop);
   if (ui.workshopClose) ui.workshopClose.addEventListener("click", closeWorkshop);
   if (ui.skillShopButton) ui.skillShopButton.addEventListener("click", openSkillShop);
+  if (ui.mutationLoadoutButton) ui.mutationLoadoutButton.addEventListener("click", showLoadoutScreen);
   if (ui.skillShopClose) ui.skillShopClose.addEventListener("click", closeSkillShop);
   if (ui.loadoutConfirm) ui.loadoutConfirm.addEventListener("click", () => {
     ui.loadoutScreen.classList.add("is-hidden");
     saveLoadoutToServer();
-    showSkinScreen();
+    state = "intro";
+    ui.start.classList.remove("is-hidden");
   });
 
   if (ui.minimap) {
@@ -5673,6 +6869,7 @@
       beginPhase();
     }
     if (event.code === "KeyM") ui.sound.click();
+    if (event.code === "KeyQ") useClassSpecial();
     if (event.code === "Digit1") useSkill(0);
     if (event.code === "Digit2") useSkill(1);
     if (event.code === "Digit3") useSkill(2);
@@ -5698,6 +6895,360 @@
   window.addEventListener("resize", resize);
   window.addEventListener("beforeunload", () => multiplayerSocket?.close());
 
+  const PREPARATION_KEY = "echo.preparation";
+  const DEFAULT_PREP_SETTINGS = Object.freeze({
+    resolution: "auto", fps: 60, renderScale: 100, autoQuality: isMobile,
+    brightness: 100, particles: isMobile ? 65 : 100, showDamage: true, showLevel: true,
+    masterVolume: 70, musicVolume: 70, sfxVolume: 80, uiVolume: 70, muteUnfocused: true,
+    sensitivity: 100, aimAssist: 20, controlSize: 100, controlPosition: "right", hudScale: 100,
+    reduceFlashes: false, reduceShake: false, highContrast: false, colorMode: "default",
+    textSize: 100, uiOpacity: 100, extraIndicators: false, vibration: true
+  });
+
+  function loadPreparationState() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(PREPARATION_KEY) || "{}");
+      return {
+        classId: normalizeClassId(saved.classId || selectedClassId),
+        skinId: String(saved.skinId || localStorage.getItem(SKIN_KEY) || "azul-neon"),
+        skillIds: sanitizeSkillLoadout(saved.classId || selectedClassId, saved.skillIds),
+        mode: ["solo", "multiplayer", "training"].includes(saved.mode) ? saved.mode : "solo",
+        difficulty: ["easy", "normal", "hard"].includes(saved.difficulty) ? saved.difficulty : "normal",
+        modifierId: modifierPool.some((modifier) => modifier.id === saved.modifierId) ? saved.modifierId : "",
+        randomClass: Boolean(saved.randomClass),
+        settings: { ...DEFAULT_PREP_SETTINGS, ...(saved.settings || {}) }
+      };
+    } catch (_error) {
+      return { classId: "cutter", skinId: "azul-neon", skillIds: sanitizeSkillLoadout("cutter", []), mode: "solo", difficulty: "normal", modifierId: "", randomClass: false, settings: { ...DEFAULT_PREP_SETTINGS } };
+    }
+  }
+
+  let preparation = loadPreparationState();
+  let selectedSkillIds = [...preparation.skillIds];
+  let selectedDifficulty = preparation.difficulty;
+  let selectedModifierId = preparation.modifierId;
+  let randomClassBonus = preparation.randomClass;
+  let classProgress = {};
+  let preparationSaveTimer = 0;
+  let previewAnimationFrame = 0;
+  let mutedBeforeFocusLoss = false;
+  selectedClassId = preparation.classId;
+  selectedMode = preparation.mode;
+  localStorage.setItem(SKIN_KEY, preparation.skinId);
+
+  function preparationPayload() {
+    return {
+      classId: selectedClassId,
+      skinId: getSelectedSkin().id,
+      skillIds: selectedSkillIds,
+      mode: selectedMode,
+      difficulty: selectedDifficulty,
+      modifierId: selectedModifierId,
+      randomClass: randomClassBonus,
+      settings: preparation.settings
+    };
+  }
+
+  function savePreparation({ server = true } = {}) {
+    const payload = preparationPayload();
+    localStorage.setItem(PREPARATION_KEY, JSON.stringify(payload));
+    localStorage.setItem("echo.class", selectedClassId);
+    localStorage.setItem(SKIN_KEY, payload.skinId);
+    updatePreparationSummary();
+    if (!server) return;
+    window.clearTimeout(preparationSaveTimer);
+    preparationSaveTimer = window.setTimeout(() => {
+      requestJson("/api/preferences", { method: "POST", body: JSON.stringify({ name: sanitizeName(ui.name.value), preferences: payload }) }).catch(() => {});
+    }, 240);
+  }
+
+  function applyServerPreparation(saved, progress = {}) {
+    classProgress = progress || {};
+    if (saved && typeof saved === "object") {
+      preparation = { ...preparation, ...saved, settings: { ...DEFAULT_PREP_SETTINGS, ...(saved.settings || preparation.settings) } };
+      selectedClassId = normalizeClassId(preparation.classId);
+      selectedSkillIds = sanitizeSkillLoadout(selectedClassId, preparation.skillIds);
+      selectedDifficulty = ["easy", "normal", "hard"].includes(preparation.difficulty) ? preparation.difficulty : "normal";
+      selectedModifierId = modifierPool.some((modifier) => modifier.id === preparation.modifierId) ? preparation.modifierId : "";
+      selectedMode = ["solo", "multiplayer", "training"].includes(preparation.mode) ? preparation.mode : "solo";
+      randomClassBonus = Boolean(preparation.randomClass);
+      if (skins.some((skin) => skin.id === preparation.skinId && skin.unlocked())) localStorage.setItem(SKIN_KEY, preparation.skinId);
+    }
+    applyPreparationSettings();
+    renderPreparationMenu();
+    setSelectedMode(selectedMode);
+  }
+
+  function selectPrepTab(tabId) {
+    document.querySelectorAll("[data-prep-tab]").forEach((button) => {
+      const selected = button.dataset.prepTab === tabId;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-current", selected ? "page" : "false");
+    });
+    document.querySelectorAll("[data-prep-panel]").forEach((panel) => panel.classList.toggle("is-active", panel.dataset.prepPanel === tabId));
+  }
+
+  function selectPlayerClass(classId, randomSelection = false) {
+    selectedClassId = normalizeClassId(classId);
+    randomClassBonus = randomSelection;
+    selectedSkillIds = sanitizeSkillLoadout(selectedClassId, selectedSkillIds);
+    renderClassMenu();
+    renderAbilityMenu();
+    savePreparation();
+    sound(getClassDefinition(selectedClassId).sound, 0.15, "triangle", 0.025);
+  }
+
+  function renderClassMenu() {
+    if (!ui.classGrid || !ui.classDetail) return;
+    const roleLabels = { melee: "CORPO A CORPO", "long-range": "LONGO ALCANCE", control: "CONTROLE", defense: "DEFESA" };
+    ui.classGrid.replaceChildren();
+    for (const definition of Object.values(classRegistry)) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `class-card${definition.id === selectedClassId ? " is-selected" : ""}`;
+      button.style.setProperty("--class-color", definition.resource.color);
+      button.innerHTML = `<span>${definition.icon}</span><div><strong>${definition.name}</strong><small>${roleLabels[definition.role]} · DIFICULDADE ${definition.difficulty}/5</small></div>`;
+      button.addEventListener("click", () => selectPlayerClass(definition.id));
+      ui.classGrid.append(button);
+    }
+    const definition = getClassDefinition(selectedClassId);
+    const stat = (label, value, max) => `<div><span>${label}</span><i><b style="width:${clamp(value / max, 0, 1) * 100}%"></b></i></div>`;
+    ui.classDetail.style.setProperty("--class-color", definition.resource.color);
+    ui.classDetail.innerHTML = `<header><span>${definition.icon}</span><div><small>${roleLabels[definition.role]}</small><h3>${definition.name}</h3><p>${definition.summary}</p></div></header><div class="class-kit"><div><small>ATAQUE PRINCIPAL</small><strong>${definition.primaryAttack}</strong></div><div><small>ESPECIAL</small><strong>${definition.activeAbility}</strong></div><div><small>PASSIVA</small><strong>${definition.passiveAbility}</strong></div><div><small>RECURSO</small><strong>${definition.resource.name}</strong></div></div><div class="class-stats">${stat("ALCANCE", definition.attributes.preferredRange, 650)}${stat("VELOCIDADE", definition.attributes.speed, 240)}${stat("RESISTÊNCIA", 150 / definition.attributes.resistance, 180)}${stat("MOBILIDADE", definition.attributes.mobility, 5)}</div><footer><span><b>VANTAGENS</b>${definition.strengths.join(" · ")}</span><span><b>FRAQUEZAS</b>${definition.weaknesses.join(" · ")}</span></footer>`;
+  }
+
+  function renderSkinMenu() {
+    if (!ui.prepSkinGrid) return;
+    const selected = getSelectedSkin().id;
+    ui.prepSkinGrid.replaceChildren();
+    for (const skin of skins) {
+      const unlocked = skin.unlocked();
+      const card = document.createElement("button");
+      card.type = "button";
+      card.disabled = !unlocked;
+      card.className = `prep-option-card skin-option${skin.id === selected ? " is-selected" : ""}`;
+      card.style.setProperty("--option-color", skin.colors?.[0] || hsl(skin.hue));
+      card.innerHTML = `<span class="skin-showcase skin-${skin.style}" style="--skin-primary:${skin.colors[0]};--skin-secondary:${skin.colors[1]};--skin-highlight:${skin.colors[2]}"><i class="skin-aura"></i><i class="skin-trail"></i><i class="skin-body"></i><i class="skin-detail detail-a"></i><i class="skin-detail detail-b"></i></span><small>${skin.rarity || "COMUM"}</small><strong>${skin.name}</strong><p>${skin.description}</p><em>${unlocked ? skin.id === selected ? "SELECIONADA" : "DISPONÍVEL" : "BLOQUEADA"}</em>`;
+      if (unlocked) card.addEventListener("click", () => {
+        localStorage.setItem(SKIN_KEY, skin.id);
+        renderSkinMenu();
+        savePreparation();
+      });
+      ui.prepSkinGrid.append(card);
+    }
+  }
+
+  function renderAbilityMenu() {
+    if (!ui.prepAbilityGrid) return;
+    const compatible = compatibleSkills(selectedClassId);
+    selectedSkillIds = sanitizeSkillLoadout(selectedClassId, selectedSkillIds);
+    ui.prepAbilityGrid.replaceChildren();
+    for (const skill of compatible) {
+      const selected = selectedSkillIds.includes(skill.id);
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = `prep-option-card ability-option${selected ? " is-selected" : ""}`;
+      card.style.setProperty("--option-color", skill.color);
+      card.innerHTML = `<span class="ability-symbol">${skill.symbol}</span><small class="ability-stats"><b>${skill.cost} ENERGIA</b><b>${skill.cooldown} s RECARGA</b></small><strong>${skill.name}</strong><p>${skill.effect}</p><em>${selected ? `EQUIPADA NO SLOT ${selectedSkillIds.indexOf(skill.id) + 1}` : "CLIQUE PARA EQUIPAR"}</em>`;
+      card.addEventListener("click", () => {
+        if (selected) selectedSkillIds = selectedSkillIds.filter((id) => id !== skill.id);
+        else if (selectedSkillIds.length < 4) selectedSkillIds.push(skill.id);
+        else showToast("REMOVA UMA HABILIDADE ANTES DE EQUIPAR OUTRA", 1600);
+        renderAbilityMenu();
+        savePreparation();
+      });
+      ui.prepAbilityGrid.append(card);
+    }
+    if (ui.abilityCount) ui.abilityCount.textContent = `${selectedSkillIds.length}/4`;
+  }
+
+  function renderClassProgress() {
+    if (!ui.classProgressGrid) return;
+    ui.classProgressGrid.replaceChildren();
+    ui.challengeProgressGrid?.replaceChildren();
+    for (const definition of Object.values(classRegistry)) {
+      const progress = classProgress[definition.id] || { experience: 0, runs: 0, kills: 0, victories: 0 };
+      const challenge = CLASS_CHALLENGES[definition.id];
+      const level = getClassLevel(progress.experience);
+      const current = progress.experience - classExperienceForLevel(level);
+      const needed = Math.max(1, classExperienceForLevel(level + 1) - classExperienceForLevel(level));
+      const article = document.createElement("article");
+      article.style.setProperty("--class-color", definition.resource.color);
+      const challengeValue = Math.min(challenge.target, progress[challenge.metric] || 0);
+      article.innerHTML = `<span>${definition.icon}</span><div><strong>${definition.name} · NÍVEL ${level}</strong><small>${progress.runs} PARTIDAS · ${progress.kills} ELIMINAÇÕES · ${progress.victories} VITÓRIAS</small><i aria-label="Progresso para o próximo nível"><b style="width:${clamp(current / needed, 0, 1) * 100}%"></b></i><em>${Math.floor(current)}/${needed} XP PARA O PRÓXIMO NÍVEL</em></div>`;
+      ui.classProgressGrid.append(article);
+      if (ui.challengeProgressGrid) {
+        const challengeCard = document.createElement("article");
+        challengeCard.className = progress.challengeClaimed ? "is-complete" : "";
+        challengeCard.style.setProperty("--class-color", definition.resource.color);
+        challengeCard.innerHTML = `<header><span>${definition.icon}</span><strong>${definition.name}</strong></header><p>${challenge.label}</p><i aria-label="Progresso da conquista"><b style="width:${challengeValue / challenge.target * 100}%"></b></i><footer><span>${challengeValue}/${challenge.target}</span><em>${progress.challengeClaimed ? "RECOMPENSA RECEBIDA" : `RECOMPENSA: ${challenge.resonance} CRÉDITOS + ${challenge.skillPoints} PONTOS`}</em></footer>`;
+        ui.challengeProgressGrid.append(challengeCard);
+      }
+    }
+  }
+
+  function updatePreparationSummary() {
+    const definition = getClassDefinition(selectedClassId);
+    const skin = getSelectedSkin();
+    const skillNames = selectedSkillIds.map((id) => EQUIPPABLE_SKILLS.find((skill) => skill.id === id)?.name).filter(Boolean);
+    if (ui.summaryClass) ui.summaryClass.textContent = `${definition.name}${randomClassBonus ? " · ALEATÓRIA +5%" : ""}`;
+    if (ui.summarySkin) ui.summarySkin.textContent = skin.name;
+    if (ui.summaryAbilities) ui.summaryAbilities.textContent = skillNames.length ? skillNames.join(", ") : "NENHUMA";
+    if (ui.summaryMode) ui.summaryMode.textContent = selectedMode === "training" ? "TREINO" : selectedMode.toUpperCase();
+    if (ui.summaryDifficulty) ui.summaryDifficulty.textContent = selectedDifficulty === "easy" ? "ACESSÍVEL" : selectedDifficulty === "hard" ? "INTENSA" : "NORMAL";
+    const modifier = modifierPool.find((entry) => entry.id === selectedModifierId);
+    if (modifier && ui.summaryDifficulty) ui.summaryDifficulty.textContent += ` · ${modifier.name}`;
+  }
+
+  function bindSettingInputs() {
+    document.querySelectorAll("[data-setting]").forEach((input) => {
+      const key = input.dataset.setting;
+      const current = preparation.settings[key];
+      if (input.type === "checkbox") input.checked = Boolean(current);
+      else input.value = String(current);
+      input.addEventListener("input", () => {
+        preparation.settings[key] = input.type === "checkbox" ? input.checked : input.type === "range" || key === "fps" ? Number(input.value) : input.value;
+        applyPreparationSettings();
+        savePreparation();
+      });
+    });
+  }
+
+  function applyPreparationSettings() {
+    const settings = preparation.settings;
+    masterVolume = clamp(Number(settings.masterVolume) / 100, 0, 1);
+    musicVolume = clamp(Number(settings.musicVolume) / 100, 0, 1);
+    sfxVolume = clamp(Number(settings.sfxVolume) / 100, 0, 1);
+    interfaceVolume = clamp(Number(settings.uiVolume) / 100, 0, 1);
+    screenShakeEnabled = !settings.reduceShake;
+    flashEnabled = !settings.reduceFlashes;
+    document.documentElement.style.setProperty("--ui-scale", String(Number(settings.hudScale) / 100));
+    document.documentElement.style.setProperty("--ui-opacity", String(Number(settings.uiOpacity) / 100));
+    document.documentElement.style.setProperty("--text-scale", String(Number(settings.textSize) / 100));
+    document.documentElement.style.setProperty("--brightness", String(Number(settings.brightness) / 100));
+    document.documentElement.style.setProperty("--control-scale", String(Number(settings.controlSize) / 100));
+    document.body.classList.toggle("high-contrast", Boolean(settings.highContrast));
+    document.body.dataset.colorMode = settings.colorMode || "default";
+    document.body.dataset.controlPosition = settings.controlPosition || "right";
+    document.body.classList.toggle("extra-indicators", Boolean(settings.extraIndicators));
+    if (ui.shakeSetting) ui.shakeSetting.checked = screenShakeEnabled;
+    if (ui.flashSetting) ui.flashSetting.checked = flashEnabled;
+    if (ui.volume) ui.volume.value = String(settings.masterVolume);
+    if (ui.volumeValue) ui.volumeValue.textContent = `${settings.masterVolume}%`;
+    resize();
+  }
+
+  function renderPreparationMenu() {
+    renderClassMenu();
+    renderSkinMenu();
+    renderAbilityMenu();
+    renderClassProgress();
+    if (ui.difficulty) ui.difficulty.value = selectedDifficulty;
+    if (ui.modifier) ui.modifier.value = selectedModifierId;
+    runModifiers = selectedModifierId ? modifierPool.filter((modifier) => modifier.id === selectedModifierId) : [];
+    updatePreparationSummary();
+  }
+
+  function applyDifficultyToBot(bot) {
+    if (!bot || bot.difficultyApplied === selectedDifficulty) return bot;
+    const multipliers = selectedDifficulty === "easy" ? { health: 0.78, damage: 0.72, speed: 0.9 } : selectedDifficulty === "hard" ? { health: 1.28, damage: 1.22, speed: 1.08 } : { health: 1, damage: 1, speed: 1 };
+    bot.maxHealth *= multipliers.health;
+    bot.health = bot.maxHealth;
+    bot.attackDamage *= multipliers.damage;
+    bot.speed *= multipliers.speed;
+    bot.baseSpeed *= multipliers.speed;
+    bot.difficultyApplied = selectedDifficulty;
+    return bot;
+  }
+
+  function applySelectedDifficulty() {
+    for (const bot of bots) {
+      applyDifficultyToBot(bot);
+    }
+  }
+
+  function startTrainingGame() {
+    if (multiplayerSocket) multiplayerSocket.close();
+    activeMode = "training";
+    loadUpgrades().then(() => {
+      resetWorld();
+      bots = bots.slice(0, 6);
+      applySelectedDifficulty();
+      initSkills();
+      initAudio();
+      runStats = { kills: 0, score: 0, maxCombo: 0, bossDefeated: 0, bossSpeedKill: 0, runTime: 0, redMotes: 0, noHitBoss: 0 };
+      state = "playing";
+      document.body.classList.add("is-playing");
+      ui.start.classList.add("is-hidden");
+      showToast("TREINO // SEM RECOMPENSAS · Q USA O ESPECIAL", 2400);
+    });
+  }
+
+  function drawCharacterPreview(now) {
+    if (!ui.preview) return;
+    const context = ui.preview.getContext("2d");
+    const { width: previewWidth, height: previewHeight } = ui.preview;
+    context.clearRect(0, 0, previewWidth, previewHeight);
+    const definition = getClassDefinition(selectedClassId);
+    const skin = getSelectedSkin();
+    const hue = skin.hue < 0 ? (now * 0.04) % 360 : skin.hue;
+    const centerX = previewWidth / 2;
+    const centerY = previewHeight / 2 + 8;
+    const glow = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, 105);
+    glow.addColorStop(0, `hsla(${hue} 95% 65% / .18)`); glow.addColorStop(1, "transparent");
+    context.fillStyle = glow; context.fillRect(0, 0, previewWidth, previewHeight);
+    const orbitCount = selectedClassId === "orbiter" ? 5 : selectedClassId === "summoner" ? 3 : selectedClassId === "trapper" ? 3 : 2;
+    for (let index = 0; index < orbitCount; index += 1) {
+      const angle = now * 0.0012 + index * TAU / orbitCount;
+      const orbit = 48 + (index % 2) * 19;
+      context.fillStyle = `hsla(${(hue + index * 18) % 360} 95% 70% / .82)`;
+      context.beginPath(); context.arc(centerX + Math.cos(angle) * orbit, centerY + Math.sin(angle) * orbit * 0.58, selectedClassId === "trapper" ? 4 : 6, 0, TAU); context.fill();
+    }
+    if (selectedClassId === "marksman") {
+      context.strokeStyle = `hsla(${hue} 95% 72% / .5)`; context.setLineDash([8, 7]); context.beginPath(); context.moveTo(centerX + 22, centerY); context.lineTo(previewWidth - 28, centerY - 28); context.stroke(); context.setLineDash([]);
+    }
+    if (selectedClassId === "cutter") {
+      context.strokeStyle = `hsla(${hue} 95% 72% / .55)`; context.lineWidth = 5; context.beginPath(); context.moveTo(45, centerY + 45); context.quadraticCurveTo(centerX - 35, centerY - 80, centerX, centerY); context.stroke();
+    }
+    context.shadowColor = `hsl(${hue} 95% 62%)`; context.shadowBlur = 24 * skin.glowIntensity;
+    context.fillStyle = `hsl(${hue} 90% 62%)`; context.beginPath(); context.arc(centerX, centerY, 25, 0, TAU); context.fill();
+    context.shadowBlur = 0; context.fillStyle = "rgba(5,4,12,.86)"; context.beginPath(); context.arc(centerX, centerY, 14, 0, TAU); context.fill();
+    context.save(); context.translate(centerX, centerY); context.rotate(now * 0.0007); context.lineWidth = 2;
+    context.strokeStyle = skin.colors[2]; context.fillStyle = skin.colors[0];
+    for (let detail = 0; detail < 6; detail += 1) {
+      const angle = detail * TAU / 6; const orbit = 34 + (detail % 2) * 8;
+      if (skin.style === "ice") {
+        context.save(); context.rotate(angle); context.beginPath(); context.moveTo(25, 0); context.lineTo(43, -5); context.lineTo(38, 6); context.closePath(); context.stroke(); context.restore();
+      } else if (skin.style === "ember" || skin.style === "shadow") {
+        context.save(); context.rotate(angle); context.beginPath(); context.moveTo(21, 0); context.quadraticCurveTo(37, -14, 48, detail % 2 ? 5 : -5); context.stroke(); context.restore();
+      } else {
+        context.fillStyle = skin.style === "prism" ? `hsl(${detail * 60} 95% 68%)` : skin.colors[detail % skin.colors.length];
+        context.beginPath(); context.arc(Math.cos(angle) * orbit, Math.sin(angle) * orbit * 0.74, 2.5 + detail % 2, 0, TAU); context.fill();
+      }
+    }
+    context.restore();
+    context.fillStyle = "white"; context.font = "700 18px Inter, sans-serif"; context.textAlign = "center"; context.textBaseline = "middle"; context.fillText(definition.icon, centerX, centerY + 1);
+    previewAnimationFrame = requestAnimationFrame(drawCharacterPreview);
+  }
+
+  document.querySelectorAll("[data-prep-tab]").forEach((button) => button.addEventListener("click", () => selectPrepTab(button.dataset.prepTab)));
+  ui.randomClass?.addEventListener("click", () => selectPlayerClass(chooseRandomClass(), true));
+  ui.trainingMode?.addEventListener("click", () => setSelectedMode("training"));
+  ui.difficulty?.addEventListener("change", () => { selectedDifficulty = ui.difficulty.value; savePreparation(); });
+  ui.modifier?.addEventListener("change", () => { selectedModifierId = ui.modifier.value; runModifiers = selectedModifierId ? modifierPool.filter((modifier) => modifier.id === selectedModifierId) : []; savePreparation(); });
+  ui.classSpecialButton?.addEventListener("click", useClassSpecial);
+  ui.fullscreenButton?.addEventListener("click", () => document.fullscreenElement ? document.exitFullscreen?.() : document.documentElement.requestFullscreen?.());
+  bindSettingInputs();
+  applyPreparationSettings();
+  renderPreparationMenu();
+  setSelectedMode(selectedMode);
+  if (!previewAnimationFrame) previewAnimationFrame = requestAnimationFrame(drawCharacterPreview);
+  document.addEventListener("visibilitychange", () => {
+    if (!preparation.settings.muteUnfocused) return;
+    if (document.hidden) { mutedBeforeFocusLoss = muted; muted = true; }
+    else muted = mutedBeforeFocusLoss;
+    if (typeof updateMusic === "function") updateMusic();
+  });
   loadSettings();
   resize();
   resetWorld();
@@ -5855,7 +7406,7 @@
       entity.levelPulseTimer = 1.1;
       emitLevelEvent("progression:level-up", entity, { levelsGained, source });
       if (entity === player) {
-        showToast(`NÍVEL ${entity.level} // SINAL AMPLIADO`, 1700);
+        showToast(`NÍVEL ${entity.level} ALCANÇADO`, 1700);
         spawnWave(entity.x, entity.y, entity.hue, 105 + entity.radius, 0.7);
         burst(entity.x, entity.y, entity.hue, 18);
         sound(330 + Math.min(220, entity.level * 8), 0.3, "triangle", 0.05);
@@ -6675,6 +8226,12 @@
     startSoloGame,
     beginPhase,
     endPhase,
+    useClassSpecial,
+    setClass(classId) {
+      selectedClassId = normalizeClassId(classId);
+      classSpecialCooldown = 0;
+      if (player) applyEntityClass(player, selectedClassId);
+    },
     forceMutation() {
       if (state === "playing") {
         player.score = Math.max(player.score, MUTATION_THRESHOLDS[player.nextMutationIndex] || player.score);
@@ -6695,7 +8252,11 @@
           score: Math.floor(player.score),
           kills: player.kills,
           phasing: player.phasing,
-          mutations: [...(player.mutations || [])]
+          mutations: [...(player.mutations || [])],
+          classId: player.classId,
+          classLevel: player.classLevel,
+          classResource: player.classResource,
+          classEffects: { projectiles: classProjectiles.length, traps: classTraps.length, fields: classFields.length, minions: classMinions.length }
         },
         mode: activeMode,
         roomCode: multiplayerRoomCode,

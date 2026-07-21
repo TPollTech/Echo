@@ -5,7 +5,8 @@
   }
 
   function spawnParticle(x, y, hue, speed = 100, life = 0.5) {
-    const maxParticles = MOBILE_QUALITY ? 60 : 200;
+    const density = clamp(Number(preparation?.settings?.particles ?? 100) / 100, 0.2, 1);
+    const maxParticles = Math.round((MOBILE_QUALITY ? 35 : 200) * density);
     if (particles.length >= maxParticles) return;
     const angle = Math.random() * TAU;
     particles.push({
@@ -21,7 +22,8 @@
   }
 
   function burst(x, y, hue, count) {
-    const limit = MOBILE_QUALITY ? Math.ceil(count * 0.5) : count;
+    const density = clamp(Number(preparation?.settings?.particles ?? 100) / 100, 0.2, 1);
+    const limit = Math.ceil((MOBILE_QUALITY ? count * 0.3 : count) * density);
     for (let i = 0; i < limit; i += 1) spawnParticle(x, y, hue, random(80, 260), random(0.28, 0.8));
   }
 

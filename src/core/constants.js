@@ -8,8 +8,8 @@
   const qaMode = new URLSearchParams(window.location.search).has("qa");
   const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0 && window.innerWidth < 1024);
   const MOBILE_QUALITY = isMobile;
-  const moteCount = MOBILE_QUALITY ? 140 : 330;
-  const ambientSeedCount = MOBILE_QUALITY ? 60 : 180;
+  const moteCount = MOBILE_QUALITY ? 80 : 330;
+  const ambientSeedCount = MOBILE_QUALITY ? 35 : 180;
   const names = ["LIMEN", "NARA", "VANTA", "RUÍDO", "AION", "KORA", "NULL", "SOMA", "VEGA", "MIRA", "ORFEU", "NYX", "ÍRIS", "FLUXO", "UMBRA"];
   const colors = [188, 218, 268, 302, 326, 42];
   const sectorNames = ["JARDIM NULO", "ARCO DE SOMA", "CAMPO ÍRIS", "LIMIAR VIOLETA", "POÇO DE AION", "VÉU NORTE", "DELTA ESPECTRAL", "COROA VAZIA", "MAR DE NYX"];

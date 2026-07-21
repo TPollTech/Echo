@@ -99,13 +99,17 @@
       if (index === 0) ctx.moveTo(screen.x, screen.y);
       else ctx.lineTo(screen.x, screen.y);
     });
-    ctx.strokeStyle = hsl(ribbonHue, 94, 64, alpha * 0.22);
-    ctx.lineWidth = taperWidth * 2.8 * camera.zoom;
-    ctx.stroke();
-    ctx.strokeStyle = hsl(ribbonHue, 95, 74, alpha * 0.78);
-    ctx.lineWidth = taperWidth * 0.7 * camera.zoom;
-    ctx.stroke();
-    if (!MOBILE_QUALITY) {
+    if (MOBILE_QUALITY) {
+      ctx.strokeStyle = hsl(ribbonHue, 94, 64, alpha * 0.8);
+      ctx.lineWidth = taperWidth * 1.4 * camera.zoom;
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = hsl(ribbonHue, 94, 64, alpha * 0.22);
+      ctx.lineWidth = taperWidth * 2.8 * camera.zoom;
+      ctx.stroke();
+      ctx.strokeStyle = hsl(ribbonHue, 95, 74, alpha * 0.78);
+      ctx.lineWidth = taperWidth * 0.7 * camera.zoom;
+      ctx.stroke();
       ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.65})`;
       ctx.lineWidth = 1.2 * camera.zoom;
       ctx.stroke();
@@ -130,16 +134,17 @@
       ctx.arc(pointX, pointY, wave.radius * camera.zoom, 0, TAU);
       ctx.stroke();
     }
-    for (const particle of particles) {
-      if (!visible(particle.x, particle.y, 10)) continue;
-      const pointX = (particle.x - camera.x) * camera.zoom + width / 2;
-      const pointY = (particle.y - camera.y) * camera.zoom + height / 2;
-      const alpha = clamp(particle.life / particle.maxLife, 0, 1);
-      ctx.fillStyle = hsl(particle.hue, 95, 70, alpha * 0.8);
-      if (!MOBILE_QUALITY) ctx.shadowColor = hsl(particle.hue, 95, 62, alpha);
-      ctx.beginPath();
-      ctx.arc(pointX, pointY, particle.radius * alpha * camera.zoom, 0, TAU);
-      ctx.fill();
+    if (particles.length > 0) {
+      for (const particle of particles) {
+        if (!visible(particle.x, particle.y, 10)) continue;
+        const pointX = (particle.x - camera.x) * camera.zoom + width / 2;
+        const pointY = (particle.y - camera.y) * camera.zoom + height / 2;
+        const alpha = clamp(particle.life / particle.maxLife, 0, 1);
+        ctx.fillStyle = hsl(particle.hue, 95, 70, alpha * 0.8);
+        ctx.beginPath();
+        ctx.arc(pointX, pointY, particle.radius * alpha * camera.zoom, 0, TAU);
+        ctx.fill();
+      }
     }
     ctx.restore();
   }

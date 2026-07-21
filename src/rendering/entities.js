@@ -91,6 +91,27 @@
     });
   }
 
+  function entityLowHealthAuraSprite(hue) {
+    const key = `aura-low:${Number(hue).toFixed(2)}`;
+    return cacheEntityGradientSprite(key, () => {
+      const logicalSize = 144;
+      const sprite = document.createElement("canvas");
+      sprite.width = logicalSize * 2;
+      sprite.height = logicalSize * 2;
+      const spriteContext = sprite.getContext("2d");
+      spriteContext.scale(2, 2);
+      const center = logicalSize / 2;
+      const radius = logicalSize / 2;
+      const gradient = spriteContext.createRadialGradient(center, center, radius * 0.048, center, center, radius);
+      gradient.addColorStop(0, hsl(0, 95, 55, 0.42));
+      gradient.addColorStop(0.35, hsl(0, 85, 55, 0.1));
+      gradient.addColorStop(1, hsl(0, 80, 40, 0));
+      spriteContext.fillStyle = gradient;
+      spriteContext.fillRect(0, 0, logicalSize, logicalSize);
+      return sprite;
+    });
+  }
+
   function entityCoreSprite(hue, spectral) {
     const key = `core:${Number(hue).toFixed(2)}:${spectral ? 1 : 0}`;
     return cacheEntityGradientSprite(key, () => {
@@ -122,9 +143,9 @@
     const healthRatio = clamp(entity.health / (entity.maxHealth || 100), 0, 1);
     const pulse = 1 + Math.sin(time * 0.004 + entity.x) * 0.035;
     const isLowHealth = !isPlayer && !spectral && healthRatio < 0.3 && healthRatio > 0;
-    const renderHue = isPlayer && entity.skinId === "caotico" ? (time * 0.05) % 360 : entity.hue;
+    const renderHue = isPlayer && entity.skinId === "arco-iris" ? (time * 0.05) % 360 : entity.hue;
     const glow = isPlayer ? entity.skinGlow || 1 : 1;
-    const cacheGradient = !(isPlayer && entity.skinId === "caotico");
+    const cacheGradient = !(isPlayer && entity.skinId === "arco-iris");
 
     if (!isPlayer && !spectral && entity.archetype === "sniper" && entity.sniperAimTimer > 0) {
       const aimPoint = toScreen(entity.sniperAimX, entity.sniperAimY);
@@ -160,13 +181,13 @@
       ctx.shadowBlur = (spectral ? 24 : 16) * glow;
     }
 
-    if (!MOBILE_QUALITY || isPlayer) {
+    if (!MOBILE_QUALITY) {
       const auraRadius = (isLowHealth ? radius * 2.8 : radius * 2.1) * glow;
-      const auraAlpha = isLowHealth ? 0.42 + Math.sin(time * 0.008) * 0.18 : spectral ? 0.42 : 0.34;
-      if (!isLowHealth && cacheGradient) {
-        const auraSprite = entityAuraSprite(renderHue, spectral);
+      if (cacheGradient) {
+        const auraSprite = isLowHealth ? entityLowHealthAuraSprite(renderHue) : entityAuraSprite(renderHue, spectral);
         ctx.drawImage(auraSprite, -auraRadius, -auraRadius, auraRadius * 2, auraRadius * 2);
       } else {
+        const auraAlpha = isLowHealth ? 0.42 + Math.sin(time * 0.008) * 0.18 : spectral ? 0.42 : 0.34;
         const aura = ctx.createRadialGradient(0, 0, radius * 0.1, 0, 0, auraRadius);
         aura.addColorStop(0, hsl(isLowHealth ? 0 : renderHue, 95, isLowHealth ? 55 : 72, auraAlpha));
         aura.addColorStop(0.35, hsl(isLowHealth ? 0 : renderHue, 85, 55, spectral ? 0.14 : 0.1));
@@ -225,45 +246,7 @@
       ctx.fill();
     }
 
-    if (isPlayer && !spectral && !MOBILE_QUALITY) {
-      const skinId = entity.skinId;
-      ctx.save();
-      ctx.rotate(time * 0.0012);
-      if (skinId === "fenix" || skinId === "sangue") {
-        const count = skinId === "fenix" ? 6 : 4;
-        for (let index = 0; index < count; index += 1) {
-          const angle = index * TAU / count;
-          const distance = radius * (1.35 + 0.18 * Math.sin(time * 0.006 + index));
-          ctx.fillStyle = hsl(renderHue + index * 5, 95, 62, 0.58);
-          ctx.beginPath();
-          ctx.arc(Math.cos(angle) * distance, Math.sin(angle) * distance, skinId === "fenix" ? 2.2 : 1.7, 0, TAU);
-          ctx.fill();
-        }
-      } else if (skinId === "gelo") {
-        ctx.strokeStyle = hsl(renderHue, 95, 78, 0.62);
-        for (let index = 0; index < 6; index += 1) {
-          const angle = index * TAU / 6;
-          ctx.beginPath();
-          ctx.moveTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
-          ctx.lineTo(Math.cos(angle) * radius * 1.55, Math.sin(angle) * radius * 1.55);
-          ctx.stroke();
-        }
-      } else if (skinId === "neon" || skinId === "dourado" || skinId === "caotico") {
-        ctx.strokeStyle = hsl(renderHue, 96, 70, 0.72);
-        ctx.lineWidth = skinId === "neon" ? 2.3 : 1.5;
-        ctx.beginPath();
-        ctx.arc(0, 0, radius * 1.45, 0, TAU);
-        ctx.stroke();
-      } else if (skinId === "sombra") {
-        ctx.strokeStyle = hsl(280, 80, 55, 0.38);
-        ctx.setLineDash([2, 6]);
-        ctx.beginPath();
-        ctx.arc(0, 0, radius * 1.7, 0, TAU);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-      ctx.restore();
-    }
+    if (!MOBILE_QUALITY && isPlayer && !spectral) drawPlayerSkin(entity, radius, renderHue, time);
 
     if (!isPlayer && !spectral && entity.faction != null && !entity.boss && !entity.bossClone) {
       const factionHues = [15, 200, 280];
@@ -275,10 +258,12 @@
     }
 
     ctx.fillStyle = "rgba(255,255,255,0.9)";
-    if (!MOBILE_QUALITY) ctx.shadowBlur = 12;
-    ctx.beginPath();
-    ctx.arc(-radius * 0.18, -radius * 0.2, Math.max(1.4, radius * 0.12), 0, TAU);
-    ctx.fill();
+    if (!MOBILE_QUALITY) {
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(-radius * 0.18, -radius * 0.2, Math.max(1.4, radius * 0.12), 0, TAU);
+      ctx.fill();
+    }
     ctx.restore();
 
     if (!spectral) {
@@ -294,7 +279,7 @@
         ctx.fillStyle = isPlayer ? "rgba(222,250,255,0.9)" : "rgba(205,197,220,0.72)";
         ctx.fillText(entity.name, point.x, point.y - radius - 15);
       }
-      if (!isPlayer && (healthRatio < 0.99 || entity.boss)) {
+      if (!MOBILE_QUALITY && !isPlayer && (healthRatio < 0.99 || entity.boss)) {
         const barWidth = entity.boss ? 74 : 32;
         ctx.fillStyle = "rgba(255,255,255,0.1)";
         ctx.fillRect(point.x - barWidth / 2, point.y + radius + 10, barWidth, 2);
@@ -520,15 +505,15 @@
         ctx.restore();
       }
       if (bot.prismaIllusion) {
-        drawEntity(bot, false, false, time, { alpha: 0.22 });
+        drawEntity(bot, bot.isBot === false, false, time, { alpha: 0.22 });
         continue;
       }
       if (bot.archetype === "phantom" && bot.stealthed) {
         if (bot.phasing && bot.phase) {
           drawRibbon(bot.phase, true, bot.hue, 4);
-          drawEntity(bot, false, true, time, { x: bot.phase.x, y: bot.phase.y, alpha: 0.3 });
+          drawEntity(bot, bot.isBot === false, true, time, { x: bot.phase.x, y: bot.phase.y, alpha: 0.3 });
         } else {
-          drawEntity(bot, false, false, time, { alpha: 0.25 });
+          drawEntity(bot, bot.isBot === false, false, time, { alpha: 0.25 });
         }
         continue;
       }
@@ -562,9 +547,9 @@
       if (bot.phasing && bot.phase) {
         drawRibbon(bot.phase, true, bot.hue, 6);
         drawShell(bot, time);
-        drawEntity(bot, false, true, time, { x: bot.phase.x, y: bot.phase.y });
+        drawEntity(bot, bot.isBot === false, true, time, { x: bot.phase.x, y: bot.phase.y });
       } else {
-        drawEntity(bot, false, false, time);
+        drawEntity(bot, bot.isBot === false, false, time);
       }
     }
   }
