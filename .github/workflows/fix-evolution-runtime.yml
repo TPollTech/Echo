@@ -1,0 +1,67 @@
+name: Repair ECHO evolution runtime order
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - runtime-order.trigger
+
+permissions:
+  contents: write
+
+jobs:
+  repair-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Move evolution modules inside runtime
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const orderPath = 'src/build-order.json';
+          const order = JSON.parse(fs.readFileSync(orderPath, 'utf8'));
+          const evolutionSections = new Set(['0118', '0119', '0120']);
+          const entries = order.filter((entry) => evolutionSections.has(entry.section));
+          const remaining = order.filter((entry) => !evolutionSections.has(entry.section));
+          const closingIndex = remaining.findIndex((entry) => entry.section === '0113');
+          if (closingIndex < 0) throw new Error('Seção de fechamento 0113 não encontrada.');
+          const expected = [
+            { path: 'src/progression/levels.js', section: '0118' },
+            { path: 'src/audio/soundtrack.js', section: '0119' },
+            { path: 'src/ui/level-presentation.js', section: '0120' }
+          ];
+          const bySection = new Map(entries.map((entry) => [entry.section, entry]));
+          const ordered = expected.map((entry) => bySection.get(entry.section) || entry);
+          remaining.splice(closingIndex, 0, ...ordered);
+          fs.writeFileSync(orderPath, `${JSON.stringify(remaining, null, 2)}\n`);
+          NODE
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Rebuild generated runtime
+        run: npm run build
+
+      - name: Validate architecture and syntax
+        run: npm run check
+
+      - name: Run regression tests
+        run: npm test
+
+      - name: Commit repaired runtime
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/build-order.json game.js
+          git commit -m "Keep ECHO evolution modules inside runtime closure"
+          git push
