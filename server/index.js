@@ -108,7 +108,7 @@ function createEchoServer(options = {}) {
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/rooms") {
-        sendJson(response, 200, { rooms: roomManager.listRooms().length });
+        sendJson(response, 200, { rooms: roomManager.listRooms() });
         return;
       }
       if (request.method === "POST" && url.pathname === "/api/rooms") {
