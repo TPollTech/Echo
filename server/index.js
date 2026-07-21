@@ -14,6 +14,10 @@ const PUBLIC_PATHS = new Set([
   "/index.html",
   "/styles.css",
   "/game.js",
+  "/core/events.js",
+  "/core/random.js",
+  "/core/runtime.js",
+  "/core/qa-panel.js",
   "/shared/simulation.js"
 ]);
 const MIME_TYPES = new Map([
@@ -104,7 +108,7 @@ function createEchoServer(options = {}) {
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/rooms") {
-        sendJson(response, 200, { rooms: roomManager.listRooms() });
+        sendJson(response, 200, { rooms: roomManager.listRooms().length });
         return;
       }
       if (request.method === "POST" && url.pathname === "/api/rooms") {
