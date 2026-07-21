@@ -1,0 +1,319 @@
+/* ECHO mobile/tablet UI stabilization layer.
+   Loaded after styles.css so coarse-pointer devices do not inherit desktop HUD geometry. */
+
+:root {
+  --echo-safe-top: max(12px, env(safe-area-inset-top));
+  --echo-safe-right: max(14px, env(safe-area-inset-right));
+  --echo-safe-bottom: max(18px, env(safe-area-inset-bottom));
+  --echo-safe-left: max(14px, env(safe-area-inset-left));
+}
+
+body.is-playing {
+  overscroll-behavior: none;
+}
+
+@media (pointer: coarse), (max-width: 900px) {
+  body.is-playing {
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none;
+  }
+
+  body.is-playing .challenge-panel,
+  body.is-playing .leaderboard,
+  body.is-playing .score-panel,
+  body.is-playing .ability-dock {
+    display: none !important;
+  }
+
+  body.is-playing .topbar {
+    top: var(--echo-safe-top);
+    right: var(--echo-safe-right);
+    left: var(--echo-safe-left);
+  }
+
+  body.is-playing .brand-lockup > div > span,
+  body.is-playing .sector-pill {
+    display: none !important;
+  }
+
+  body.is-playing .brand-lockup strong {
+    font-size: 18px;
+  }
+
+  body.is-playing .brand-mark {
+    width: 26px;
+    height: 26px;
+  }
+
+  body.is-playing .vitals {
+    top: calc(var(--echo-safe-top) + 58px);
+    left: var(--echo-safe-left);
+    width: min(248px, 42vw);
+    padding: 10px 12px;
+    border: 1px solid rgba(169, 154, 255, 0.12);
+    background: rgba(5, 4, 12, 0.66);
+  }
+
+  body.is-playing .vitals .charge-row {
+    margin-top: 10px;
+  }
+
+  body.is-playing .vitals .mutation-slots {
+    max-width: 100%;
+    margin-top: 8px;
+  }
+
+  body.is-playing .class-hud {
+    top: calc(var(--echo-safe-top) + 178px);
+    bottom: auto !important;
+    left: var(--echo-safe-left);
+    width: min(224px, 40vw);
+    padding: 9px 10px;
+    border: 1px solid rgba(139, 92, 246, 0.18);
+    background: rgba(5, 4, 12, 0.72);
+  }
+
+  body.is-playing .class-hud-title,
+  body.is-playing .class-hud-resource {
+    gap: 8px;
+  }
+
+  body.is-playing .class-hud-title strong,
+  body.is-playing .class-hud-title span,
+  body.is-playing .class-hud-resource span,
+  body.is-playing .class-hud-resource strong {
+    font-size: 10px;
+  }
+
+  body.is-playing .class-hud button {
+    min-height: 42px;
+    margin-top: 7px;
+    padding: 6px 7px;
+  }
+
+  body.is-playing .class-hud button strong {
+    overflow: hidden;
+    font-size: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body.is-playing .mobile-score {
+    top: calc(var(--echo-safe-top) + 52px);
+    right: var(--echo-safe-right);
+    display: block !important;
+    min-width: 84px;
+    padding: 7px 9px;
+    border: 1px solid rgba(169, 154, 255, 0.1);
+    background: rgba(5, 4, 12, 0.62);
+  }
+
+  body.is-playing .minimap {
+    top: calc(var(--echo-safe-top) + 132px);
+    right: var(--echo-safe-right);
+    bottom: auto !important;
+    width: 86px !important;
+    height: 86px !important;
+  }
+
+  body.is-playing .joystick-zone {
+    bottom: 0;
+    left: 0;
+    display: block !important;
+    width: 48vw;
+    height: 55vh;
+    pointer-events: auto !important;
+    touch-action: none !important;
+  }
+
+  body.is-playing .joystick-zone.is-center {
+    left: 20vw;
+    width: 60vw;
+  }
+
+  body.is-playing .joystick-zone.is-right {
+    right: 0;
+    left: auto;
+  }
+
+  body.is-playing .joystick-zone::after {
+    content: "";
+    position: fixed;
+    bottom: calc(var(--echo-safe-bottom) + 18px);
+    left: calc(var(--echo-safe-left) + 18px);
+    width: 104px;
+    height: 104px;
+    border: 1px solid rgba(139, 92, 246, 0.16);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.05), transparent 68%);
+    box-shadow: inset 0 0 22px rgba(139, 92, 246, 0.05);
+    pointer-events: none;
+  }
+
+  body.is-playing .joystick-zone.is-center::after {
+    left: calc(50% - 52px);
+  }
+
+  body.is-playing .joystick-zone.is-right::after {
+    right: calc(var(--echo-safe-right) + 18px);
+    left: auto;
+  }
+
+  body.is-playing .joystick-base {
+    width: 108px !important;
+    height: 108px !important;
+  }
+
+  body.is-playing .joystick-knob {
+    width: 46px !important;
+    height: 46px !important;
+  }
+
+  body.is-playing .mobile-phase {
+    right: calc(var(--echo-safe-right) + 8px) !important;
+    bottom: calc(var(--echo-safe-bottom) + 8px) !important;
+    left: auto !important;
+    display: grid !important;
+    width: 82px;
+    height: 82px;
+    transform: none !important;
+    z-index: 16;
+  }
+
+  body.is-playing .mobile-phase.is-active {
+    transform: scale(0.94) !important;
+  }
+
+  body.is-playing .mobile-skill-buttons {
+    right: calc(var(--echo-safe-right) + 2px);
+    bottom: calc(var(--echo-safe-bottom) + 106px);
+    display: grid !important;
+    grid-template-columns: repeat(2, 50px);
+    gap: 7px;
+    z-index: 15;
+  }
+
+  body.is-playing .mobile-skill-btn {
+    width: 50px;
+    height: 50px;
+    background: rgba(8, 7, 19, 0.9);
+  }
+
+  body.is-playing .combo.is-visible {
+    transform: translate(-50%, 46px) scale(1);
+  }
+
+  body.is-playing .boss-bar {
+    top: calc(var(--echo-safe-top) + 58px);
+    width: min(420px, calc(100vw - 290px));
+  }
+
+  body.is-playing .toast {
+    top: calc(var(--echo-safe-top) + 18px);
+    max-width: min(520px, calc(100vw - 220px));
+  }
+}
+
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 760px) {
+  body.is-playing .vitals {
+    top: calc(var(--echo-safe-top) + 48px);
+    width: min(220px, 36vw);
+    padding: 7px 9px;
+  }
+
+  body.is-playing .class-hud {
+    top: calc(var(--echo-safe-top) + 152px);
+    width: min(200px, 34vw);
+    padding: 7px 8px;
+  }
+
+  body.is-playing .class-hud button {
+    min-height: 36px;
+  }
+
+  body.is-playing .mobile-score {
+    top: calc(var(--echo-safe-top) + 44px);
+  }
+
+  body.is-playing .minimap {
+    top: calc(var(--echo-safe-top) + 112px);
+    width: 74px !important;
+    height: 74px !important;
+  }
+
+  body.is-playing .joystick-zone::after {
+    width: 94px;
+    height: 94px;
+  }
+
+  body.is-playing .mobile-phase {
+    width: 74px;
+    height: 74px;
+  }
+
+  body.is-playing .mobile-skill-buttons {
+    bottom: calc(var(--echo-safe-bottom) + 94px);
+    grid-template-columns: repeat(2, 46px);
+  }
+
+  body.is-playing .mobile-skill-btn {
+    width: 46px;
+    height: 46px;
+  }
+}
+
+@media (pointer: coarse) and (orientation: portrait) {
+  body.is-playing .vitals {
+    width: min(214px, 58vw);
+  }
+
+  body.is-playing .class-hud {
+    top: calc(var(--echo-safe-top) + 174px);
+    width: min(202px, 56vw);
+  }
+
+  body.is-playing .minimap {
+    top: calc(var(--echo-safe-top) + 130px);
+    width: 72px !important;
+    height: 72px !important;
+  }
+
+  body.is-playing .mobile-skill-buttons {
+    grid-template-columns: repeat(2, 46px);
+  }
+
+  body.is-playing .mobile-skill-btn {
+    width: 46px;
+    height: 46px;
+  }
+}
+
+@media (max-width: 480px) {
+  body.is-playing .vitals {
+    width: min(194px, 58vw);
+  }
+
+  body.is-playing .class-hud {
+    width: min(186px, 55vw);
+  }
+
+  body.is-playing .class-hud button span {
+    display: none;
+  }
+
+  body.is-playing .mobile-phase {
+    width: 72px;
+    height: 72px;
+  }
+
+  body.is-playing .mobile-skill-buttons {
+    bottom: calc(var(--echo-safe-bottom) + 88px);
+    grid-template-columns: repeat(2, 43px);
+  }
+
+  body.is-playing .mobile-skill-btn {
+    width: 43px;
+    height: 43px;
+  }
+}
