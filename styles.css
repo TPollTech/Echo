@@ -364,7 +364,7 @@ body:not(.is-playing) .game-ui {
 
 .ability-dock {
   left: 50%;
-  bottom: max(20px, env(safe-area-inset-bottom));
+  bottom: max(12px, env(safe-area-inset-bottom));
   display: flex;
   align-items: center;
   gap: 13px;

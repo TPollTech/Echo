@@ -190,42 +190,52 @@
 
   function drawSkillHud() {
     if (state !== "playing" || activeMode !== "solo") return;
-    const slotW = 52;
-    const gap = 8;
+    const slotW = 50;
+    const gap = 6;
     const totalW = activeSkills.length * slotW + (activeSkills.length - 1) * gap;
     const startX = width / 2 - totalW / 2;
-    const y = height - 70;
+    const y = height - 145;
     ctx.save();
     ctx.textAlign = "center";
+    const panelPad = 10;
+    ctx.fillStyle = "rgba(11,9,24,0.45)";
+    ctx.beginPath();
+    ctx.roundRect(startX - panelPad, y - panelPad, totalW + panelPad * 2, slotW + 36 + panelPad * 2, 10);
+    ctx.fill();
     for (let i = 0; i < activeSkills.length; i++) {
       const skill = activeSkills[i];
       if (!skill) continue;
       const x = startX + i * (slotW + gap);
       const cd = skillCooldowns[i];
       const ready = cd <= 0 && player.energy >= skill.energyCost;
-      const alpha = ready ? 0.85 : 0.35;
-      ctx.fillStyle = `rgba(11,9,24,0.75)`;
+      ctx.fillStyle = ready ? "rgba(11,9,24,0.85)" : "rgba(11,9,24,0.65)";
       ctx.beginPath();
       ctx.roundRect(x, y, slotW, slotW, 6);
       ctx.fill();
-      ctx.strokeStyle = ready ? skill.color : "rgba(132,105,202,0.3)";
+      ctx.strokeStyle = ready ? skill.color : "rgba(132,105,202,0.25)";
       ctx.lineWidth = ready ? 2 : 1;
       ctx.beginPath();
       ctx.roundRect(x, y, slotW, slotW, 6);
       ctx.stroke();
-      ctx.fillStyle = ready ? skill.color : "rgba(205,197,220,0.3)";
-      ctx.font = "600 18px Inter, sans-serif";
-      ctx.fillText(skill.symbol, x + slotW / 2, y + slotW / 2 + 2);
-      ctx.fillStyle = ready ? "rgba(255,255,255,0.8)" : "rgba(205,197,220,0.3)";
-      ctx.font = "700 10px Inter, sans-serif";
-      ctx.fillText(String(i + 1), x + slotW / 2, y + slotW - 5);
+      ctx.fillStyle = ready ? skill.color : "rgba(205,197,220,0.25)";
+      ctx.font = "600 17px Inter, sans-serif";
+      ctx.fillText(skill.symbol, x + slotW / 2, y + slotW / 2 + 1);
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.font = "700 9px Inter, sans-serif";
+      ctx.fillText(`[${i + 1}]`, x + slotW / 2, y + slotW - 4);
+      ctx.fillStyle = ready ? "rgba(255,255,255,0.65)" : "rgba(205,197,220,0.25)";
+      ctx.font = "500 8px Inter, sans-serif";
+      ctx.fillText(skill.name, x + slotW / 2, y + slotW + 12);
+      ctx.fillStyle = ready ? "rgba(255,255,255,0.35)" : "rgba(205,197,220,0.15)";
+      ctx.font = "400 7px Inter, sans-serif";
+      ctx.fillText(`${skill.energyCost}⚡`, x + slotW / 2, y + slotW + 22);
       if (cd > 0) {
         const cdRatio = cd / skill.cooldown;
-        ctx.fillStyle = `rgba(255,79,216,${0.25 * cdRatio})`;
+        ctx.fillStyle = `rgba(255,79,216,${0.2 * cdRatio})`;
         ctx.beginPath();
         ctx.roundRect(x, y + slotW * (1 - cdRatio), slotW, slotW * cdRatio, [0, 0, 6, 6]);
         ctx.fill();
-        ctx.fillStyle = "rgba(255,255,255,0.6)";
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
         ctx.font = "600 11px Inter, sans-serif";
         ctx.fillText(`${cd.toFixed(1)}`, x + slotW / 2, y + slotW / 2 + 12);
       }
