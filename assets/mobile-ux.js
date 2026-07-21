@@ -9,6 +9,9 @@
 
   document.documentElement.classList.add("echo-touch-device");
 
+  let activeZonePointerId = null;
+  let activePhasePointerId = null;
+
   function byId(id) {
     return document.getElementById(id);
   }
@@ -23,24 +26,24 @@
     document.body.classList.toggle("echo-touch-playing", playing);
   }
 
+  function dispatchPointerCancel(target, pointerId) {
+    if (!target || pointerId === null || typeof root.PointerEvent !== "function") return;
+    target.dispatchEvent(new PointerEvent("pointercancel", {
+      bubbles: true,
+      cancelable: true,
+      pointerId,
+      pointerType: "touch",
+      isPrimary: true
+    }));
+  }
+
   function cancelStuckTouches() {
     const zone = byId("joystick-zone");
     const phase = byId("mobile-phase");
-    if (typeof root.PointerEvent === "function") {
-      const event = new PointerEvent("pointercancel", {
-        bubbles: true,
-        cancelable: true,
-        pointerId: 2147483646,
-        pointerType: "touch"
-      });
-      zone?.dispatchEvent(event);
-      phase?.dispatchEvent(new PointerEvent("pointercancel", {
-        bubbles: true,
-        cancelable: true,
-        pointerId: 2147483645,
-        pointerType: "touch"
-      }));
-    }
+    dispatchPointerCancel(zone, activeZonePointerId);
+    dispatchPointerCancel(phase, activePhasePointerId);
+    activeZonePointerId = null;
+    activePhasePointerId = null;
     phase?.classList.remove("is-active");
   }
 
@@ -91,30 +94,48 @@
     zone.addEventListener("touchcancel", (event) => finish(event, "pointercancel"), { passive: false });
   }
 
-  function protectJoystickCapture(zone) {
-    if (!zone) return;
-    let activePointerId = null;
+  function protectPointerCapture(zone, phase) {
+    if (zone) {
+      zone.addEventListener("pointerdown", (event) => {
+        activeZonePointerId = event.pointerId;
+      }, true);
 
-    zone.addEventListener("pointerdown", (event) => {
-      activePointerId = event.pointerId;
-    }, true);
+      const clearZonePointer = (event) => {
+        if (activeZonePointerId === null || event.pointerId === activeZonePointerId) activeZonePointerId = null;
+      };
 
-    const clearPointer = (event) => {
-      if (activePointerId === null || event.pointerId === activePointerId) activePointerId = null;
-    };
+      zone.addEventListener("pointerup", clearZonePointer, true);
+      zone.addEventListener("pointercancel", clearZonePointer, true);
+      zone.addEventListener("lostpointercapture", () => {
+        const pointerId = activeZonePointerId;
+        if (pointerId === null) return;
+        dispatchPointerCancel(zone, pointerId);
+        activeZonePointerId = null;
+      });
+    }
 
-    zone.addEventListener("pointerup", clearPointer, true);
-    zone.addEventListener("pointercancel", clearPointer, true);
-    zone.addEventListener("lostpointercapture", () => {
-      if (activePointerId === null || typeof root.PointerEvent !== "function") return;
-      zone.dispatchEvent(new PointerEvent("pointercancel", {
-        bubbles: true,
-        cancelable: true,
-        pointerId: activePointerId,
-        pointerType: "touch"
-      }));
-      activePointerId = null;
-    });
+    if (phase) {
+      phase.addEventListener("pointerdown", (event) => {
+        activePhasePointerId = event.pointerId;
+        phase.classList.add("is-active");
+      }, true);
+
+      const clearPhasePointer = (event) => {
+        if (activePhasePointerId !== null && event.pointerId !== activePhasePointerId) return;
+        activePhasePointerId = null;
+        phase.classList.remove("is-active");
+      };
+
+      phase.addEventListener("pointerup", clearPhasePointer, true);
+      phase.addEventListener("pointercancel", clearPhasePointer, true);
+      phase.addEventListener("lostpointercapture", () => {
+        const pointerId = activePhasePointerId;
+        if (pointerId === null) return;
+        dispatchPointerCancel(phase, pointerId);
+        activePhasePointerId = null;
+        phase.classList.remove("is-active");
+      });
+    }
   }
 
   function prepareInstallButton() {
@@ -151,9 +172,10 @@
 
   function init() {
     const zone = byId("joystick-zone");
+    const phase = byId("mobile-phase");
     syncTouchControls();
     addLegacyTouchFallback(zone);
-    protectJoystickCapture(zone);
+    protectPointerCapture(zone, phase);
     prepareInstallButton();
 
     const bodyObserver = new MutationObserver(syncTouchControls);
@@ -163,8 +185,12 @@
       if (document.hidden) cancelStuckTouches();
       syncTouchControls();
     });
+    root.addEventListener("blur", cancelStuckTouches);
     root.addEventListener("pagehide", cancelStuckTouches);
-    root.addEventListener("orientationchange", () => root.setTimeout(syncTouchControls, 120));
+    root.addEventListener("orientationchange", () => {
+      cancelStuckTouches();
+      root.setTimeout(syncTouchControls, 120);
+    });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, { once: true });
