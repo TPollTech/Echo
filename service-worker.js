@@ -1,7 +1,7 @@
 "use strict";
 
-const CACHE_VERSION = "echo-shell-v1";
-const RUNTIME_CACHE = "echo-runtime-v1";
+const CACHE_VERSION = "echo-shell-v2";
+const RUNTIME_CACHE = "echo-runtime-v2";
 const APP_ROOT = new URL("./", self.registration.scope);
 const asset = (path) => new URL(path, APP_ROOT).toString();
 
@@ -12,8 +12,8 @@ const PRECACHE = [
   "./assets/mobile-ui.css",
   "./assets/mobile-ux.js",
   "./assets/manifest.json",
-  "./assets/icons/icon-192.png",
-  "./assets/icons/icon-512.png",
+  "./assets/icons/icon-192.svg",
+  "./assets/icons/icon-512.svg",
   "./core/events.js",
   "./core/random.js",
   "./core/runtime.js",
@@ -55,12 +55,12 @@ async function networkFirst(request) {
     clearTimeout(timeout);
     if (response && response.ok) {
       const cache = await caches.open(RUNTIME_CACHE);
-      cache.put(request, response.clone());
+      await cache.put(request, response.clone());
     }
     return response;
   } catch {
     clearTimeout(timeout);
-    return (await caches.match(request)) || (await caches.match(asset("./index.html")));
+    return (await caches.match(request)) || (await caches.match(asset("./index.html"))) || Response.error();
   }
 }
 
