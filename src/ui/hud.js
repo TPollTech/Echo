@@ -173,7 +173,11 @@
           const ready = skill && cd <= 0 && player.energy >= skill.energyCost;
           btn.classList.toggle("is-ready", ready);
           btn.classList.toggle("is-cooldown", cd > 0);
-          if (skill) btn.style.setProperty("--skill-color", skill.color);
+          if (skill) {
+            btn.style.setProperty("--skill-color", skill.color);
+            const icon = btn.querySelector(".ms-skill-icon");
+            if (icon && icon.textContent !== skill.symbol) icon.textContent = skill.symbol;
+          }
         });
       }
     }

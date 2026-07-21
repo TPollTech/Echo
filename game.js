@@ -5446,7 +5446,11 @@
           const ready = skill && cd <= 0 && player.energy >= skill.energyCost;
           btn.classList.toggle("is-ready", ready);
           btn.classList.toggle("is-cooldown", cd > 0);
-          if (skill) btn.style.setProperty("--skill-color", skill.color);
+          if (skill) {
+            btn.style.setProperty("--skill-color", skill.color);
+            const icon = btn.querySelector(".ms-skill-icon");
+            if (icon && icon.textContent !== skill.symbol) icon.textContent = skill.symbol;
+          }
         });
       }
     }
@@ -6896,38 +6900,40 @@
   };
 
   if (ui.joystickZone) {
+    const JOY_RADIUS = 44;
+    const JOY_BASE_X = 90;
+    const JOY_BASE_Y_DEFAULT = 100;
+
     ui.joystickZone.addEventListener("pointerdown", (event) => {
       event.preventDefault();
       ui.joystickZone.setPointerCapture?.(event.pointerId);
       joystick.active = true;
       joystick.pointerId = event.pointerId;
-      const rect = ui.joystickZone.getBoundingClientRect();
-      joystick.originX = event.clientX;
-      joystick.originY = event.clientY;
-      ui.joystickBase.style.left = `${event.clientX - rect.left}px`;
-      ui.joystickBase.style.top = `${event.clientY - rect.top}px`;
-      ui.joystickKnob.style.left = `${event.clientX - rect.left}px`;
-      ui.joystickKnob.style.top = `${event.clientY - rect.top}px`;
+      const baseRect = ui.joystickBase.getBoundingClientRect();
+      joystick.originX = baseRect.left + baseRect.width / 2;
+      joystick.originY = baseRect.top + baseRect.height / 2;
       ui.joystickBase.classList.add("is-active");
+      ui.joystickKnob.style.left = `${event.clientX}px`;
+      ui.joystickKnob.style.top = `${event.clientY}px`;
+      let ddx = event.clientX - joystick.originX;
+      let ddy = event.clientY - joystick.originY;
+      const dist = Math.hypot(ddx, ddy);
+      if (dist > JOY_RADIUS) { ddx = ddx / dist * JOY_RADIUS; ddy = ddy / dist * JOY_RADIUS; }
+      joystick.dx = ddx / JOY_RADIUS;
+      joystick.dy = ddy / JOY_RADIUS;
     });
 
     ui.joystickZone.addEventListener("pointermove", (event) => {
       if (!joystick.active || event.pointerId !== joystick.pointerId) return;
       event.preventDefault();
-      const rect = ui.joystickZone.getBoundingClientRect();
-      const kx = event.clientX - rect.left;
-      const ky = event.clientY - rect.top;
-      const bx = joystick.originX - rect.left;
-      const by = joystick.originY - rect.top;
-      let ddx = kx - bx;
-      let ddy = ky - by;
+      let ddx = event.clientX - joystick.originX;
+      let ddy = event.clientY - joystick.originY;
       const dist = Math.hypot(ddx, ddy);
-      const maxDist = 44;
-      if (dist > maxDist) { ddx = ddx / dist * maxDist; ddy = ddy / dist * maxDist; }
-      joystick.dx = ddx / maxDist;
-      joystick.dy = ddy / maxDist;
-      ui.joystickKnob.style.left = `${bx + ddx}px`;
-      ui.joystickKnob.style.top = `${by + ddy}px`;
+      if (dist > JOY_RADIUS) { ddx = ddx / dist * JOY_RADIUS; ddy = ddy / dist * JOY_RADIUS; }
+      joystick.dx = ddx / JOY_RADIUS;
+      joystick.dy = ddy / JOY_RADIUS;
+      ui.joystickKnob.style.left = `${joystick.originX + ddx}px`;
+      ui.joystickKnob.style.top = `${joystick.originY + ddy}px`;
     });
 
     const endJoystick = (event) => {
@@ -6937,6 +6943,8 @@
       joystick.dx = 0;
       joystick.dy = 0;
       ui.joystickBase.classList.remove("is-active");
+      ui.joystickKnob.style.left = `${ui.joystickBase.getBoundingClientRect().left + 55}px`;
+      ui.joystickKnob.style.top = `${ui.joystickBase.getBoundingClientRect().top + 55}px`;
     };
     ui.joystickZone.addEventListener("pointerup", endJoystick);
     ui.joystickZone.addEventListener("pointercancel", endJoystick);

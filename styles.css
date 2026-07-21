@@ -2363,74 +2363,90 @@ body[data-control-position="left"] .mobile-phase { right:auto;left:18px; }
   position: fixed;
   left: 0;
   bottom: 0;
-  width: 45%;
-  height: 55%;
+  width: 40%;
+  height: 50%;
   z-index: 12;
   touch-action: none;
   display: none;
 }
 .joystick-base {
-  position: absolute;
+  position: fixed;
+  left: 90px;
+  bottom: 100px;
   width: 110px;
   height: 110px;
   border-radius: 50%;
-  border: 2px solid rgba(139, 92, 246, 0.3);
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.08) 0%, rgba(11, 9, 24, 0.5) 70%);
+  border: 2px solid rgba(139, 92, 246, 0.25);
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.06) 0%, rgba(11, 9, 24, 0.4) 70%);
   transform: translate(-50%, -50%);
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.15s;
+  z-index: 13;
 }
 .joystick-base.is-active { opacity: 1; }
 .joystick-knob {
-  position: absolute;
-  width: 42px;
-  height: 42px;
+  position: fixed;
+  left: 90px;
+  bottom: 100px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  border: 2px solid rgba(69, 230, 255, 0.55);
-  background: radial-gradient(circle, rgba(69, 230, 255, 0.2) 0%, rgba(7, 6, 18, 0.85) 70%);
+  border: 2px solid rgba(69, 230, 255, 0.5);
+  background: radial-gradient(circle, rgba(69, 230, 255, 0.18) 0%, rgba(7, 6, 18, 0.8) 70%);
   transform: translate(-50%, -50%);
   pointer-events: none;
+  z-index: 14;
 }
 
 /* --- MOBILE SKILL BUTTONS --- */
 .mobile-skill-buttons {
   position: fixed;
-  right: 12px;
-  bottom: 110px;
+  right: 10px;
+  bottom: 108px;
   display: none;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   z-index: 14;
   touch-action: none;
 }
 .mobile-skill-btn {
-  width: 52px;
-  height: 52px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  border: 1.5px solid rgba(132, 105, 202, 0.3);
-  background: rgba(11, 9, 24, 0.75);
-  color: rgba(205, 197, 220, 0.4);
-  font: 600 14px Inter, sans-serif;
+  border: 1.5px solid rgba(132, 105, 202, 0.25);
+  background: rgba(11, 9, 24, 0.8);
+  color: rgba(205, 197, 220, 0.35);
   display: grid;
   place-items: center;
   touch-action: none;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  transition: border-color 0.15s, color 0.15s, opacity 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.ms-skill-icon {
+  font-size: 18px;
+  line-height: 1;
+  pointer-events: none;
+}
+.ms-skill-num {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font: 700 8px Inter, sans-serif;
+  opacity: 0.45;
+  pointer-events: none;
 }
 .mobile-skill-btn.is-ready {
-  border-color: var(--skill-color, rgba(132, 105, 202, 0.6));
+  border-color: var(--skill-color, rgba(132, 105, 202, 0.55));
   color: var(--skill-color, #cdc5dc);
 }
+.mobile-skill-btn.is-ready .ms-skill-icon { opacity: 1; }
 .mobile-skill-btn.is-cooldown {
-  opacity: 0.4;
+  opacity: 0.35;
 }
-.mobile-skill-btn .skill-key {
-  font-size: 9px;
-  opacity: 0.5;
-  position: absolute;
-  bottom: 4px;
-}
+.mobile-skill-btn .ms-skill-icon { opacity: 0.4; }
 
 /* --- MOBILE COMPACT SCORE --- */
 .mobile-score {
@@ -2470,4 +2486,6 @@ body[data-control-position="left"] .mobile-phase { right:auto;left:18px; }
   .class-hud-title strong { font-size: 10px; }
   .class-hud button { padding: 5px; font-size: 9px; }
   .class-hud button kbd { padding: 2px 4px; font-size: 8px; }
+  .joystick-base { left: 80px; bottom: 90px; width: 100px; height: 100px; }
+  .joystick-knob { left: 80px; bottom: 90px; width: 40px; height: 40px; }
 }
