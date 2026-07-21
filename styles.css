@@ -1133,7 +1133,7 @@ body:not(.is-playing) .game-ui {
 .minimap {
   position: fixed;
   bottom: 18px;
-  left: 18px;
+  right: 18px;
   width: 140px;
   height: 140px;
   border: 1px solid rgba(132, 105, 202, 0.25);
@@ -1157,7 +1157,7 @@ body:not(.is-playing) .game-ui {
     width: 100px;
     height: 100px;
     bottom: 12px;
-    left: 12px;
+    right: 12px;
   }
 }
 
