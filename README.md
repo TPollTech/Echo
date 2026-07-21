@@ -2,22 +2,27 @@
 
 ECHO é uma arena em Canvas baseada em projeção espectral. O núcleo físico fica parado e vulnerável enquanto o eco se move; ao materializar, o trajeto vira um ataque.
 
-## Versão atual — 0.5.1
+## Versão atual — 0.6.0
 
-Esta versão conclui o **Incremento 1 — Separar o `game.js`**, preservando o gameplay da versão 0.5.0.
+A versão 0.6 adiciona evolução dinâmica dentro da partida e amplia a identidade audiovisual do jogo.
 
-- o código editável foi movido para módulos canônicos dentro de `src/`;
-- `game.js` agora é um bundle gerado e não deve ser editado manualmente;
-- estado, entidades, combate, inimigos, bosses, progressão, renderização, áudio e interface têm arquivos próprios;
-- inimigos usam `enemyBehaviorRegistry` em vez de cadeias de decisões espalhadas;
-- bosses usam `bossMechanicRegistry` para despachar suas mecânicas;
-- `npm run check` recusa bundle divergente, módulos ausentes, arquivos exagerados e regressões para cadeias por arquétipo;
-- a identidade de combate, o diretor de ameaças, a escala da interface, as seeds e o painel de QA continuam ativos.
+- jogador e bots possuem nível e experiência próprios durante cada run;
+- fragmentos ciano, roxo, dourado e vermelho fornecem quantidades diferentes de experiência;
+- fragmentos roxos ativam um impulso temporário de experiência e velocidade;
+- subir de nível aumenta tamanho, vida, dano e alcance, com pequena redução de mobilidade nos níveis altos;
+- bots avaliam perigo, diferença de força, alvos vulneráveis e valor dos fragmentos antes de decidir entre fugir, caçar ou coletar;
+- entidades derrotadas devolvem parte de sua evolução como fragmentos;
+- bosses aparecem entre aproximadamente 1,6 e 2,05 vezes maiores e escalam conforme os níveis presentes na arena;
+- o HUD mostra nível e barra de experiência, e entidades recebem identificação visual de nível;
+- a música procedural agora possui sete temas, alternância sem repetição imediata e variações de perigo, boss e fase final;
+- o servidor estático publica com segurança os módulos do navegador e valida os arquivos obrigatórios ao iniciar.
+
+A fonte editável continua organizada em módulos dentro de `src/`. O arquivo `game.js` é um bundle gerado e não deve ser editado manualmente.
 
 ## Modos
 
-- **Solo:** run com mutações, modificadores, arquétipos de inimigos, escalada dinâmica e diferentes bosses.
-- **Multiplayer local:** salas para até oito jogadores, bots de treino, placar sincronizado e servidor autoritativo básico.
+- **Solo:** run com níveis, crescimento, mutações, modificadores, arquétipos de inimigos, escalada dinâmica e diferentes bosses.
+- **Multiplayer local:** salas para até oito jogadores, bots de treino, placar sincronizado e servidor autoritativo básico. A progressão dinâmica completa permanece concentrada no modo solo nesta versão.
 
 ## Executar
 
@@ -43,6 +48,17 @@ Para reproduzir uma run específica:
 
 ```text
 http://localhost:4174/?seed=ECHO-7F42A
+```
+
+### Erros 404 em `core/*.js`
+
+Inicie o jogo pela raiz do projeto usando `npm start`; não abra o `index.html` diretamente nem execute somente a pasta `server/`. A inicialização agora verifica `game.js`, `core/events.js`, `core/random.js`, `core/runtime.js` e `core/qa-panel.js` antes de abrir a porta.
+
+Caso o bundle esteja ausente ou desatualizado:
+
+```powershell
+npm run build
+npm start
 ```
 
 ## Controles
@@ -83,6 +99,8 @@ Atalhos existentes:
 - `B`: invoca um boss.
 - `V`: abre o estado de vitória solo.
 
+No console do navegador, `EchoRunProgression` expõe as configurações de nível e `EchoSoundtrack` mostra a biblioteca e a faixa atual.
+
 ## Arquitetura
 
 - `src/core/`: estado, loop, entrada, câmera, constantes e multiplayer.
@@ -90,11 +108,11 @@ Atalhos existentes:
 - `src/combat/`: dano, colisão, rastro e efeitos de estado.
 - `src/enemies/`: dados dos arquétipos, registro de IA e comportamentos especializados.
 - `src/bosses/`: definições, controle de fases e registro de mecânicas.
-- `src/progression/`: mutações, sinergias, modificadores, skins, desafios e upgrades.
+- `src/progression/`: níveis, crescimento, mutações, sinergias, modificadores, skins, desafios e upgrades.
 - `src/rendering/`: renderizador, entidades, efeitos e telegraphs.
-- `src/audio/`: engine, música e efeitos sonoros.
-- `src/ui/`: HUD, menus, HUD de boss e acessibilidade.
-- `core/` e `combat/` na raiz: módulos auxiliares já desacoplados usados pelo runtime 0.4/0.5.
-- `server/`: persistência e multiplayer local.
+- `src/audio/`: engine, soundtrack procedural e efeitos sonoros.
+- `src/ui/`: HUD, apresentação de níveis, menus, HUD de boss e acessibilidade.
+- `core/` e `combat/` na raiz: módulos auxiliares desacoplados usados pelo runtime.
+- `server/`: persistência, servidor estático seguro e multiplayer local.
 
 Consulte `src/README.md`, `docs/ARCHITECTURE.md` e `docs/HYPERPLAN.md`.
