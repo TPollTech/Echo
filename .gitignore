@@ -1,2 +1,6 @@
 data/echo.sqlite-shm
 data/echo.sqlite-wal
+data/echo.sqlite
+data/echo.sqlite-shm
+data/echo.sqlite-wal
+docs/Adições.md
