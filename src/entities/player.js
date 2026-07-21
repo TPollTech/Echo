@@ -84,6 +84,7 @@
 /*__ECHO_SECTION_END:0030__*/
 /*__ECHO_SECTION:0067__*/
   function updatePlayer(dt) {
+    updateLevelProgression(player, dt);
     player.cooldown = Math.max(0, player.cooldown - dt);
     player.hitTimer = Math.max(0, player.hitTimer - dt);
     if (!player.phasing && player.hitTimer <= 0 && player.health < player.maxHealth) {
@@ -143,7 +144,8 @@
       collectMotes(phase, true);
       if (player.energy <= 0) endPhase();
     } else {
-      steerVelocity(player, target.x, target.y, 205, dt, 6.1);
+      const growthSpeed = (player.levelSpeedScale || 1) * (player.rareBoostTimer > 0 ? 1.06 : 1);
+      steerVelocity(player, target.x, target.y, 205 * growthSpeed, dt, 6.1);
       player.x = clamp(player.x + player.vx * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
       player.y = clamp(player.y + player.vy * dt, WORLD_MARGIN, WORLD_SIZE - WORLD_MARGIN);
       player.energy = Math.min(player.maxEnergy, player.energy + 13 * dt);
@@ -151,6 +153,7 @@
     }
 
     resolveEntityOverlap();
+    updateLevelHud();
   }
 
 /*__ECHO_SECTION_END:0067__*/
