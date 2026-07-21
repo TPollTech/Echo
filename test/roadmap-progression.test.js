@@ -62,9 +62,10 @@ test("jogador e bots recebem experiência ao coletar fragmentos", () => {
   assert.match(botSource, /rareBoostTimer = LEVEL_CONFIG\.rareBoostDuration/);
 });
 
-test("soundtrack possui sete temas e evita repetição imediata", () => {
-  const source = read("src/audio/soundtrack.js");
-  const expectedTracks = [
+test("soundtrack possui dez temas, estados completos e evita repetição imediata", () => {
+  const combatSource = read("src/audio/soundtrack.js");
+  const stateSource = read("src/audio/state-soundtrack.js");
+  const expectedCombatTracks = [
     "signal-drift",
     "glass-current",
     "violet-engine",
@@ -73,10 +74,24 @@ test("soundtrack possui sete temas e evita repetição imediata", () => {
     "deep-quake",
     "terminal-light"
   ];
-  for (const track of expectedTracks) assert.ok(source.includes(track), `faixa ausente: ${track}`);
-  assert.match(source, /ids\.filter\(\(id\) => id !== currentId\)/);
-  assert.match(source, /bossSoundtrackId/);
-  assert.match(source, /rotateAt/);
+  const expectedStateTracks = ["menu-echo", "victory-rise", "defeat-fall"];
+  for (const track of expectedCombatTracks) assert.ok(combatSource.includes(track), `faixa ausente: ${track}`);
+  for (const track of expectedStateTracks) assert.ok(stateSource.includes(track), `faixa de estado ausente: ${track}`);
+  assert.match(combatSource, /ids\.filter\(\(id\) => id !== currentId\)/);
+  assert.match(combatSource, /bossSoundtrackId/);
+  assert.match(combatSource, /rotateAt/);
+  assert.match(stateSource, /finishSoloWithStateSoundtrack/);
+  assert.match(stateSource, /returnToMenuWithStateSoundtrack/);
+  assert.match(stateSource, /enableInitialMenuSoundtrack/);
+});
+
+test("multiplayer deriva nível visual do placar autoritativo", () => {
+  const source = read("src/core/multiplayer-levels.js");
+  assert.match(source, /progressionFromScore/);
+  assert.match(source, /applyMultiplayerLevelPresentation/);
+  assert.match(source, /applyMultiplayerSnapshotWithLevels/);
+  assert.match(source, /updateMultiplayerWithLevelPresentation/);
+  assert.match(source, /entity\.radius = entity\.multiplayerBaseRadius \* entity\.levelScale/);
 });
 
 test("novos módulos são montados antes do fechamento do runtime", () => {
@@ -86,7 +101,9 @@ test("novos módulos são montados antes do fechamento do runtime", () => {
   for (const required of [
     "src/progression/levels.js",
     "src/audio/soundtrack.js",
-    "src/ui/level-presentation.js"
+    "src/ui/level-presentation.js",
+    "src/audio/state-soundtrack.js",
+    "src/core/multiplayer-levels.js"
   ]) {
     const index = order.findIndex((entry) => entry.path === required);
     assert.ok(index >= 0, `${required} não está no build-order`);
@@ -96,7 +113,13 @@ test("novos módulos são montados antes do fechamento do runtime", () => {
   const bundle = read("game.js");
   const closingPosition = bundle.lastIndexOf("}());");
   assert.ok(closingPosition > 0, "fechamento do runtime ausente no bundle");
-  for (const token of ["const LEVEL_CONFIG", "const SOUNDTRACK_LIBRARY", "EchoRunProgression"]) {
+  for (const token of [
+    "const LEVEL_CONFIG",
+    "const SOUNDTRACK_LIBRARY",
+    "const STATE_SOUNDTRACK_LIBRARY",
+    "EchoRunProgression",
+    "EchoMultiplayerLevels"
+  ]) {
     const position = bundle.indexOf(token);
     assert.ok(position >= 0, `${token} ausente do bundle`);
     assert.ok(position < closingPosition, `${token} está fora do runtime principal`);
