@@ -82,7 +82,8 @@
     player = createPlayer();
     player.name = sanitizeName(ui.name.value);
     player.hitTimer = 1.2;
-    bots = Array.from({ length: BOT_COUNT }, (_, index) => createBot(index));
+    const botClasses = createBalancedBotClassComposition({ botCount: BOT_COUNT, playerClass: selectedClassId });
+    bots = Array.from({ length: BOT_COUNT }, (_, index) => createBot(index, { classId: botClasses[index] }));
     motes = Array.from({ length: moteCount }, (_, index) => createMote(index < 90));
     rebuildMoteSpatialIndex();
     particles = [];
@@ -106,6 +107,7 @@
     lastRunSaved = false;
     screenShake = 0;
     flash = 0;
+    resetClassCombat();
     mutationPending = false;
     updateMutationSlots();
     initSkills();
@@ -143,6 +145,7 @@
     bossDefeatedThisRun = false;
     loadUpgrades().then(() => {
       resetWorld();
+      applySelectedDifficulty();
       applyModifiers();
       captureMutationBaseline(player);
       initAudio();
@@ -150,11 +153,12 @@
       runStats = { kills: 0, score: 0, maxCombo: 0, bossDefeated: 0, bossSpeedKill: 0, runTime: 0, redMotes: 0, noHitBoss: 0 };
       state = "playing";
       document.body.classList.add("is-playing");
+      if (ui.joystickZone) ui.joystickZone.classList.add("is-joy-active");
       ui.start.classList.add("is-hidden");
       ui.gameover.classList.add("is-hidden");
       pointer.x = width * 0.66;
       pointer.y = height * 0.5;
-      showToast("SINAL ESTABILIZADO — SEGURE ESPAÇO PARA PROJETAR", 2600);
+      showToast("PARTIDA INICIADA — SEGURE ESPAÇO PARA ATACAR", 2600);
       sound(146, 0.6, "sine", 0.055);
       setTimeout(() => sound(293, 0.4, "sine", 0.035), 110);
     });
@@ -167,12 +171,17 @@
     stopMusic();
     checkChallenges();
     state = "gameover";
+    if (ui.joystickZone) ui.joystickZone.classList.remove("is-joy-active");
     const victory = outcome === "victory";
     const bossBonus = bossDefeatedThisRun ? 10 : 0;
     pendingResonance = Math.floor(player.score / 10) + player.kills * 2 + bossBonus;
     if (runModifiers.length > 0) pendingResonance += runModifiers[0].bonusResonance;
     pendingSkillPoints = Math.floor(player.score / 8) + Math.floor(player.kills * 1.5) + (bossDefeatedThisRun ? 15 : 0);
-    ui.gameoverKicker.innerHTML = `<span></span> ${victory ? "PROTOCOLO CONCLUÍDO" : "SINAL INTERROMPIDO"}`;
+    if (randomClassBonus) {
+      pendingResonance = Math.ceil(pendingResonance * 1.05);
+      pendingSkillPoints = Math.ceil(pendingSkillPoints * 1.05);
+    }
+    ui.gameoverKicker.innerHTML = `<span></span> ${victory ? "VITÓRIA" : "PARTIDA ENCERRADA"}`;
     ui.gameoverKicker.classList.toggle("danger", !victory);
     const modifierLabel = runModifiers.length > 0 ? ` [${runModifiers[0].name}]` : "";
     ui.gameoverTitle.textContent = victory ? "A COROA FOI ROMPIDA." : "VOCÊ DEIXOU UM ECO.";
@@ -193,7 +202,7 @@
 /*__ECHO_SECTION_END:0049__*/
 /*__ECHO_SECTION:0051__*/
   function saveRun({ mode, outcome, bossDefeated = false }) {
-    if (lastRunSaved || mode !== "solo") return;
+    if (lastRunSaved || mode !== "solo" || activeMode === "training") return;
     lastRunSaved = true;
     requestJson("/api/runs", {
       method: "POST",
@@ -204,9 +213,12 @@
         kills: player.kills,
         durationMs: Math.floor(runTime * 1000),
         outcome,
-        bossDefeated
+        bossDefeated,
+        classId: player.classId,
+        difficulty: selectedDifficulty,
+        rewardMultiplier: randomClassBonus ? 1.05 : 1
       })
-    }).then(() => loadProfile()).catch(() => showToast("RUN NÃO FOI SALVA // INICIE PELO SERVIDOR LOCAL", 2600));
+    }).then(() => loadProfile()).catch(() => showToast("A PARTIDA NÃO FOI SALVA // INICIE PELO SERVIDOR LOCAL", 2600));
   }
 
 /*__ECHO_SECTION_END:0051__*/

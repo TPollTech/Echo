@@ -3196,6 +3196,7 @@
         motes = [];
         state = "playing";
         document.body.classList.add("is-playing");
+        if (ui.joystickZone) ui.joystickZone.classList.add("is-joy-active");
         ui.start.classList.add("is-hidden");
         ui.gameover.classList.add("is-hidden");
         pointer.x = width * 0.66;
@@ -3304,6 +3305,7 @@
       runStats = { kills: 0, score: 0, maxCombo: 0, bossDefeated: 0, bossSpeedKill: 0, runTime: 0, redMotes: 0, noHitBoss: 0 };
       state = "playing";
       document.body.classList.add("is-playing");
+      if (ui.joystickZone) ui.joystickZone.classList.add("is-joy-active");
       ui.start.classList.add("is-hidden");
       ui.gameover.classList.add("is-hidden");
       pointer.x = width * 0.66;
@@ -3321,6 +3323,7 @@
     stopMusic();
     checkChallenges();
     state = "gameover";
+    if (ui.joystickZone) ui.joystickZone.classList.remove("is-joy-active");
     const victory = outcome === "victory";
     const bossBonus = bossDefeatedThisRun ? 10 : 0;
     pendingResonance = Math.floor(player.score / 10) + player.kills * 2 + bossBonus;
@@ -3351,6 +3354,7 @@
   function finishMultiplayer(standings = []) {
     if (activeMode !== "multiplayer" || state === "gameover") return;
     state = "gameover";
+    if (ui.joystickZone) ui.joystickZone.classList.remove("is-joy-active");
     endPhase(true);
     const rank = Math.max(1, standings.findIndex((entry) => entry.id === multiplayerPlayerId) + 1);
     const self = standings.find((entry) => entry.id === multiplayerPlayerId) || player;
@@ -3396,6 +3400,7 @@
     state = "intro";
     activeMode = selectedMode;
     pausedFromState = null;
+    if (ui.joystickZone) ui.joystickZone.classList.remove("is-joy-active");
     ui.pause.classList.add("is-hidden");
     ui.gameover.classList.add("is-hidden");
     ui.mutation.classList.add("is-hidden");
@@ -4815,6 +4820,7 @@
   function showMutationChoice() {
     if (activeMode !== "solo" || state !== "playing") return;
     state = "mutating";
+    if (ui.joystickZone) ui.joystickZone.classList.remove("is-joy-active");
     endPhase();
     const owned = Object.keys(playerOwnedMutations || {});
     const available = mutations.filter((mutation) => !player.mutations.includes(mutation.id)
@@ -4859,6 +4865,7 @@
     player.nextMutationIndex += 1;
     mutationPending = false;
     state = "playing";
+    if (ui.joystickZone) ui.joystickZone.classList.add("is-joy-active");
     ui.mutation.classList.add("is-hidden");
     updateMutationSlots();
     checkSynergies();
@@ -6764,6 +6771,7 @@
     stopMusic();
     pausedFromState = state;
     state = "paused";
+    if (ui.joystickZone) ui.joystickZone.classList.remove("is-joy-active");
     ui.pauseCopy.textContent = activeMode === "multiplayer"
       ? "A interface está pausada, mas a partida continua no servidor local."
       : "A simulação solo está congelada.";
@@ -6776,6 +6784,7 @@
     state = pausedFromState || "playing";
     pausedFromState = null;
     if (activeMode === "solo") startMusic();
+    if (ui.joystickZone) ui.joystickZone.classList.add("is-joy-active");
     ui.pause.classList.add("is-hidden");
     canvas.focus?.();
   }
@@ -7303,6 +7312,7 @@
       runStats = { kills: 0, score: 0, maxCombo: 0, bossDefeated: 0, bossSpeedKill: 0, runTime: 0, redMotes: 0, noHitBoss: 0 };
       state = "playing";
       document.body.classList.add("is-playing");
+      if (ui.joystickZone) ui.joystickZone.classList.add("is-joy-active");
       ui.start.classList.add("is-hidden");
       showToast("TREINO // SEM RECOMPENSAS · Q USA O ESPECIAL", 2400);
     });

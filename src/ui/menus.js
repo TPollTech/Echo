@@ -6,17 +6,21 @@
   }
 
   function setSelectedMode(mode) {
-    selectedMode = mode === "multiplayer" ? "multiplayer" : "solo";
+    selectedMode = ["solo", "multiplayer", "training"].includes(mode) ? mode : "solo";
     const multiplayer = selectedMode === "multiplayer";
-    ui.soloMode.classList.toggle("is-selected", !multiplayer);
+    const training = selectedMode === "training";
+    ui.soloMode.classList.toggle("is-selected", selectedMode === "solo");
     ui.multiplayerMode.classList.toggle("is-selected", multiplayer);
-    ui.soloMode.setAttribute("aria-pressed", String(!multiplayer));
+    ui.trainingMode?.classList.toggle("is-selected", training);
+    ui.soloMode.setAttribute("aria-pressed", String(selectedMode === "solo"));
     ui.multiplayerMode.setAttribute("aria-pressed", String(multiplayer));
+    ui.trainingMode?.setAttribute("aria-pressed", String(training));
     ui.multiplayerFields.classList.toggle("is-hidden", !multiplayer);
     ui.start.classList.toggle("is-multiplayer", multiplayer);
-    ui.startSubmit.querySelector("span").textContent = multiplayer ? "ENTRAR NA SALA" : "INICIAR RUN SOLO";
+    ui.startSubmit.querySelector("span").textContent = multiplayer ? "ENTRAR NA SALA" : "JOGAR";
     setStartStatus();
     if (multiplayer) refreshRooms();
+    if (typeof savePreparation === "function") savePreparation({ server: false });
   }
 
 /*__ECHO_SECTION_END:0044__*/
@@ -56,12 +60,12 @@
           slot.innerHTML = `
             <span class="mutation-symbol" aria-hidden="true">${mutation.symbol}</span>
             <strong>${mutation.name}</strong>
-            <small>NÍVEL ${["I", "II", "III"][level - 1]} — ATIVA NO ${MUTATION_THRESHOLDS[i]}</small>
+            <small>NÍVEL ${["I", "II", "III"][level - 1]} — ATIVA AOS ${MUTATION_THRESHOLDS[i]} PONTOS</small>
             <button class="loadout-remove" data-slot="${i}" type="button">✕</button>
           `;
         }
       } else {
-        slot.innerHTML = `<span class="slot-empty">SLOT ${i + 1}</span><small>SCORE ${MUTATION_THRESHOLDS[i]}</small>`;
+        slot.innerHTML = `<span class="slot-empty">SLOT ${i + 1}</span><small>ATIVA AOS ${MUTATION_THRESHOLDS[i]} PONTOS</small>`;
       }
       ui.loadoutSlots.append(slot);
     }
@@ -105,7 +109,7 @@
       ui.loadoutAvailable.append(card);
     }
     if (ownedIds.length === 0) {
-      ui.loadoutAvailable.innerHTML = `<p style="color:rgba(205,197,220,0.5);text-align:center;grid-column:1/-1;padding:20px">NENHUMA HABILIDADE DESBLOQUEADA. VISITE A LOJA DE HABILIDADES.</p>`;
+      ui.loadoutAvailable.innerHTML = `<p style="color:rgba(205,197,220,0.5);text-align:center;grid-column:1/-1;padding:20px">NENHUM BÔNUS DESBLOQUEADO. VOLTE E ABRA “DESBLOQUEAR BÔNUS”.</p>`;
     }
   }
 
@@ -121,12 +125,11 @@
     state = "intro";
     activeMode = selectedMode;
     pausedFromState = null;
+    if (ui.joystickZone) ui.joystickZone.classList.remove("is-joy-active");
     ui.pause.classList.add("is-hidden");
     ui.gameover.classList.add("is-hidden");
     ui.mutation.classList.add("is-hidden");
-    ui.skin?.classList.add("is-hidden");
     ui.loadoutScreen?.classList.add("is-hidden");
-    document.getElementById("modifier-screen")?.classList.add("is-hidden");
     ui.start.classList.remove("is-hidden");
     document.body.classList.remove("is-playing");
     setStartStatus(message, isError);
@@ -142,6 +145,7 @@
     stopMusic();
     pausedFromState = state;
     state = "paused";
+    if (ui.joystickZone) ui.joystickZone.classList.remove("is-joy-active");
     ui.pauseCopy.textContent = activeMode === "multiplayer"
       ? "A interface está pausada, mas a partida continua no servidor local."
       : "A simulação solo está congelada.";
@@ -154,6 +158,7 @@
     state = pausedFromState || "playing";
     pausedFromState = null;
     if (activeMode === "solo") startMusic();
+    if (ui.joystickZone) ui.joystickZone.classList.add("is-joy-active");
     ui.pause.classList.add("is-hidden");
     canvas.focus?.();
   }

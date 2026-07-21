@@ -3,15 +3,15 @@
   const mutations = [
     {
       id: "blade",
-      name: "Lâmina de Retorno",
+      name: "Rastro Forte",
       tag: "OFENSIVA",
       symbol: "⟋",
       color: "#ff4fd8",
-      description: "O rastro rompido causa mais dano e permanece perigoso por um instante.",
+      description: "Seu rastro causa mais dano e continua ativo por mais tempo.",
       tiers: [
-        { label: "I", desc: "+40% dano de rastro, +0.28 ribbonLife" },
-        { label: "II", desc: "+60% dano de rastro, +0.42 ribbonLife" },
-        { label: "III", desc: "+85% dano de rastro, +0.55 ribbonLife, rastro persistente" }
+        { label: "I", desc: "+40% de dano e +0,28 s de duração" },
+        { label: "II", desc: "+60% de dano e +0,42 s de duração" },
+        { label: "III", desc: "+85% de dano e +0,55 s de duração" }
       ],
       apply(player, level = 1) {
         const m = [1.4, 1.6, 1.85][level - 1];
@@ -23,29 +23,29 @@
     },
     {
       id: "shell",
-      name: "Casulo Prismático",
+      name: "Proteção do Corpo",
       tag: "DEFESA",
       symbol: "◇",
       color: "#a88cff",
-      description: "Seu núcleo abandonado recebe menos dano enquanto você está projetado.",
+      description: "Seu personagem recebe menos dano enquanto você controla a projeção.",
       tiers: [
-        { label: "I", desc: "55% menos dano ao núcleo" },
-        { label: "II", desc: "65% menos dano ao núcleo" },
-        { label: "III", desc: "78% menos dano ao núcleo" }
+        { label: "I", desc: "55% menos dano recebido" },
+        { label: "II", desc: "65% menos dano recebido" },
+        { label: "III", desc: "78% menos dano recebido" }
       ],
       apply(player, level = 1) { player.shellDefense = [0.45, 0.35, 0.22][level - 1]; }
     },
     {
       id: "siphon",
-      name: "Sifão Harmônico",
+      name: "Recuperação ao Atacar",
       tag: "SUSTENTAÇÃO",
       symbol: "⌁",
       color: "#45e6ff",
-      description: "Cada inimigo atravessado devolve carga e restaura integridade.",
+      description: "Atravessar um inimigo recupera vida e energia.",
       tiers: [
-        { label: "I", desc: "Restaura carga e vida ao atravessar" },
-        { label: "II", desc: "Restaura +40% mais carga e vida" },
-        { label: "III", desc: "Restaura +80% mais carga e vida" }
+        { label: "I", desc: "Recupera vida e energia ao atravessar" },
+        { label: "II", desc: "+40% de recuperação" },
+        { label: "III", desc: "+80% de recuperação" }
       ],
       apply(player, level = 1) {
         player.siphon = true;
@@ -54,15 +54,15 @@
     },
     {
       id: "drift",
-      name: "Deriva Temporal",
+      name: "Projeção Rápida",
       tag: "MOBILIDADE",
       symbol: "≫",
       color: "#78ffba",
-      description: "A projeção se move mais rápido e consome menos carga.",
+      description: "A projeção se move mais rápido e consome menos energia.",
       tiers: [
-        { label: "I", desc: "+18% velocidade, -25% carga" },
-        { label: "II", desc: "+28% velocidade, -35% carga" },
-        { label: "III", desc: "+40% velocidade, -48% carga" }
+        { label: "I", desc: "+18% de velocidade, -25% de custo de energia" },
+        { label: "II", desc: "+28% de velocidade, -35% de custo de energia" },
+        { label: "III", desc: "+40% de velocidade, -48% de custo de energia" }
       ],
       apply(player, level = 1) {
         player.phaseSpeed *= [1.18, 1.28, 1.4][level - 1];
@@ -71,13 +71,13 @@
     },
     {
       id: "nova",
-      name: "Nova de Chegada",
+      name: "Impacto de Retorno",
       tag: "CONTROLE",
       symbol: "✦",
       color: "#ffd86b",
-      description: "Ao materializar, uma onda empurra e fere sinais próximos.",
+      description: "Ao voltar para o personagem, uma onda causa dano e empurra inimigos próximos.",
       tiers: [
-        { label: "I", desc: "Onda de dano ao materializar" },
+        { label: "I", desc: "Causa uma onda de dano ao retornar" },
         { label: "II", desc: "+50% raio da nova" },
         { label: "III", desc: "+100% raio da nova, +30% dano" }
       ],
@@ -88,11 +88,11 @@
     },
     {
       id: "reweave",
-      name: "Trama Regenerativa",
+      name: "Cura por Fragmentos",
       tag: "EVOLUÇÃO",
       symbol: "∞",
       color: "#ff8cb7",
-      description: "Fragmentos restauram integridade. Combos longos aceleram a regeneração.",
+      description: "Coletar fragmentos recupera vida.",
       tiers: [
         { label: "I", desc: "Fragmentos curam ao coletar" },
         { label: "II", desc: "+50% cura por fragmento" },
@@ -105,25 +105,25 @@
     },
     {
       id: "focus",
-      name: "Foco de Lúmen",
+      name: "Recarga Rápida",
       tag: "PRECISÃO",
       symbol: "◎",
       color: "#72f1ff",
-      description: "Rupturas recalibram mais rápido, favorecendo ataques precisos em sequência.",
+      description: "Reduz o tempo necessário para usar o ataque novamente.",
       tiers: [
-        { label: "I", desc: "-35% cooldown" },
-        { label: "II", desc: "-48% cooldown" },
-        { label: "III", desc: "-60% cooldown" }
+        { label: "I", desc: "35% menos tempo de recarga" },
+        { label: "II", desc: "48% menos tempo de recarga" },
+        { label: "III", desc: "60% menos tempo de recarga" }
       ],
       apply(player, level = 1) { player.cooldownScale *= [0.65, 0.52, 0.4][level - 1]; }
     },
     {
       id: "gravity",
-      name: "Gravidade de Íris",
+      name: "Coleta Ampliada",
       tag: "COLETA",
       symbol: "◉",
       color: "#b792ff",
-      description: "Fragmentos próximos são atraídos pelo núcleo e pelo eco projetado.",
+      description: "Aumenta a distância em que os fragmentos são coletados.",
       tiers: [
         { label: "I", desc: "+34px raio de coleta" },
         { label: "II", desc: "+52px raio de coleta" },
@@ -133,15 +133,15 @@
     },
     {
       id: "resonance",
-      name: "Fome de Ressonância",
+      name: "Recuperação por Eliminação",
       tag: "EXECUÇÃO",
       symbol: "⌾",
       color: "#ff6f91",
-      description: "Cada ruptura restaura integridade e preenche uma grande parte da carga.",
+      description: "Cada eliminação recupera vida e energia.",
       tiers: [
-        { label: "I", desc: "Rupturas restauram vida e carga" },
-        { label: "II", desc: "+50% restauração por ruptura" },
-        { label: "III", desc: "+100% restauração por ruptura" }
+        { label: "I", desc: "Eliminações recuperam vida e energia" },
+        { label: "II", desc: "+50% de recuperação por eliminação" },
+        { label: "III", desc: "+100% de recuperação por eliminação" }
       ],
       apply(player, level = 1) {
         player.killRestore = true;
@@ -150,15 +150,15 @@
     },
     {
       id: "afterimage",
-      name: "Pós-imagem Hostil",
+      name: "Rastro Duradouro",
       tag: "CONTROLE",
       symbol: "≋",
       color: "#ef74ff",
-      description: "O rastro permanece no campo por mais tempo e conserva sua zona de perigo.",
+      description: "Seu rastro permanece no campo e causa dano por mais tempo.",
       tiers: [
-        { label: "I", desc: "+0.45 ribbonLife, +0.22 linger" },
-        { label: "II", desc: "+0.65 ribbonLife, +0.35 linger" },
-        { label: "III", desc: "+0.9 ribbonLife, +0.5 linger" }
+        { label: "I", desc: "+0,45 s de rastro e +0,22 s de dano" },
+        { label: "II", desc: "+0,65 s de rastro e +0,35 s de dano" },
+        { label: "III", desc: "+0,9 s de rastro e +0,5 s de dano" }
       ],
       apply(player, level = 1) {
         player.ribbonLife += [0.45, 0.65, 0.9][level - 1];
@@ -167,11 +167,11 @@
     },
     {
       id: "overclock",
-      name: "Sobrecarga Carmesim",
+      name: "Mais Velocidade e Dano",
       tag: "RISCO",
       symbol: "ϟ",
       color: "#ff725e",
-      description: "Projeções ficam mais velozes e causam mais dano, mas consomem carga adicional.",
+      description: "A projeção fica mais rápida e forte, mas consome mais energia.",
       tiers: [
         { label: "I", desc: "+12% vel, +25% dano, +15% carga" },
         { label: "II", desc: "+20% vel, +40% dano, +12% carga" },
@@ -185,25 +185,25 @@
     },
     {
       id: "prism",
-      name: "Janela Prismática",
+      name: "Proteção ao Retornar",
       tag: "DEFESA",
       symbol: "⬡",
       color: "#7fffc8",
-      description: "Ao materializar após um ataque, você recebe uma breve janela de proteção.",
+      description: "Depois de retornar ao personagem, você fica protegido por alguns segundos.",
       tiers: [
-        { label: "I", desc: "0.7s de proteção ao materializar" },
-        { label: "II", desc: "1.0s de proteção ao materializar" },
-        { label: "III", desc: "1.4s de proteção ao materializar" }
+        { label: "I", desc: "0,7 s de proteção ao retornar" },
+        { label: "II", desc: "1 s de proteção ao retornar" },
+        { label: "III", desc: "1,4 s de proteção ao retornar" }
       ],
       apply(player, level = 1) { player.arrivalGuard = [0.7, 1.0, 1.4][level - 1]; }
     },
     {
       id: "chain",
-      name: "Corrente Viva",
+      name: "Combo de Dano",
       tag: "EXECUÇÃO",
       symbol: "⚡",
       color: "#ffe066",
-      description: "Rupturas em sequência causam dano cumulativo por combo.",
+      description: "Eliminações em sequência aumentam o dano do combo.",
       tiers: [
         { label: "I", desc: "+30% dano por combo (2s)" },
         { label: "II", desc: "+45% dano por combo (2.5s)" },
@@ -217,11 +217,11 @@
     },
     {
       id: "ghostwall",
-      name: "Muralha Fantasma",
+      name: "Segunda Chance",
       tag: "DEFESA",
       symbol: "◈",
       color: "#c8b8ff",
-      description: "Ao receber dano fatal, sobrevive com 1 HP. Ativa-se apenas uma vez por run.",
+      description: "Ao receber dano fatal, você sobrevive com 1 de vida. Ativa uma vez por partida.",
       tiers: [
         { label: "I", desc: "Sobrevive com 1 HP uma vez" },
         { label: "II", desc: "Sobrevive + onda de dano ao redor" },
@@ -235,11 +235,11 @@
     },
     {
       id: "vortex",
-      name: "Vórtice Gravitacional",
+      name: "Atração de Inimigos",
       tag: "CONTROLE",
       symbol: "⊛",
       color: "#5ce0d2",
-      description: "O eco projetado atrai inimigos próximos durante a projeção.",
+      description: "A projeção puxa inimigos próximos na sua direção.",
       tiers: [
         { label: "I", desc: "Atrai inimigos durante projeção" },
         { label: "II", desc: "+50% força de atração" },
@@ -252,7 +252,7 @@
     },
     {
       id: "reversal",
-      name: "Sifão Inverso",
+      name: "Refletir Dano",
       tag: "RISCO",
       symbol: "⊘",
       color: "#ff5a5a",
@@ -269,15 +269,15 @@
     },
     {
       id: "dualphase",
-      name: "Ressonância Dupla",
+      name: "Projeções Extras",
       tag: "MOBILIDADE",
       symbol: "⟐",
       color: "#88ddff",
-      description: "Pode projetar o eco duas vezes antes de recalibrar.",
+      description: "Permite usar a projeção mais vezes antes da recarga.",
       tiers: [
-        { label: "I", desc: "2 projeções antes de cooldown" },
-        { label: "II", desc: "3 projeções antes de cooldown" },
-        { label: "III", desc: "3 projeções, -20% cooldown no 2º uso" }
+        { label: "I", desc: "2 projeções antes da recarga" },
+        { label: "II", desc: "3 projeções antes da recarga" },
+        { label: "III", desc: "3 projeções e recarga 20% mais rápida no segundo uso" }
       ],
       apply(player, level = 1) {
         player.dualPhase = true;
@@ -286,6 +286,7 @@
       }
     }
   ];
+  for (const mutation of mutations) mutation.compatibleClasses = Object.freeze([...(MUTATION_CLASS_COMPATIBILITY[mutation.id] || CLASS_IDS)]);
 
 /*__ECHO_SECTION_END:0007__*/
 /*__ECHO_SECTION:0013__*/
@@ -329,21 +330,26 @@
       if (nextMutationId) {
         const ownedLevel = (playerOwnedMutations || {})[nextMutationId] || 1;
         const mutation = mutations.find((m) => m.id === nextMutationId);
-        if (mutation) {
+        if (mutation?.compatibleClasses.includes(player.classId)) {
           mutationPending = true;
           window.setTimeout(() => chooseMutation(mutation, ownedLevel), 180);
           return;
         }
       }
-      player.nextMutationIndex += 1;
+      mutationPending = true;
+      window.setTimeout(showMutationChoice, 180);
     }
   }
 
   function showMutationChoice() {
     if (activeMode !== "solo" || state !== "playing") return;
     state = "mutating";
+    if (ui.joystickZone) ui.joystickZone.classList.remove("is-joy-active");
     endPhase();
-    const available = mutations.filter((mutation) => !player.mutations.includes(mutation.id));
+    const owned = Object.keys(playerOwnedMutations || {});
+    const available = mutations.filter((mutation) => !player.mutations.includes(mutation.id)
+      && mutation.compatibleClasses.includes(player.classId)
+      && (owned.length === 0 || owned.includes(mutation.id)));
     const choices = available.sort(() => Math.random() - 0.5).slice(0, 3);
     ui.mutationCards.replaceChildren();
     for (const mutation of choices) {
@@ -383,6 +389,7 @@
     player.nextMutationIndex += 1;
     mutationPending = false;
     state = "playing";
+    if (ui.joystickZone) ui.joystickZone.classList.add("is-joy-active");
     ui.mutation.classList.add("is-hidden");
     updateMutationSlots();
     checkSynergies();

@@ -2380,6 +2380,10 @@ body[data-control-position="left"] .mobile-phase { right:auto;left:18px; }
   z-index: 12;
   touch-action: none;
   display: none;
+  pointer-events: none;
+}
+.joystick-zone.is-joy-active {
+  pointer-events: auto;
 }
 .joystick-zone.is-center { left: 20%; width: 60%; }
 .joystick-zone.is-right { left: auto; right: 0; }
