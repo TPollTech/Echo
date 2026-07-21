@@ -1,6 +1,6 @@
 {
   "name": "echo-arena",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "private": true,
   "description": "ECHO - arena espectral com fonte modular, identidade de combate e runs reproduzíveis",
   "main": "server/index.js",

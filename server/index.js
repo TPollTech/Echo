@@ -10,15 +10,29 @@ const { RoomManager } = require("./multiplayer.js");
 const { sanitizeName } = require("../shared/simulation.js");
 
 const ROOT = path.resolve(__dirname, "..");
-const PUBLIC_PATHS = new Set([
+const PUBLIC_FILES = new Set([
   "/index.html",
   "/styles.css",
-  "/game.js",
-  "/core/events.js",
-  "/core/random.js",
-  "/core/runtime.js",
-  "/core/qa-panel.js",
-  "/shared/simulation.js"
+  "/game.js"
+]);
+const PUBLIC_DIRECTORIES = Object.freeze([
+  "/core/",
+  "/combat/",
+  "/ui/",
+  "/shared/",
+  "/src/",
+  "/assets/",
+  "/audio/"
+]);
+const REQUIRED_BROWSER_ASSETS = Object.freeze([
+  "index.html",
+  "styles.css",
+  "game.js",
+  "core/events.js",
+  "core/random.js",
+  "core/runtime.js",
+  "core/qa-panel.js",
+  "shared/simulation.js"
 ]);
 const MIME_TYPES = new Map([
   [".html", "text/html; charset=utf-8"],
@@ -27,8 +41,13 @@ const MIME_TYPES = new Map([
   [".json", "application/json; charset=utf-8"],
   [".svg", "image/svg+xml"],
   [".png", "image/png"],
+  [".jpg", "image/jpeg"],
+  [".jpeg", "image/jpeg"],
   [".webp", "image/webp"],
-  [".ico", "image/x-icon"]
+  [".ico", "image/x-icon"],
+  [".wav", "audio/wav"],
+  [".mp3", "audio/mpeg"],
+  [".ogg", "audio/ogg"]
 ]);
 
 function sendJson(response, status, payload) {
@@ -66,31 +85,62 @@ function readJson(request, limit = 16_384) {
   });
 }
 
+function isPublicAsset(pathname) {
+  if (PUBLIC_FILES.has(pathname)) return true;
+  if (!PUBLIC_DIRECTORIES.some((prefix) => pathname.startsWith(prefix))) return false;
+  return MIME_TYPES.has(path.extname(pathname).toLowerCase());
+}
+
+function resolvePublicAsset(pathname) {
+  const relativePath = pathname.replace(/^\/+/, "");
+  const filePath = path.resolve(ROOT, relativePath);
+  if (filePath === ROOT || !filePath.startsWith(`${ROOT}${path.sep}`)) return null;
+  return filePath;
+}
+
+function validateBrowserAssets() {
+  const missing = REQUIRED_BROWSER_ASSETS.filter((relativePath) => {
+    try {
+      return !fs.statSync(path.join(ROOT, relativePath)).isFile();
+    } catch {
+      return true;
+    }
+  });
+  if (missing.length > 0) {
+    throw new Error(`Arquivos obrigatórios ausentes: ${missing.join(", ")}. Execute npm run build e inicie o servidor na raiz do projeto.`);
+  }
+}
+
 function serveStatic(request, response, url) {
   if (request.method !== "GET" && request.method !== "HEAD") {
     sendJson(response, 405, { error: "Método não permitido." });
     return;
   }
   const pathname = url.pathname === "/" ? "/index.html" : decodeURIComponent(url.pathname);
-  if (!PUBLIC_PATHS.has(pathname)) {
+  if (!isPublicAsset(pathname)) {
     sendJson(response, 404, { error: "Arquivo não encontrado." });
     return;
   }
-  const filePath = path.resolve(ROOT, `.${pathname}`);
-  if (filePath !== ROOT && !filePath.startsWith(`${ROOT}${path.sep}`)) {
+  const filePath = resolvePublicAsset(pathname);
+  if (!filePath) {
     sendJson(response, 403, { error: "Caminho inválido." });
     return;
   }
   fs.stat(filePath, (error, stats) => {
     if (error || !stats.isFile()) {
-      sendJson(response, 404, { error: "Arquivo não encontrado." });
+      sendJson(response, 404, {
+        error: "Arquivo não encontrado.",
+        path: pathname,
+        hint: "Confirme que o projeto está atualizado e execute npm run build."
+      });
       return;
     }
     const contentType = MIME_TYPES.get(path.extname(filePath).toLowerCase()) || "application/octet-stream";
     response.writeHead(200, {
       "Content-Type": contentType,
       "Content-Length": stats.size,
-      "Cache-Control": "no-cache"
+      "Cache-Control": "no-cache",
+      "X-Content-Type-Options": "nosniff"
     });
     if (request.method === "HEAD") response.end();
     else fs.createReadStream(filePath).pipe(response);
@@ -220,6 +270,7 @@ function createEchoServer(options = {}) {
     roomManager,
     webSocketServer,
     async start(port = Number(options.port ?? process.env.PORT ?? 4174), host = options.host || process.env.HOST || "0.0.0.0") {
+      validateBrowserAssets();
       await new Promise((resolve, reject) => {
         httpServer.once("error", reject);
         httpServer.listen(port, host, resolve);
@@ -268,4 +319,4 @@ if (require.main === module) {
   process.once("SIGTERM", shutdown);
 }
 
-module.exports = { createEchoServer };
+module.exports = { createEchoServer, isPublicAsset, resolvePublicAsset, validateBrowserAssets };

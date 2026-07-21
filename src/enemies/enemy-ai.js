@@ -7,11 +7,11 @@
       beforeMovement(bot) {
         const definition = botArchetypes.find((entry) => entry.id === bot.archetype);
         if (bot.health < bot.maxHealth * 0.4) {
-          bot.speed = bot.baseSpeed * 1.4;
-          bot.attackDamage = Math.ceil(definition.attackDamage * 1.5);
+          bot.speed = bot.baseSpeed * 1.4 * (bot.levelSpeedScale || 1);
+          bot.attackDamage = Math.ceil((bot.baseAttackDamage || definition.attackDamage) * 1.5);
         } else {
-          bot.speed = bot.baseSpeed;
-          bot.attackDamage = definition.attackDamage;
+          bot.speed = bot.baseSpeed * (bot.levelSpeedScale || 1);
+          bot.attackDamage = bot.baseAttackDamage || definition.attackDamage;
         }
       }
     }),
@@ -23,7 +23,7 @@
           if (ally === bot || ally.dead || ally.faction !== bot.faction || ally.archetype !== bot.archetype) continue;
           if (distanceSq(bot.x, bot.y, ally.x, ally.y) < 190 * 190) nearbyPack += 1;
         }
-        bot.speed = bot.baseSpeed * (1 + Math.min(0.3, nearbyPack * 0.1));
+        bot.speed = bot.baseSpeed * (bot.levelSpeedScale || 1) * (1 + Math.min(0.3, nearbyPack * 0.1));
       }
     }),
     phantom: Object.freeze({

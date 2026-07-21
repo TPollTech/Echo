@@ -29,6 +29,11 @@
       const spectralMultiplier = spectral ? 0.72 : 1;
       player.score += baseValue * spectralMultiplier * (player.scoreMultiplier || 1);
       player.energy = clamp(player.energy + baseValue * (spectral ? 1.5 : 0.8), 0, player.maxEnergy);
+      if (mote.type === "violet") {
+        player.rareBoostTimer = LEVEL_CONFIG.rareBoostDuration;
+        player.rareBoostMultiplier = LEVEL_CONFIG.rareBoostMultiplier;
+      }
+      gainExperience(player, experienceValueForMote(mote.type, spectral), `mote:${mote.type}`);
       player.combo = player.comboTimer > 0 ? player.combo + 1 : 1;
       player.comboTimer = 1.45;
       if (player.combo > runStats.maxCombo) runStats.maxCombo = player.combo;

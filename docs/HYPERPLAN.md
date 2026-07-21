@@ -9,91 +9,144 @@
 - [x] Testes do núcleo
 - [x] CI permanente
 - [x] Integração do núcleo ao carregamento
-- [x] Incremento 1 — separação completa da fonte do `game.js`
+- [x] Separação completa da fonte do `game.js`
 - [x] Bundle `game.js` gerado e validado automaticamente
 - [x] Limite de tamanho para módulos principais
 - [x] Inimigos despachados por registro de comportamento
 - [x] Bosses despachados por registro de mecânicas
-- [x] Eventos principais de gameplay conectados ao barramento
-- [x] Escala configurável da interface
-- [x] Diretor de ameaças
-- [x] Contratos dos onze inimigos comuns
-- [x] Limite adaptativo de ataques simultâneos
-- [x] Modo de recuperação em integridade crítica
-- [x] Estados adicionais de guarda, fuga, descanso, exposição e atordoamento
+- [x] Diretor de ameaças e contratos dos onze inimigos comuns
+- [x] Níveis e experiência durante a run
+- [x] Crescimento visual e aumento real de atributos
+- [x] Progressão compartilhada entre jogador e bots
+- [x] IA de coleta, fuga e caça baseada em risco
+- [x] Drops de experiência após derrotas
+- [x] Bosses ampliados e escalados pelo nível da arena
+- [x] HUD e identificação visual de nível
+- [x] Nível visual no multiplayer derivado do score autoritativo
+- [x] Soundtrack procedural com dez temas e estados completos
+- [x] Correção e teste HTTP dos módulos `core/*.js`
 - [ ] Telegraphs visuais completos para todos os inimigos
-- [ ] Revisão individual dos bosses
-- [ ] Recompensas exclusivas de boss
-- [ ] Códice e progressão horizontal
+- [ ] Revisão mecânica individual das nove lutas de boss
+- [ ] Códice e progressão horizontal permanente
 - [ ] Arenas e eventos
-- [ ] Cooperativo
+- [ ] Cooperativo com crescimento de atributos sincronizado
 - [ ] Otimização espacial
 - [ ] Balanceamento por simulação
 - [ ] Preparação da versão 1.0
 
-## Incremento 1 — Fonte modular — concluído na 0.5.1
+## 0.5.1 — Fonte modular — concluída
 
 Entregas:
 
 - fonte canônica organizada em `src/core`, `src/entities`, `src/combat`, `src/enemies`, `src/bosses`, `src/progression`, `src/rendering`, `src/audio` e `src/ui`;
 - `game.js` transformado em bundle gerado por `npm run build`;
 - ordem do runtime preservada por `src/build-order.json`;
-- gameplay e valores existentes preservados durante a migração;
-- `enemyBehaviorRegistry` centralizando decisões dos inimigos;
-- `bossMechanicRegistry` centralizando mecânicas específicas dos bosses;
-- definições de inimigos e bosses isoladas em arquivos de dados;
-- auditoria de módulos obrigatórios, tamanho, registros e sincronização do bundle;
-- testes permanentes da arquitetura;
-- `npm run check` e `npm test` executados no workflow antes da publicação do bundle.
+- `enemyBehaviorRegistry` e `bossMechanicRegistry`;
+- auditoria de módulos, tamanho e sincronização do bundle;
+- testes permanentes da arquitetura.
 
-## Versões
+## 0.6.0 — Evolução da arena — concluída
 
-### 0.4 — Fundação — concluída
+### Progressão da run
 
-Arquitetura inicial, seeds, eventos, QA, CI e documentação.
+- nível máximo 25 com curva progressiva de experiência;
+- fragmentos ciano, roxo, dourado e vermelho com valores próprios;
+- impulso temporário ao consumir fragmentos roxos;
+- crescimento de raio limitado para não ocupar a arena inteira;
+- aumento de vida, dano e alcance;
+- redução leve e limitada de mobilidade em níveis altos;
+- eventos observáveis de ganho de experiência e subida de nível.
 
-### 0.5 — Identidade de combate — concluída
+### Bots
 
-- contratos declarativos para os onze inimigos comuns;
-- diretor adaptativo com cinco níveis de ameaça;
-- controle de atacantes simultâneos;
-- modo de recuperação;
-- inimigos avançados bloqueados no começo da run;
-- chance progressiva de elites;
-- eventos observáveis de combate;
-- escala de interface entre 90% e 150%.
+- utilizam o mesmo contrato de experiência e nível do jogador;
+- coletam fragmentos e crescem visualmente;
+- avaliam distância, valor do fragmento, vida atual e presença de ameaças;
+- fogem de entidades significativamente mais fortes;
+- caçam entidades vulneráveis quando possuem vantagem;
+- continuam usando os comportamentos próprios de cada arquétipo;
+- berserkers e swarmers respeitam os multiplicadores de nível.
 
-### 0.5.1 — Fonte modular — concluída
+### Derrotas e recompensas
 
-Executa o Incremento 1 sem alterar deliberadamente o gameplay. Toda evolução seguinte deve partir de `src/`, nunca do bundle gerado.
+- parte da experiência acumulada retorna à arena em fragmentos;
+- entidades de nível maior derrubam mais recursos;
+- eliminações concedem experiência direta ao responsável;
+- bosses e fragmentos de boss possuem tratamento próprio para evitar duplicação infinita.
 
-### 0.6 — Bosses — próxima etapa
+### Bosses
 
-- revisar individualmente as nove lutas;
+- escala visual individual entre aproximadamente 1,6x e 2,05x;
+- Tremor Deep possui a maior escala base;
+- vida e dano consideram estágio, nível médio e maior nível vivo;
+- fases preservam a proporção visual do boss;
+- hitboxes continuam baseadas no mesmo raio renderizado.
+
+### Soundtrack
+
+Dez temas procedurais:
+
+1. Signal Drift;
+2. Glass Current;
+3. Violet Engine;
+4. Fracture Run;
+5. Crownfall;
+6. Deep Quake;
+7. Terminal Light;
+8. Menu Echo;
+9. Victory Rise;
+10. Defeat Fall.
+
+A rotação evita repetição imediata, reage ao estágio da run, troca para temas de boss, utiliza uma variação final nas últimas fases e possui estados próprios para menu, vitória e derrota. O multiplayer inicia a soundtrack normal após receber o primeiro snapshot e também usa os temas de resultado.
+
+### Interface, multiplayer e diagnóstico
+
+- barra de experiência e nível no HUD;
+- indicação `LV` sobre jogador e bots;
+- nível no placar;
+- no multiplayer, o nível visual é derivado do score enviado pelo servidor, mantendo o servidor como fonte de verdade;
+- APIs de diagnóstico `EchoRunProgression`, `EchoSoundtrack` e `EchoMultiplayerLevels`;
+- eventos de progressão e mudança de faixa disponíveis no barramento.
+
+O crescimento completo de vida, dano e alcance está ativo no solo. No multiplayer 0.6, a escala e o nível são visuais; a sincronização autoritativa desses atributos permanece planejada para a etapa cooperativa.
+
+### Servidor e validação
+
+- servidor estático seguro por diretórios permitidos;
+- validação dos arquivos obrigatórios antes de abrir a porta;
+- teste HTTP real para `core/events.js`, `core/random.js`, `core/runtime.js` e `core/qa-panel.js`;
+- teste que impede módulos de serem montados fora do fechamento do runtime;
+- testes para estados musicais e níveis visuais do multiplayer;
+- `npm run build`, `npm run check` e `npm test` obrigatórios antes da publicação do bundle.
+
+## Próximas versões
+
+### 0.6.1 — Revisão completa dos bosses
+
 - padronizar preparação, aviso, impacto e recuperação;
-- criar contra-ataques claros para cada mecânica;
+- revisar individualmente as nove lutas;
+- criar contra-ataques claros;
 - completar transições de fase;
-- adicionar recompensas próprias;
-- criar testes específicos por boss.
+- ampliar os testes comportamentais de cada boss.
 
-### 0.7 — Progressão
+### 0.7 — Progressão horizontal
 
-Mutações, sinergias, códice, oficina horizontal e dificuldades.
+Códice, oficina permanente, dificuldades e novas combinações de mutações e sinergias.
 
 ### 0.8 — Mundo e áudio
 
-Arenas, eventos, música por estados e acessibilidade completa.
+Arenas, eventos, novas variações musicais, identidade sonora por arena e acessibilidade completa.
 
 ### 0.9 — Rede e desempenho
 
-Cooperativo, reconexão, spatial hash, pooling e qualidade adaptativa.
+Cooperativo, progressão de atributos sincronizada, reconexão, spatial hash, pooling e qualidade adaptativa.
 
 ### 1.0 — Lançamento
 
-Tutorial, balanceamento, empacotamento e documentação final.
+Tutorial, balanceamento por simulação, empacotamento, playtests extensivos e documentação final.
 
 ## Próximas três prioridades
 
-1. Criar um contrato comum de telegraph para ataques e fases de boss.
-2. Revisar Coroa Vazia, Espectro Decisivo e Tremor Deep como primeiro pacote do 0.6.
+1. Realizar playtest manual completo da 0.6 em desktop e celular.
+2. Revisar Coroa Vazia, Espectro Decisivo e Tremor Deep como primeiro pacote da 0.6.1.
 3. Substituir gradualmente os hooks transitórios de `combat/runtime.js` por chamadas explícitas na fonte modular.

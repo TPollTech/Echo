@@ -464,6 +464,26 @@
     "section": "0112"
   },
   {
+    "path": "src/progression/levels.js",
+    "section": "0118"
+  },
+  {
+    "path": "src/audio/soundtrack.js",
+    "section": "0119"
+  },
+  {
+    "path": "src/ui/level-presentation.js",
+    "section": "0120"
+  },
+  {
+    "path": "src/audio/state-soundtrack.js",
+    "section": "0121"
+  },
+  {
+    "path": "src/core/multiplayer-levels.js",
+    "section": "0122"
+  },
+  {
     "path": "src/core/input.js",
     "section": "0113"
   }

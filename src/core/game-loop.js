@@ -9,6 +9,7 @@
     runTime += dt;
     runStats.runTime = runTime;
     updatePlayer(dt);
+    updateBotProgression(dt);
     updateBots(dt);
     updateSkills(dt);
     updateSoloDirector();
