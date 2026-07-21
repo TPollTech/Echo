@@ -39,8 +39,6 @@
     sector: document.querySelector("#sector-label"),
     leaderboard: document.querySelector("#leaderboard-list"),
     abilityRing: document.querySelector("#ability-ring"),
-    abilityTitle: document.querySelector("#ability-title"),
-    abilityHint: document.querySelector("#ability-hint"),
     mobilePhase: document.querySelector("#mobile-phase"),
     combo: document.querySelector("#combo"),
     comboValue: document.querySelector("#combo-value"),
@@ -4102,23 +4100,6 @@
     ui.charge.textContent = `${energy}%`;
     ui.chargeFill.style.width = `${clamp(player.energy, 0, player.maxEnergy || 100) / (player.maxEnergy || 100) * 100}%`;
     ui.abilityRing.style.setProperty("--charge", `${clamp(player.energy, 0, player.maxEnergy || 100) / (player.maxEnergy || 100) * 100}%`);
-
-    if (player.silenced) {
-      ui.abilityTitle.textContent = "MUTAÇÕES SILENCIADAS";
-      ui.abilityHint.textContent = player.silencePermanent ? "Rompa a Âncora do Vácuo para restaurar seu sinal." : `${Math.max(0, player.silencedTimer).toFixed(1)}s até a restauração.`;
-    } else if (player.phasing) {
-      ui.abilityTitle.textContent = "NÚCLEO EXPOSTO";
-      ui.abilityHint.textContent = "Solte para atravessar o rastro e atacar.";
-    } else if (player.cooldown > 0) {
-      ui.abilityTitle.textContent = "RECALIBRANDO";
-      ui.abilityHint.textContent = `${player.cooldown.toFixed(1)}s para nova projeção.`;
-    } else if (player.energy < 12) {
-      ui.abilityTitle.textContent = "CARGA INSUFICIENTE";
-      ui.abilityHint.textContent = "Colete fragmentos ou aguarde a recarga.";
-    } else {
-      ui.abilityTitle.textContent = "ECO ESPECTRAL PRONTO";
-      ui.abilityHint.textContent = "Segure para abandonar o núcleo. Solte para romper o rastro.";
-    }
 
     if (activeMode === "multiplayer") {
       ui.sector.textContent = `SALA ${multiplayerRoomCode} // ${formatTime(multiplayerRemaining)}`;
