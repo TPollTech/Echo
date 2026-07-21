@@ -3,8 +3,9 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
-const { isPublicAsset, resolvePublicAsset, validateBrowserAssets } = require("../server/index.js");
+const { createEchoServer, isPublicAsset, resolvePublicAsset, validateBrowserAssets } = require("../server/index.js");
 
 const ROOT = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(ROOT, relativePath), "utf8");
@@ -16,6 +17,23 @@ test("servidor publica os módulos do navegador sem liberar travessia de diretó
   assert.equal(isPublicAsset("/server/database.js"), false);
   assert.equal(resolvePublicAsset("/../../etc/passwd"), null);
   assert.doesNotThrow(() => validateBrowserAssets());
+});
+
+test("servidor responde 200 para os módulos fundamentais que causavam 404", async (context) => {
+  const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "echo-static-"));
+  const app = createEchoServer({ databasePath: path.join(temporaryDirectory, "echo.sqlite") });
+  context.after(async () => {
+    await app.close();
+    fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+  });
+  const address = await app.start(0, "127.0.0.1");
+  const port = address.port;
+  for (const asset of ["core/events.js", "core/random.js", "core/runtime.js", "core/qa-panel.js"]) {
+    const response = await fetch(`http://127.0.0.1:${port}/${asset}`);
+    assert.equal(response.status, 200, `${asset} retornou ${response.status}`);
+    assert.match(response.headers.get("content-type") || "", /javascript/);
+    assert.ok((await response.text()).length > 20, `${asset} retornou conteúdo vazio`);
+  }
 });
 
 test("fonte modular inclui progressão compartilhada, IA de coleta e drops", () => {
