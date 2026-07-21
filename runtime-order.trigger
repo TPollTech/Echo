@@ -1,1 +1,1 @@
-Move evolution modules inside the generated game runtime and validate the browser bundle.
+Run the final ECHO 0.6 build, syntax, architecture, HTTP asset and regression validation.
