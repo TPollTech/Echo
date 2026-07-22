@@ -17,6 +17,7 @@ const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || "https://echo.vercel.app")
   .split(",").map((s) => s.trim());
+console.log("[CORS] Allowed origins:", ALLOWED_ORIGINS);
 
 const PUBLIC_FILES = new Set([
   "/index.html",
