@@ -116,12 +116,14 @@ function resolvePublicAsset(pathname) {
 function setCorsHeaders(response, origin) {
   if (!origin) return;
   const allowed = ALLOWED_ORIGINS.includes(origin) || (!IS_PRODUCTION && origin.startsWith("http://localhost"));
-  if (allowed) {
+  if (!IS_PRODUCTION || allowed) {
     response.setHeader("Access-Control-Allow-Origin", origin);
     response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     response.setHeader("Access-Control-Allow-Headers", "Content-Type");
     response.setHeader("Access-Control-Allow-Credentials", "true");
     response.setHeader("Access-Control-Max-Age", "86400");
+  } else {
+    console.error("[CORS] Blocked origin:", origin, "Allowed:", ALLOWED_ORIGINS);
   }
 }
 
