@@ -17,7 +17,6 @@ const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || "https://echo.vercel.app")
   .split(",").map((s) => s.trim());
-console.log("[CORS] Allowed origins:", ALLOWED_ORIGINS);
 
 const PUBLIC_FILES = new Set([
   "/index.html",
@@ -117,14 +116,12 @@ function resolvePublicAsset(pathname) {
 function setCorsHeaders(response, origin) {
   if (!origin) return;
   const allowed = ALLOWED_ORIGINS.includes(origin) || (!IS_PRODUCTION && origin.startsWith("http://localhost"));
-  if (!IS_PRODUCTION || allowed) {
+  if (allowed) {
     response.setHeader("Access-Control-Allow-Origin", origin);
     response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     response.setHeader("Access-Control-Allow-Headers", "Content-Type");
     response.setHeader("Access-Control-Allow-Credentials", "true");
     response.setHeader("Access-Control-Max-Age", "86400");
-  } else {
-    console.error("[CORS] Blocked origin:", origin, "Allowed:", ALLOWED_ORIGINS);
   }
 }
 
