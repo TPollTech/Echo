@@ -1,21 +1,20 @@
 {
   "name": "echo-arena",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
-  "description": "ECHO - arena espectral com fonte modular, identidade de combate e runs reproduzíveis",
-  "main": "server/index.js",
+  "description": "ECHO - arena espectral multiplayer online",
+  "main": "index.html",
   "scripts": {
     "build": "node scripts/build-game.js",
     "start": "node server/index.js",
     "dev": "node server/index.js",
-    "test": "node --test",
+    "test": "node --test tests/",
     "check:source": "node scripts/check-source-structure.js",
-    "check": "node scripts/build-game.js --check && node scripts/check-source-structure.js && node --check game.js && node --check core/events.js && node --check core/random.js && node --check core/runtime.js && node --check core/qa-panel.js && node --check combat/enemy-contracts.js && node --check combat/threat-director.js && node --check combat/runtime.js && node --check ui/accessibility.js && node --check shared/simulation.js && node --check server/database.js && node --check server/multiplayer.js && node --check server/index.js"
+    "check": "node scripts/build-game.js --check && node scripts/check-source-structure.js && node --check game.js && node --check core/events.js && node --check core/random.js && node --check core/runtime.js && node --check core/qa-panel.js && node --check combat/enemy-contracts.js && node --check combat/threat-director.js && node --check combat/runtime.js && node --check ui/accessibility.js && node --check shared/simulation.js",
+    "migrate": "node scripts/migrate.js"
   },
   "engines": {
-    "node": "24.x"
+    "node": ">=22.0.0"
   },
-  "dependencies": {
-    "ws": "^8.21.1"
-  }
+  "dependencies": {}
 }

@@ -1022,6 +1022,9 @@
   let networkInputSequence = 0;
   let networkPingTimer = 0;
   let networkPingMs = 0;
+  let multiplayerReconnectAttempts = 0;
+  const MULTIPLAYER_MAX_RECONNECT = 5;
+  const PROTOCOL_VERSION = 1;
   let playerUpgrades = { core: 0, charge: 0, calibration: 0, collection: 0, regeneration: 0 };
   let playerResonance = 0;
   let pendingResonance = 0;
@@ -2860,6 +2863,8 @@
     ui.trainingMode?.setAttribute("aria-pressed", String(training));
     ui.multiplayerFields.classList.toggle("is-hidden", !multiplayer);
     ui.start.classList.toggle("is-multiplayer", multiplayer);
+    const quickActions = document.getElementById("online-quick-actions");
+    if (quickActions) quickActions.classList.toggle("is-hidden", !multiplayer);
     ui.startSubmit.querySelector("span").textContent = multiplayer ? "ENTRAR NA SALA" : "JOGAR";
     setStartStatus();
     if (multiplayer) refreshRooms();
@@ -2867,13 +2872,42 @@
   }
 
   async function requestJson(path, options = {}) {
-    const response = await fetch(path, {
+    const baseUrl = window.ECHO_API_URL || "";
+    const response = await fetch(baseUrl + path, {
       ...options,
+      credentials: "include",
       headers: { "Content-Type": "application/json", ...(options.headers || {}) }
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || `Falha HTTP ${response.status}.`);
     return payload;
+  }
+
+  function getWsUrl() {
+    if (window.ECHO_WS_URL) return window.ECHO_WS_URL;
+    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    if (location.port === "4174" || location.port === "3000") return `${proto}//${location.host}/server/ws`;
+    return `${proto}//${location.hostname}/server/ws`;
+  }
+
+  function saveReconnectInfo(matchId, playerId) {
+    try {
+      localStorage.setItem("echo_reconnect", JSON.stringify({ matchId, playerId, ts: Date.now() }));
+    } catch {}
+  }
+
+  function loadReconnectInfo() {
+    try {
+      const raw = localStorage.getItem("echo_reconnect");
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (Date.now() - data.ts > 120000) { localStorage.removeItem("echo_reconnect"); return null; }
+      return data;
+    } catch { return null; }
+  }
+
+  function clearReconnectInfo() {
+    try { localStorage.removeItem("echo_reconnect"); } catch {}
   }
 
   async function loadProfile() {
@@ -3143,18 +3177,25 @@
         ui.roomList.append(button);
       }
     } catch (error) {
-      setStartStatus(`Servidor local indisponível: ${error.message}`, true);
+      setStartStatus(`Servidor indisponível: ${error.message}`, true);
     }
   }
 
   async function createRoom() {
-    setStartStatus("Criando sala local...");
+    setStartStatus("Criando sala...");
     try {
       const payload = await requestJson("/api/rooms", {
         method: "POST",
         body: JSON.stringify({ name: sanitizeName(ui.name.value) })
       });
       ui.roomCode.value = payload.room.code;
+      const inviteBox = document.getElementById("invite-link-box");
+      const inviteInput = document.getElementById("invite-link");
+      if (inviteBox && inviteInput) {
+        const baseUrl = window.ECHO_PUBLIC_URL || location.origin;
+        inviteInput.value = `${baseUrl}/?room=${payload.room.code}`;
+        inviteBox.classList.remove("is-hidden");
+      }
       connectMultiplayer(payload.room.code);
     } catch (error) {
       setStartStatus(error.message, true);
@@ -3169,17 +3210,18 @@
     }
     if (multiplayerSocket) multiplayerSocket.close();
     setStartStatus(`Conectando à sala ${code}...`);
-    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-    const socket = new WebSocket(`${protocol}//${location.host}/ws`);
+    const wsUrl = getWsUrl();
+    const socket = new WebSocket(wsUrl);
     multiplayerSocket = socket;
     socket.addEventListener("open", () => {
+      multiplayerReconnectAttempts = 0;
       socket.send(JSON.stringify({ type: "join", roomCode: code, name: sanitizeName(ui.name.value), classId: selectedClassId, skinId: getSelectedSkin().id, skillIds: selectedSkillIds }));
     });
     socket.addEventListener("message", (event) => {
       const message = JSON.parse(event.data);
       if (message.type === "error") {
         setStartStatus(message.message, true);
-        socket.close();
+        if (message.message.includes("não encontrada")) socket.close();
         return;
       }
       if (message.type === "joined") {
@@ -3191,6 +3233,7 @@
         networkInputSequence = 0;
         networkPingTimer = 0;
         networkPingMs = 0;
+        saveReconnectInfo(message.roomCode, message.playerId);
         resetWorld();
         bots = [];
         motes = [];
@@ -3204,22 +3247,85 @@
         showToast(`SALA ${message.roomCode} // SERVIDOR AUTORITATIVO`, 2400);
         initAudio();
       }
+      if (message.type === "reconnect_ok") {
+        activeMode = "multiplayer";
+        multiplayerRoomCode = message.roomCode;
+        multiplayerPlayerId = message.playerId;
+        multiplayerHasInitialSnapshot = false;
+        multiplayerMoteRevision = 0;
+        networkInputSequence = 0;
+        clearReconnectInfo();
+        showToast(`RECONECTADO À SALA ${message.roomCode}`, 2000);
+      }
       if (message.type === "snapshot") applyMultiplayerSnapshot(message);
       if (message.type === "pong") {
         const roundTrip = performance.now() - Number(message.clientTime);
         if (Number.isFinite(roundTrip) && roundTrip >= 0 && roundTrip < 10_000) networkPingMs = networkPingMs ? lerp(networkPingMs, roundTrip, 0.25) : roundTrip;
       }
       if (message.type === "system" && state === "playing") showToast(message.message, 1300);
-      if (message.type === "match_end") finishMultiplayer(message.standings);
+      if (message.type === "match_end") {
+        clearReconnectInfo();
+        finishMultiplayer(message.standings);
+      }
     });
     socket.addEventListener("close", () => {
       if (multiplayerSocket !== socket) return;
       multiplayerSocket = null;
       if (activeMode === "multiplayer" && state === "playing") {
-        returnToMenu("A conexão com a sala foi encerrada.", true);
+        attemptReconnect();
       }
     });
-    socket.addEventListener("error", () => setStartStatus("Não foi possível abrir o WebSocket local.", true));
+    socket.addEventListener("error", () => setStartStatus("Não foi possível conectar ao servidor.", true));
+  }
+
+  function attemptReconnect() {
+    const reconnectInfo = loadReconnectInfo();
+    if (!reconnectInfo || multiplayerReconnectAttempts >= MULTIPLAYER_MAX_RECONNECT) {
+      clearReconnectInfo();
+      returnToMenu("A conexão com a sala foi encerrada.", true);
+      return;
+    }
+    multiplayerReconnectAttempts++;
+    const delay = Math.min(1000 * Math.pow(2, multiplayerReconnectAttempts - 1), 10000);
+    showToast(`Reconectando em ${Math.round(delay / 1000)}s...`, delay);
+    setTimeout(() => {
+      if (multiplayerSocket || activeMode !== "multiplayer") return;
+      setStartStatus(`Tentativa ${multiplayerReconnectAttempts}/${MULTIPLAYER_MAX_RECONNECT}...`);
+      const wsUrl = getWsUrl();
+      const socket = new WebSocket(wsUrl);
+      multiplayerSocket = socket;
+      socket.addEventListener("open", () => {
+        socket.send(JSON.stringify({ type: "reconnect", matchId: reconnectInfo.matchId, playerId: reconnectInfo.playerId }));
+      });
+      socket.addEventListener("message", (event) => {
+        const message = JSON.parse(event.data);
+        if (message.type === "reconnect_ok") {
+          multiplayerReconnectAttempts = 0;
+          activeMode = "multiplayer";
+          multiplayerRoomCode = message.roomCode;
+          multiplayerPlayerId = message.playerId;
+          multiplayerHasInitialSnapshot = false;
+          showToast(`RECONECTADO À SALA ${message.roomCode}`, 2000);
+        }
+        if (message.type === "error") {
+          setStartStatus(message.message, true);
+          socket.close();
+        }
+        if (message.type === "snapshot") applyMultiplayerSnapshot(message);
+        if (message.type === "match_end") {
+          clearReconnectInfo();
+          finishMultiplayer(message.standings);
+        }
+      });
+      socket.addEventListener("close", () => {
+        if (multiplayerSocket !== socket) return;
+        multiplayerSocket = null;
+        if (activeMode === "multiplayer" && state === "playing") attemptReconnect();
+      });
+      socket.addEventListener("error", () => {
+        if (activeMode === "multiplayer" && state === "playing") attemptReconnect();
+      });
+    }, delay);
   }
 
   function applyNetworkSkin(entity) {
@@ -6806,6 +6912,56 @@
   ui.createRoom.addEventListener("click", createRoom);
   ui.refreshRooms.addEventListener("click", refreshRooms);
   ui.roomCode.addEventListener("input", () => { ui.roomCode.value = sanitizeRoomCode(ui.roomCode.value); });
+
+  const quickJoinButton = document.getElementById("quick-join-button");
+  if (quickJoinButton) {
+    quickJoinButton.addEventListener("click", async () => {
+      setStartStatus("Procurando sala...");
+      try {
+        const payload = await requestJson("/api/rooms");
+        const available = payload.rooms.find((r) => r.players < r.maxPlayers);
+        if (available) {
+          ui.roomCode.value = available.code;
+          connectMultiplayer(available.code);
+        } else {
+          const createPayload = await requestJson("/api/rooms", {
+            method: "POST",
+            body: JSON.stringify({ name: sanitizeName(ui.name.value) })
+          });
+          ui.roomCode.value = createPayload.room.code;
+          connectMultiplayer(createPayload.room.code);
+        }
+      } catch (error) {
+        setStartStatus(error.message, true);
+      }
+    });
+  }
+
+  const copyInviteButton = document.getElementById("copy-invite-button");
+  const inviteLinkInput = document.getElementById("invite-link");
+  if (copyInviteButton && inviteLinkInput) {
+    copyInviteButton.addEventListener("click", () => {
+      inviteLinkInput.select();
+      navigator.clipboard?.writeText(inviteLinkInput.value).then(() => {
+        showToast("Link copiado!", 1500);
+      }).catch(() => {});
+    });
+  }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const roomFromUrl = urlParams.get("room");
+  if (roomFromUrl && /^[A-Z0-9]{6}$/.test(roomFromUrl)) {
+    setSelectedMode("multiplayer");
+    ui.roomCode.value = roomFromUrl;
+    setTimeout(() => connectMultiplayer(roomFromUrl), 500);
+  }
+
+  const reconnectInfo = loadReconnectInfo();
+  if (reconnectInfo && reconnectInfo.matchId) {
+    setSelectedMode("multiplayer");
+    ui.roomCode.value = reconnectInfo.matchId;
+  }
+
   ui.name.addEventListener("change", loadProfile);
 
   if (ui.workshopButton) ui.workshopButton.addEventListener("click", openWorkshop);

@@ -165,20 +165,29 @@
             </section>
 
             <section class="prep-panel is-active" data-prep-panel="mode">
-              <div class="panel-heading"><div><small>CONFIGURAÇÃO DA PARTIDA</small><h2>MODO DE JOGO</h2></div></div>
+              <div class="panel-heading"><div><small>MULTIPLAYER ONLINE</small><h2>MODO DE JOGO</h2></div></div>
               <div class="mode-selector prep-modes" role="group" aria-label="Modo de jogo">
-                <button id="solo-mode" class="is-selected" type="button" aria-pressed="true"><small>CAMPANHA</small><strong>SOLO</strong><span>Progresso, bônus e chefes.</span></button>
-                <button id="multiplayer-mode" type="button" aria-pressed="false"><small>REDE LOCAL</small><strong>MULTIPLAYER</strong><span>Sala autoritativa com banco local.</span></button>
+                <button id="multiplayer-mode" class="is-selected" type="button" aria-pressed="true"><small>ONLINE</small><strong>JOGAR ONLINE</strong><span>Partida rápida com jogadores reais.</span></button>
+                <button id="solo-mode" type="button" aria-pressed="false"><small>CAMPANHA</small><strong>SOLO</strong><span>Progresso, bônus e chefes.</span></button>
                 <button id="training-mode" type="button" aria-pressed="false"><small>SEM RECOMPENSAS</small><strong>TREINO</strong><span>Teste classes e habilidades livremente.</span></button>
+              </div>
+              <div id="online-quick-actions" class="online-quick-actions">
+                <button id="quick-join-button" class="quick-join-button" type="button"><span>JOGAR AGORA</span><small>Encontrar sala automaticamente</small></button>
+              </div>
+              <div id="multiplayer-fields" class="multiplayer-fields">
+                <label for="room-code">CÓDIGO DA SALA<input id="room-code" name="room" maxlength="6" autocomplete="off" placeholder="EX.: A7K9Q2"></label>
+                <button id="create-room-button" class="secondary-button" type="button">CRIAR SALA PRIVADA</button>
+                <button id="refresh-rooms-button" class="text-button" type="button">ATUALIZAR SALAS</button>
+                <div id="room-list" class="room-list" aria-live="polite"></div>
+                <div id="invite-link-box" class="invite-link-box is-hidden">
+                  <label>LINK DE CONVITE
+                    <input id="invite-link" type="text" readonly>
+                  </label>
+                  <button id="copy-invite-button" class="text-button" type="button">COPIAR</button>
+                </div>
               </div>
               <label class="difficulty-label">DIFICULDADE<select id="difficulty-select"><option value="easy">ACESSÍVEL</option><option value="normal" selected>NORMAL</option><option value="hard">INTENSA</option></select></label>
               <label class="difficulty-label">REGRA EXTRA DA PARTIDA<select id="modifier-select"><option value="">NENHUMA</option><option value="glass-cannon">MAIS DANO, MENOS VIDA</option><option value="vampiric">RECUPERAR VIDA AO ELIMINAR</option><option value="glass-boot">MAIS VELOCIDADE</option><option value="magnetic">MAIOR COLETA</option><option value="fortified">MAIS VIDA, MENOS DANO</option><option value="overclocked">ATAQUES MAIS RÁPIDOS</option><option value="risk-reward">MAIOR RISCO E RECOMPENSA</option><option value="glass-trail">RASTRO MAIS FORTE</option><option value="berserker">MAIS DANO COM POUCA VIDA</option></select></label>
-              <div id="multiplayer-fields" class="multiplayer-fields is-hidden">
-                <label for="room-code">CÓDIGO DA SALA<input id="room-code" name="room" maxlength="6" autocomplete="off" placeholder="EX.: A7K9Q2"></label>
-                <button id="create-room-button" class="secondary-button" type="button">CRIAR NOVA SALA</button>
-                <button id="refresh-rooms-button" class="text-button" type="button">ATUALIZAR SALAS</button>
-                <div id="room-list" class="room-list" aria-live="polite"></div>
-              </div>
             </section>
 
             <section class="prep-panel" data-prep-panel="settings">

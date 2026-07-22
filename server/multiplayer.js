@@ -2,6 +2,7 @@
 
 const { randomUUID } = require("node:crypto");
 const { getSkinDefinition } = require("../shared/skin-definitions.js");
+const redis = require("./redis.js");
 const {
   WORLD_SIZE,
   WORLD_MARGIN,
@@ -170,12 +171,13 @@ class ArenaRoom {
       mode: "multiplayer",
       score: player.score,
       kills: player.kills,
+      deaths: player.deaths,
       durationMs: this.elapsed * 1000,
       outcome,
       roomCode: this.code,
       classId: player.classId,
       difficulty: "normal"
-    });
+    }).catch(() => {});
   }
 
   handleInput(playerId, message) {
@@ -647,6 +649,38 @@ class ArenaRoom {
       remaining: Math.max(0, Math.ceil(MATCH_DURATION - this.elapsed))
     };
   }
+
+  async saveStateToRedis() {
+    const players = this.humanPlayers.map((p) => ({
+      id: p.id, name: p.name, classId: p.classId, skinId: p.skinId,
+      score: p.score, kills: p.kills, deaths: p.deaths,
+      x: Math.round(p.x), y: Math.round(p.y),
+      health: Math.round(p.health), connected: p.connected
+    }));
+    await redis.setRoomState(this.code, {
+      status: this.status, elapsed: this.elapsed,
+      matchId: this.code, createdAt: Date.now()
+    });
+    await redis.setRoomPlayers(this.code, players);
+  }
+
+  findDisconnectedPlayer(playerId) {
+    for (const player of this.players.values()) {
+      if (!player.isBot && player.id === playerId && !player.connected) return player;
+    }
+    return null;
+  }
+
+  reconnectPlayer(playerId, socket) {
+    const player = this.findDisconnectedPlayer(playerId);
+    if (!player) return null;
+    player.connected = true;
+    player.socket = socket;
+    player.disconnectedAt = 0;
+    socket.echoRoomCode = this.code;
+    socket.echoPlayerId = player.id;
+    return player;
+  }
 }
 
 class RoomManager {
@@ -655,6 +689,7 @@ class RoomManager {
     this.rooms = new Map();
     this.interval = null;
     this.lastTick = Date.now();
+    this.redisSaveCounter = 0;
     if (options.autoStart !== false) this.start();
   }
 
@@ -673,11 +708,25 @@ class RoomManager {
     const now = Date.now();
     const dt = Math.min(0.05, (now - this.lastTick) / 1000);
     this.lastTick = now;
+
+    this.redisSaveCounter += dt;
+    const shouldSaveRedis = this.redisSaveCounter >= 5;
+    if (shouldSaveRedis) this.redisSaveCounter = 0;
+
     for (const [code, room] of this.rooms) {
       room.update(dt);
-      if (room.status === "finished" && now - room.finishedAt > 30_000) this.rooms.delete(code);
+
+      if (room.status === "finished" && now - room.finishedAt > 30_000) {
+        this.rooms.delete(code);
+        redis.deleteRoom(code).catch(() => {});
+      }
+
       if (room.status === "active" && room.humanPlayers.length === 0 && room.elapsed > 10 * 60) {
         room.finish();
+      }
+
+      if (shouldSaveRedis && room.status === "active") {
+        room.saveStateToRedis().catch(() => {});
       }
     }
   }
@@ -695,7 +744,7 @@ class RoomManager {
     const code = this.generateCode();
     const room = new ArenaRoom(code, this.database);
     this.rooms.set(code, room);
-    this.database.createRoom(code);
+    this.database.createRoom(code).catch(() => {});
     return room;
   }
 
@@ -713,11 +762,28 @@ class RoomManager {
     const player = room.addPlayer(socket, rawName, options);
     socket.echoRoomCode = room.code;
     socket.echoPlayerId = player.id;
-    socket.send(JSON.stringify({ type: "joined", roomCode: room.code, playerId: player.id, matchDuration: MATCH_DURATION }));
+    socket.send(JSON.stringify({ type: "joined", roomCode: room.code, playerId: player.id, matchDuration: MATCH_DURATION, protocolVersion: 1 }));
     const initialSnapshot = room.snapshotFor(player.id);
     socket.send(JSON.stringify(initialSnapshot));
     socket.echoMoteRevision = initialSnapshot.moteRevision;
     room.broadcast({ type: "system", message: `${player.name} entrou na sala.` });
+    room.saveStateToRedis().catch(() => {});
+    return { room, player };
+  }
+
+  reconnect(socket, message) {
+    const room = this.getRoom(message.matchId);
+    if (!room) throw new Error("Partida não encontrada.");
+    if (room.status !== "active") throw new Error("Partida já encerrada.");
+
+    const player = room.reconnectPlayer(message.playerId, socket);
+    if (!player) throw new Error("Jogador não encontrado nesta partida.");
+
+    socket.send(JSON.stringify({ type: "reconnect_ok", roomCode: room.code, playerId: player.id, matchDuration: MATCH_DURATION, protocolVersion: 1 }));
+    const snapshot = room.snapshotFor(player.id);
+    socket.send(JSON.stringify(snapshot));
+    socket.echoMoteRevision = snapshot.moteRevision;
+    room.broadcast({ type: "system", message: `${player.name} reconectou.` });
     return { room, player };
   }
 
@@ -727,6 +793,7 @@ class RoomManager {
       return null;
     }
     if (message.type === "join") return this.join(socket, message.roomCode, message.name, { classId: message.classId, skinId: message.skinId, skillIds: message.skillIds });
+    if (message.type === "reconnect") return this.reconnect(socket, message);
     const room = this.getRoom(socket.echoRoomCode);
     if (room && socket.echoPlayerId) room.handleInput(socket.echoPlayerId, message);
     return null;
@@ -734,7 +801,21 @@ class RoomManager {
 
   disconnect(socket) {
     const room = this.getRoom(socket.echoRoomCode);
-    if (room && socket.echoPlayerId) room.removePlayer(socket.echoPlayerId);
+    if (!room || !socket.echoPlayerId) return;
+    const player = room.players.get(socket.echoPlayerId);
+    if (!player || player.isBot) return;
+
+    player.connected = false;
+    player.socket = null;
+    player.disconnectedAt = Date.now();
+
+    setTimeout(() => {
+      if (!player.connected && room.status === "active") {
+        room.removePlayer(socket.echoPlayerId, "disconnected");
+        room.broadcast({ type: "system", message: `${player.name} desconectou.` });
+        room.saveStateToRedis().catch(() => {});
+      }
+    }, 30000);
   }
 }
 

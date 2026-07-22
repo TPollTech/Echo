@@ -17,6 +17,8 @@
     ui.trainingMode?.setAttribute("aria-pressed", String(training));
     ui.multiplayerFields.classList.toggle("is-hidden", !multiplayer);
     ui.start.classList.toggle("is-multiplayer", multiplayer);
+    const quickActions = document.getElementById("online-quick-actions");
+    if (quickActions) quickActions.classList.toggle("is-hidden", !multiplayer);
     ui.startSubmit.querySelector("span").textContent = multiplayer ? "ENTRAR NA SALA" : "JOGAR";
     setStartStatus();
     if (multiplayer) refreshRooms();

@@ -1,6 +1,10 @@
-data/echo.sqlite-shm
-data/echo.sqlite-wal
 data/echo.sqlite
 data/echo.sqlite-shm
 data/echo.sqlite-wal
 docs/Adições.md
+node_modules/
+server/node_modules/
+.env
+.env.local
+.env.production
+.vercel/
